@@ -1,0 +1,5 @@
+Conclusion from today's meeting: The PBE functional does not accurately describe the EC decomposition on lithium. We would like to use a hybrid functional, but we don't know whoch one we should choose.
+
+To do:
+- Perform NEB computations (with Cem's help) to find the transition state of EC decomposition and to obtain the reaction energies. These energies can be compared with the DFT energies from the QM team. 
+- Perform DFT benchmark computations for the EC-Li-RO structure adsorbed on the lithium structure using 3 different functionals (HSE06+TS, PBE0+TS, SCAN0+TS).  
