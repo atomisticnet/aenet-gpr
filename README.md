@@ -128,7 +128,7 @@ A principal input file, named `train.in`, consists of lines in the format:
 `keyword 2` `argument 2`  
 ...
 
-In the example below, comments are provided to explain the meaning of each key keyword.
+In the example below, comments are provided to explain the meaning of keywords.
 
 ### Example of train.in
 ```
