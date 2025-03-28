@@ -2,7 +2,9 @@
 Automated Workflow for Data Augmentation: Gaussian Process Regression (GPR) Surrogate Models for machine-learning potential (MLP) training.
 
 This Python package is designed to support Artificial Neural Network (ANN) force training by using Gaussian Process Regression (GPR) as a surrogate model, aiming to reduce the computational cost for the training, as benchmarked in the reference: [In Won Yeu, Annika Stuke, Jon L.pez-Zorrilla, James M. Stevenson, David R. Reichman, Richard A. Friesner, Alexander Urban, Nongnuch Artrith, "Scalable Training of Neural Network Potentials for Complex Interfaces Through Data Augmentation", arXiv:2412.05773](
-https://doi.org/10.48550/arXiv.2412.05773)
+https://doi.org/10.48550/arXiv.2412.05773)  
+
+*Contact: In Won Yeu (iy2185@columbia.edu) or Nongnuch Artrith (n.artrith@uu.nl)  
 
 ## Overall workflow of GPR surrogate model
 <p align="center">
@@ -30,7 +32,17 @@ the synthetic data points generated with the local GPR models are based on the e
 
 <a name="installation"></a>
 # Installation
+## Requirements
+In a working Python environment, following packages should be pre-installed:
+* `numpy`: pip install numpy
+* `torch`: pip install torch
+* `dscribe`: pip install dscribe
 
+## Before publication
+* Download [aenet_GPR]
+* Include [the path of aenet_GPR] in the PYTHONPATH environment
+
+## After publication
 ```
 $ pip install aenet-gpr
 ```
