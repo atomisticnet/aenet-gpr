@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 
 install_requires = ['numpy',
-                    'pytorch',
+                    'torch',
                     'dscribe',]
 
 packages = ['aenet_GPR',
@@ -24,12 +24,11 @@ if __name__ == '__main__':
                 version = line.split()[2].strip('\"')
                 break
 
-setup(name='aenet_GPR',
+setup(name='aenet_gpr',
       description='Atomistic simulation tools based on Gaussian processes',
-      url='https://github.com/atomisticnet/??',
+      url='https://github.com/atomisticnet/aenet_gpr',
       version=version,
-      license='LGPLv2.1+',
+      license='MPL-2.0',
       packages=packages,
       install_requires=install_requires,
-      entry_points={'console_scripts': ['gprpytorch = GPRPytorch.gprpytorch:main', ], },
 )
