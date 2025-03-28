@@ -1,0 +1,74 @@
+======================================================================
+aenet-GPR: surrogate GPR for GPR-ANN indirect force training
+======================================================================
+
+2025-03-27 00:41:13.
+
+Developed by In Won Yeu
+
+This program performs three main steps:
+1. Train: Generates a GPR model using the provided structure, energy, and force data.
+2. Test: Uses the generated GPR model to predict values for the test set structures.
+3. Augmentation: Performs data augmentation in xsf file format, compatible with aenet-(PyTorch),
+supporting a GPR-ANN training in conjunction with aenet-(PyTorch).
+
+Each of these steps is executed once the input file (train.in) contains the keywords:
+Train_file [train file path]
+Test_file [test file path]
+Additional_write [True]
+Once the Train step is completed, the generated GPR model is saved in [data_dict.pt] and [calc_dict.pt].
+Using these saved model files, you can later run only the Test or Augmentation steps separately.
+
+
+======================================================================
+Train
+======================================================================
+
+Read reference training data
+
+Time needed for reading data:            0.178272 s
+Maximum CPU memory used:             0.310246 GB
+Maximum GPU memory used:             0.000000 GB
+Energy data size: (100,)  # (N_data, )
+Force data size: (100, 46, 3)  # (N_data, N_atom, 3)
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+Model train
+
+Training parameters
+{'num_data': 100, 'calculator': {'kerneltype': 'sqexp', 'scale': tensor(0.4000, dtype=torch.float64), 'weight': tensor(1., dtype=torch.float64), 'noise': tensor(1.0000e-06, dtype=torch.float64), 'noisefactor': tensor(0.5000, dtype=torch.float64)}, 'fix_ind': None, 'pbc': True, 'species': ['Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'C', 'C', 'O', 'H', 'H', 'O', 'H', 'H', 'C', 'O'], 'num_atom': 46}
+
+Time needed for training:            9.895248 s
+Maximum CPU memory used:             3.428566 GB
+Maximum GPU memory used:             0.000000 GB
+----------------------------------------------------------------------
+======================================================================
+Test
+======================================================================
+
+Read reference test data
+
+Time needed for reading data:            0.506617 s
+Maximum CPU memory used:             3.428566 GB
+Maximum GPU memory used:             0.000000 GB
+Energy data size: (300,)  # (N_data, )
+Force data size: (300, 46, 3)  # (N_data, N_atom, 3)
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+Model evaluation for test set
+
+Test parameters
+{'num_data': 300, 'calculator': {'kerneltype': 'sqexp', 'scale': tensor(0.4000, dtype=torch.float64), 'weight': tensor(1., dtype=torch.float64), 'noise': tensor(1.0000e-06, dtype=torch.float64), 'noisefactor': tensor(0.5000, dtype=torch.float64)}, 'fix_ind': None, 'pbc': True, 'species': ['Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'Li', 'C', 'C', 'O', 'H', 'H', 'O', 'H', 'H', 'C', 'O'], 'num_atom': 46}
+
+Time needed for test evaluation:           21.307883 s
+Maximum CPU memory used:             4.567574 GB
+Maximum GPU memory used:             0.000000 GB
+----------------------------------------------------------------------
+GPR energy MAE (eV): 0.4304479858886892
+GPR force MAE (eV/Ang): 0.4091134239897715
+GPR uncertainty mean ± std: 0.5365993051018854 ± 0.05380844870010603
+
+Saving test target to [energy_test_reference.npy] and [force_test_reference.npy]
+Saving GPR prediction to [energy_test_gpr.npy], [force_test_gpr.npy], and [uncertainty_test_gpr.npy]
+
+

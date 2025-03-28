@@ -1,0 +1,36 @@
+# File path
+Train_file /burg/ccce/users/iy2185/2023-11-16-PyTorch/test_final/example/3_Li-EC/train_set/file_*.xsf
+Test_file /burg/ccce/users/iy2185/2023-11-16-PyTorch/test_final/example/3_Li-EC/test_set/file_*.xsf
+
+# File format (default: xsf)
+File_format xsf
+
+# Descriptor (default: cartesian coordinates)
+Descriptor soap
+
+# Soap parameters
+soap_r_cut 5.0
+soap_n_max 6
+soap_l_max 4
+soap_centers [[2.20113706670393, 2.328998192856251, 6.952547732109352], [2.20113706670393, 2.328998192856251, 11.895790642109352], [2.20113706670393, 6.760484232856251, 6.952547732109352], [2.20113706670393, 6.760484232856251, 11.895790642109352], [6.63924050670393, 2.328998192856251, 6.952547732109352], [6.63924050670393, 2.328998192856251, 11.895790642109352], [6.63924050670393, 6.760484232856251, 6.952547732109352], [6.63924050670393, 6.760484232856251, 11.895790642109352]]
+soap_n_jobs 32
+
+# Uncertainty estimation (default: True)
+Get_variance True
+
+# Kernel parameter (default: Squared exponential)
+scale 2.0
+weight 1.0
+
+# Chunking to reduce memory usage (default: batch, 25)
+data_process batch
+batch_size 25
+
+# Flags for xsf file writing (default: False)
+Train_write False
+Test_write False
+Additional_write False
+
+# Data augmentation parameter (default: 0.055, 25)
+Disp_length 0.05
+Num_copy 20

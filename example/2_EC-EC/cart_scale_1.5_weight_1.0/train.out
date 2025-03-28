@@ -1,0 +1,106 @@
+======================================================================
+aenet-GPR: surrogate GPR for GPR-ANN indirect force training
+======================================================================
+
+2025-03-27 17:10:02.
+
+Developed by In Won Yeu
+
+This program performs three main steps:
+1. Train: Generates a GPR model using the provided structure, energy, and force data.
+2. Test: Uses the generated GPR model to predict values for the test set structures.
+3. Augmentation: Performs data augmentation in xsf file format, compatible with aenet-(PyTorch),
+supporting a GPR-ANN training in conjunction with aenet-(PyTorch).
+
+Each of these steps is executed once the input file (train.in) contains the keywords:
+Train_file [train file path]
+Test_file [test file path]
+Additional_write [True]
+Once the Train step is completed, the generated GPR model is saved in [data_dict.pt] and [calc_dict.pt].
+Using these saved model files, you can later run only the Test or Augmentation steps separately.
+
+
+======================================================================
+Train
+======================================================================
+
+Read reference training data
+
+Time needed for reading data:            0.512531 s
+Maximum CPU memory used:             0.310974 GB
+Maximum GPU memory used:             0.000000 GB
+Energy data size: (250,)  # (N_data, )
+Force data size: (250, 20, 3)  # (N_data, N_atom, 3)
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+Model train
+
+Training parameters
+{'num_data': 250, 'calculator': {'kerneltype': 'sqexp', 'scale': tensor(1.5000, dtype=torch.float64), 'weight': tensor(1., dtype=torch.float64), 'noise': tensor(1.0000e-06, dtype=torch.float64), 'noisefactor': tensor(0.5000, dtype=torch.float64)}, 'fix_ind': None, 'pbc': False, 'species': ['O', 'O', 'O', 'C', 'C', 'C', 'H', 'H', 'H', 'H', 'O', 'O', 'O', 'C', 'C', 'C', 'H', 'H', 'H', 'H'], 'num_atom': 20}
+
+Time needed for training:           14.372380 s
+Maximum CPU memory used:             4.057571 GB
+Maximum GPU memory used:             0.000000 GB
+----------------------------------------------------------------------
+======================================================================
+Test
+======================================================================
+
+Read reference test data
+
+Time needed for reading data:            3.687130 s
+Maximum CPU memory used:             4.057571 GB
+Maximum GPU memory used:             0.000000 GB
+Energy data size: (750,)  # (N_data, )
+Force data size: (750, 20, 3)  # (N_data, N_atom, 3)
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+Model evaluation for test set
+
+Test parameters
+{'num_data': 750, 'calculator': {'kerneltype': 'sqexp', 'scale': tensor(1.5000, dtype=torch.float64), 'weight': tensor(1., dtype=torch.float64), 'noise': tensor(1.0000e-06, dtype=torch.float64), 'noisefactor': tensor(0.5000, dtype=torch.float64)}, 'fix_ind': None, 'pbc': False, 'species': ['O', 'O', 'O', 'C', 'C', 'C', 'H', 'H', 'H', 'H', 'O', 'O', 'O', 'C', 'C', 'C', 'H', 'H', 'H', 'H'], 'num_atom': 20}
+
+Time needed for test evaluation:           42.781759 s
+Maximum CPU memory used:             5.143246 GB
+Maximum GPU memory used:             0.000000 GB
+----------------------------------------------------------------------
+GPR energy MAE (eV): 0.018073164023138816
+GPR force MAE (eV/Ang): 0.9549422782655801
+GPR uncertainty mean ± std: 0.0011830484123049535 ± 0.0001984650837289865
+
+Saving test target to [energy_test_reference.npy] and [force_test_reference.npy]
+Saving GPR prediction to [energy_test_gpr.npy], [force_test_gpr.npy], and [uncertainty_test_gpr.npy]
+
+
+======================================================================
+Augmentation
+======================================================================
+----------------------------------------------------------------------
+Additional structure generation
+
+Time needed for additional generation:            0.496318 s
+Maximum CPU memory used:             5.143246 GB
+Maximum GPU memory used:             0.000000 GB
+Displacement length (Ang): 0.05
+Multiple: 20
+N_additional = N_reference (250) * Multiple (20) = 5000
+----------------------------------------------------------------------
+----------------------------------------------------------------------
+Model evaluation for additional set
+
+Test parameters
+{'num_data': 5000, 'calculator': {'kerneltype': 'sqexp', 'scale': tensor(1.5000, dtype=torch.float64), 'weight': tensor(1., dtype=torch.float64), 'noise': tensor(1.0000e-06, dtype=torch.float64), 'noisefactor': tensor(0.5000, dtype=torch.float64)}, 'fix_ind': None, 'pbc': False, 'species': ['O', 'O', 'O', 'C', 'C', 'C', 'H', 'H', 'H', 'H', 'O', 'O', 'O', 'C', 'C', 'C', 'H', 'H', 'H', 'H'], 'num_atom': 20}
+
+Time needed for additional evaluation:          305.413892 s
+Maximum CPU memory used:             5.160244 GB
+Maximum GPU memory used:             0.000000 GB
+----------------------------------------------------------------------
+
+Saving GPR prediction to [energy_additional_gpr.npy], [force_additional_gpr.npy], and [uncertainty_additional_gpr.npy]
+======================================================================
+Writing additional xsf files to additional_xsf
+
+Time needed for writing xsf files:           21.659389 s
+Maximum CPU memory used:             5.160244 GB
+Maximum GPU memory used:             0.000000 GB
+======================================================================
