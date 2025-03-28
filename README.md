@@ -223,7 +223,7 @@ weight 1.0
 ### 2. Cost: `data_process` and `batch_size`
 The GPR model fitted to both energy and force data requires computing covariances between the fingerprint tensors of shape `[n_data, n_center, n_feature]` and the [fingerprint derivative](https://singroup.github.io/dscribe/latest/tutorials/derivatives.html) tensors of shape `[n_data, n_center, n_atom, 3, n_feature]`. This leads to high memory demands.  
 
-On the other hand, computing kernel values individually (`data_process iterative`) for each data pair involves `n_data × n_data` separate kernel evaluations, resulting in significant increase in computational time.  
+On the other hand, computing kernels data-by-data (`data_process iterative`) involves `n_data × n_data` sequential kernel evaluations, minimizing the memory overhead but significantly increasing computational time.  
 
 To address this, **aenet-GPR** supports batch processing (`data_process batch`) by grouping data process, which significantly reduces train and evaluation time while keeping memory usage efficient.
 
