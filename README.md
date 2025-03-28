@@ -37,6 +37,7 @@ In a working Python environment, following packages should be pre-installed:
 * `numpy`: `pip install numpy`
 * `torch`: `pip install torch`
 * `dscribe`: `pip install dscribe`
+* `ase`: `pip install ase`
 
 ## Before publication
 * Download the ZIP of this repository and unzip on `[path of aenet_GPR]`
@@ -180,7 +181,7 @@ The `./example/` directory of this repository includes example input and output 
 
 
 <a name="key-keyword"></a>
-## Key train.in input keywords that affect performance
+## Key `train.in` input keywords that affect performance
 ### 1. Accuracy: `Descriptor` and kernel parameter (`scale` and `weight`)
 **aenet-GPR** uses the following `squared exponential (sqexp)` as default kernel function with `scale` and `weight` parameters:
 
