@@ -1,4 +1,4 @@
-# aenet-gpr
+# ænet-GPR
 Automated Workflow for Data Augmentation: Gaussian Process Regression (GPR) Surrogate Models for machine-learning potential (MLP) training.
 
 This Python package is designed to support Artificial Neural Network (ANN) force training by using Gaussian Process Regression (GPR) as a surrogate model, aiming to reduce the computational cost for the training, as benchmarked in the reference: [In Won Yeu, Annika Stuke, Jon L.pez-Zorrilla, James M. Stevenson, David R. Reichman, Richard A. Friesner, Alexander Urban, Nongnuch Artrith, "Scalable Training of Neural Network Potentials for Complex Interfaces Through Data Augmentation", arXiv:2412.05773](
