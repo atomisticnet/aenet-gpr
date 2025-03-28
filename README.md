@@ -15,7 +15,7 @@ Starting with an initial DFT database, training begins with dividing an existing
 **2. Test** – Predict and evaluate target properties for test structures using the trained GPR model  
 **3. Augmentation** – Generate additional structures by perturbing reference training structures and augment the ANN training dataset with GPR-predicted energy tags  
 
-The augmented data are saved in the xsf file format, compatible with the [aenet package](https://github.com/atomisticnet/aenet-PyTorch), enabling indirect force training (**GPR-ANN training**) for ANN potentials.
+The augmented data are saved in the [XCrysDen Structure Format (XSF)](http://ann.atomistic.net/documentation/#structural-energy-reference-data) file format, compatible with the [aenet package](https://github.com/atomisticnet/aenet-PyTorch), so that the output can be readily integrated as input for ANN potential training enabling indirect force training (**GPR-ANN training**).
 
 Here, the local GPR models are used for the local approximation of the potential energy surface (PES) and the fine sample of the overall PES. The surrogate models also make it easy to perform active learning based on GPR uncertanty estimates. Finally, since
 the synthetic data points generated with the local GPR models are based on the energies and atomic forces, the resulting ANN potentials are also implicitly trained on force information, and we refer to this approach as indirect force training, which mitigates scalability issues of ANN force training.
@@ -38,7 +38,7 @@ $ pip install aenet-gpr
 <a name="input-files"></a>
 # Input files
 ## 1. Data files of structure-energy-atomic forces
-First, data files containing **structure-energy-atomic forces** must be prepared as training data. By default, the package uses the [aenet-compatible XCrysDen Structure Format (XSF)](http://ann.atomistic.net/documentation/#structural-energy-reference-data) format, but it also supports other output files—such as **VASP OUTCAR** (`File_format vasp-out` in `train.in` below)—that can be read via [ASE package](https://wiki.fysik.dtu.dk/ase/ase/io/io.html), as long as they contain the **structure-energy-atomic forces** information.
+First, data files containing **structure-energy-atomic forces** must be prepared as training data. By default, the package uses the XSF format, but it also supports other output files—such as **VASP OUTCAR** (`File_format vasp-out` in `train.in` below)—that can be read via [ASE package](https://wiki.fysik.dtu.dk/ase/ase/io/io.html), as long as they contain the **structure-energy-atomic forces** information.
 
 ### Example of aenet XSF file of a non-periodic structure:
 The first comment line should specify **total energy** of a structure. Each line following the keyword `ATOMS` contains **atomic symbol**, **three Cartesian coordinates**, and the three components of **atomic forces**. The length, energy, and force units are Å, eV, and eV/Å.
