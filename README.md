@@ -39,8 +39,8 @@ In a working Python environment, following packages should be pre-installed:
 * `dscribe`: pip install dscribe
 
 ## Before publication
-* Download [aenet_GPR]
-* Include [the path of aenet_GPR] in the PYTHONPATH environment
+* Download the ZIP of this repository and unzip on [path of aenet_GPR]
+* Include [path of aenet_GPR] in the PYTHONPATH environment: export PYTHONPATH=[path of aenet_GPR]:$PYTHONPATH
 
 ## After publication
 ```
