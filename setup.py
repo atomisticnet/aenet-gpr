@@ -5,7 +5,8 @@ from setuptools import setup, find_packages
 
 install_requires = ['numpy',
                     'torch',
-                    'dscribe',]
+                    'dscribe', 
+                    'ase']
 
 packages = ['aenet_GPR',
             'aenet_GPR.inout',
