@@ -34,13 +34,13 @@ the synthetic data points generated with the local GPR models are based on the e
 # Installation
 ## Requirements
 In a working Python environment, following packages should be pre-installed:
-* `numpy`: pip install numpy
-* `torch`: pip install torch
-* `dscribe`: pip install dscribe
+* `numpy`: `pip install numpy`
+* `torch`: `pip install torch`
+* `dscribe`: `pip install dscribe`
 
 ## Before publication
-* Download the ZIP of this repository and unzip on [path of aenet_GPR]
-* Include [path of aenet_GPR] in the PYTHONPATH environment: export PYTHONPATH=[path of aenet_GPR]:$PYTHONPATH
+* Download the ZIP of this repository and unzip on `[path of aenet_GPR]`
+* Include `[path of aenet_GPR] `in the PYTHONPATH environment: `export PYTHONPATH=[path of aenet_GPR]:$PYTHONPATH`
 
 ## After publication
 ```
