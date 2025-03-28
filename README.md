@@ -194,7 +194,7 @@ are shown above. When using the **Cartesian descriptor** (gray circles), the err
 
 As demonstrated in the examples for the `./example/2_EC-EC/` non-periodic system (results available in the `example` directory) and the `./example/3_Li-EC/` periodic system, it may not always be the case, but non-periodic systems can be well-represented using **non-periodic Cartesian descriptors**, while periodic systems are expected to yield better accuracy when using **SOAP descriptors** with periodic setting.  
 
-For **SOAP descriptor**, eight uniformly distributed points in the Li slab Rectangular cuboid were used as `centers` argument for **SOAP**. The corresponding `train.in` input arguments are
+For the example of **SOAP descriptor** here, eight uniformly distributed points in the Li slab Rectangular cuboid were used as `centers` argument for **SOAP**. The corresponding `train.in` input arguments are
 ```
 Descriptor soap
 soap_r_cut 5.0
