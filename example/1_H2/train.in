@@ -1,6 +1,6 @@
 # File path
-Train_file /burg/ccce/users/iy2185/2023-11-16-PyTorch/test_final/example/1_H2/train_set/file_*.xsf
-Test_file /burg/ccce/users/iy2185/2023-11-16-PyTorch/test_final/example/1_H2/test_set/file_*.xsf
+Train_file ./example/1_H2/train_set/file_*.xsf
+Test_file ./example/1_H2/test_set/file_*.xsf
 
 # File format (default: xsf)
 File_format xsf
