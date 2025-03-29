@@ -223,7 +223,7 @@ The GPR model fitted to both energy and force data requires computing covariance
 
 On the other hand, computing kernels data-by-data (`data_process iterative`) involves `n_data × n_data` sequential kernel evaluations, minimizing the memory overhead but significantly increasing computational time.  
 
-To address this, **aenet-GPR** supports batch processing (`data_process batch`) by grouping data process in a specific size (`batch_size 25`), which significantly reduces train and evaluation time while keeping memory usage efficient.
+To address this, **aenet-GPR** supports batch processing (`data_process batch`) by grouping data process into a specific size (`batch_size 25`), which significantly reduces train and evaluation time while keeping memory usage efficient.
 
 Below, we provide a benchmark comparing the required time and memory for each **Train–Test–Augmentation** step using different batch sizes on the `./example/3_Li-EC/` example.
 
