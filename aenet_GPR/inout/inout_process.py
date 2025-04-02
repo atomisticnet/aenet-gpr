@@ -98,12 +98,21 @@ class Test(object):
                                        data_process=self.input_param.data_process,
                                        soap_param=self.input_param.soap_param)
         self.test_data.set_data()
+        if self.test_data.energy is not None:
+            test_data_energy_shape = self.test_data.energy.shape
+        else:
+            test_data_energy_shape = None
+
+        if self.test_data.force is not None:
+            test_data_force_shape = self.test_data.force.shape
+        else:
+            test_data_force_shape = None
         io_data_read_finalize(t=start,
                               mem_CPU=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2,
                               mem_GPU=torch.cuda.max_memory_allocated() / 1024 ** 3,
                               flag='test',
-                              energy_shape=self.test_data.energy.shape,
-                              force_shape=self.test_data.force.shape)
+                              energy_shape=test_data_energy_shape,
+                              force_shape=test_data_force_shape)
 
     def model_test_evaluation(self):
         start = time.time()
@@ -122,19 +131,23 @@ class Test(object):
                            mem_GPU=torch.cuda.max_memory_allocated() / 1024 ** 3,
                            data_param=self.test_data.write_params())
 
-        abs_F_test_gpr = np.linalg.norm(force_test_gpr, axis=2)
-        abs_F_test = np.linalg.norm(self.test_data.force, axis=2)
+        if self.test_data.energy is not None:
+            abs_F_test_gpr = np.linalg.norm(force_test_gpr, axis=2)
+            abs_F_test = np.linalg.norm(self.test_data.force, axis=2)
 
-        print("GPR energy MAE (eV):", np.absolute(np.subtract(energy_test_gpr, self.test_data.energy)).mean())
-        print("GPR force MAE (eV/Ang):", np.absolute(np.subtract(abs_F_test_gpr, abs_F_test)).mean())
-        # print("GPR energy MSE:", np.square(np.subtract(energy_test_gpr, self.test_data.energy)).mean())
-        # print("GPR force MSE:", np.square(np.subtract(abs_F_test_gpr, abs_F_test)).mean())
-        print("GPR uncertainty mean ± std: {0} ± {1}".format(uncertainty_test_gpr.mean(), uncertainty_test_gpr.std()))
+            print("GPR energy MAE (eV):", np.absolute(np.subtract(energy_test_gpr, self.test_data.energy)).mean())
+            print("GPR force MAE (eV/Ang):", np.absolute(np.subtract(abs_F_test_gpr, abs_F_test)).mean())
+            # print("GPR energy MSE:", np.square(np.subtract(energy_test_gpr, self.test_data.energy)).mean())
+            # print("GPR force MSE:", np.square(np.subtract(abs_F_test_gpr, abs_F_test)).mean())
+            print("GPR uncertainty mean ± std: {0} ± {1}".format(uncertainty_test_gpr.mean(), uncertainty_test_gpr.std()))
 
-        print("")
-        print("Saving test target to [energy_test_reference.npy] and [force_test_reference.npy]")
-        np.save("./energy_test_reference.npy", self.test_data.energy)
-        np.save("./force_test_reference.npy", self.test_data.force)
+            print("")
+            print("Saving test target to [energy_test_reference.npy] and [force_test_reference.npy]")
+            np.save("./energy_test_reference.npy", self.test_data.energy)
+            np.save("./force_test_reference.npy", self.test_data.force)
+        else:
+            pass
+
         if self.input_param.get_variance:
             print("Saving GPR prediction to [energy_test_gpr.npy], [force_test_gpr.npy], and [uncertainty_test_gpr.npy]")
             np.save("./energy_test_gpr.npy", energy_test_gpr)
