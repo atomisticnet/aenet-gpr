@@ -19,7 +19,7 @@ Starting with an initial DFT database, training begins with dividing an existing
 
 The augmented data are saved in the [XCrysDen Structure Format (XSF)](http://ann.atomistic.net/documentation/#structural-energy-reference-data) file format, compatible with the [aenet package](https://github.com/atomisticnet/aenet-PyTorch), so that the output can be readily integrated as input for ANN potential training enabling indirect force training (**GPR-ANN training**).
 
-Here, the local GPR models are used for the local approximation of the potential energy surface (PES) and the finer sampling of the overall PES. The surrogate models can also be used for active learning based on the GPR uncertanty estimate. 
+Here, the local GPR models are used for the local approximation of the potential energy surface (PES) and the finer PES sampling. The surrogate models can also be used for active learning based on the GPR uncertanty estimate. 
 
 # Table of Contents
 * [Installation](#installation)
