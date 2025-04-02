@@ -85,28 +85,39 @@ class ReferenceData(object):
                 forces.append(force)
 
             self.structure = np.asarray(structures, dtype=self.numpy_data_type)
-            self.energy = np.asarray(energies, dtype=self.numpy_data_type)
-            self.force = np.asarray(forces, dtype=self.numpy_data_type)
+
+            if any(energy is None for energy in energies):
+                self.energy = None
+            else:
+                self.energy = np.asarray(energies, dtype=self.numpy_data_type)
+
+            if any(force is None for force in forces):
+                self.force = None
+            else:
+                self.force = np.asarray(forces, dtype=self.numpy_data_type)
 
         elif file_format == 'ase':
             self.images = structure_files
             self.structure = np.asarray([image.get_positions() for image in self.images], dtype=self.numpy_data_type)
             self.energy = np.asarray([image.get_potential_energy() for image in self.images],
                                      dtype=self.numpy_data_type)
-            # self.energy = torch.stack([torch.as_tensor(image.get_potential_energy(), dtype=self.torch_data_type) for image in self.images]).view(-1)
             self.force = np.asarray([image.get_forces() for image in self.images], dtype=self.numpy_data_type)
-            # self.force = torch.stack([torch.as_tensor(image.get_forces(), dtype=self.torch_data_type) for image in self.images])
 
         else:
             for structure_file in structure_files:
                 self.images.extend(ase.io.read(structure_file, index=':', format=file_format))
 
             self.structure = np.asarray([image.get_positions() for image in self.images], dtype=self.numpy_data_type)
-            self.energy = np.asarray([image.get_potential_energy() for image in self.images],
-                                     dtype=self.numpy_data_type)
-            # self.energy = torch.stack([torch.as_tensor(image.get_potential_energy(), dtype=self.torch_data_type) for image in self.images]).view(-1)
-            self.force = np.asarray([image.get_forces() for image in self.images], dtype=self.numpy_data_type)
-            # self.force = torch.stack([torch.as_tensor(image.get_forces(), dtype=self.torch_data_type) for image in self.images])
+            try:
+                self.energy = np.asarray([image.get_potential_energy() for image in self.images],
+                                         dtype=self.numpy_data_type)
+            except:
+                self.energy = None
+
+            try:
+                self.force = np.asarray([image.get_forces() for image in self.images], dtype=self.numpy_data_type)
+            except:
+                self.force = None
 
     def write_params(self):
         return dict(num_data=len(self.images),
@@ -249,18 +260,30 @@ class ReferenceData(object):
             lines = infile.readlines()
 
         structure = np.empty((len(image[0]), 3), dtype=self.numpy_data_type)
-        energy = np.asarray(lines[0].split()[4], dtype=self.numpy_data_type)
-        force = np.empty((len(image[0]), 3), dtype=self.numpy_data_type)
 
+        try:
+            energy = np.asarray(lines[0].split()[4], dtype=self.numpy_data_type)
+        except IndexError:
+            energy = None
+        except ValueError:
+            energy = None
+
+        force = np.empty((len(image[0]), 3), dtype=self.numpy_data_type)
         if "ATOMS" in lines[2]:
             for i, line in enumerate(lines[3:]):
                 structure[i, :] = np.asarray(line.split()[1:4], dtype=self.numpy_data_type)
-                force[i, :] = np.asarray(line.split()[4:], dtype=self.numpy_data_type)
+                try:
+                    force[i, :] = np.asarray(line.split()[4:], dtype=self.numpy_data_type)
+                except:
+                    force = None
 
         elif "CRYSTAL" in lines[2]:
             for i, line in enumerate(lines[9:]):
                 structure[i, :] = np.asarray(line.split()[1:4], dtype=self.numpy_data_type)
-                force[i, :] = np.asarray(line.split()[4:], dtype=self.numpy_data_type)
+                try:
+                    force[i, :] = np.asarray(line.split()[4:], dtype=self.numpy_data_type)
+                except:
+                    force = None
 
         return image, structure, energy, force
 
