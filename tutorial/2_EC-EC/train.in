@@ -1,6 +1,6 @@
 # File path
-Train_file ./train_set/file_*.xsf
-Test_file ./test_set/file_*.xsf
+Train_file ./2_EC-EC/train_set/file_*.xsf
+Test_file ./2_EC-EC/test_set/file_*.xsf
 
 # File format (default: xsf)
 File_format xsf

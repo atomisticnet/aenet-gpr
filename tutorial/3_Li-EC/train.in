@@ -1,6 +1,6 @@
 # File path
-Train_file ./train_set/file_*.xsf
-Test_file ./test_set/file_*.xsf
+Train_file ./3_Li-EC/train_set/file_*.xsf
+Test_file ./3_Li-EC/test_set/file_*.xsf
 
 # File format (default: xsf)
 File_format xsf
@@ -22,7 +22,7 @@ batch_size 25
 # Flags for xsf file writing (default: False)
 Train_write False
 Test_write False
-# Additional_write True
+Additional_write True
 
 # Data augmentation parameter (default: 0.055, 25)
 Disp_length 0.05
