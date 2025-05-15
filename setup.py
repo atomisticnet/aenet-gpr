@@ -34,4 +34,5 @@ setup(name='aenet_gpr',
       packages=packages,
       install_requires=install_requires,
       python_requires='>=3',
+      keywords=['machine learning', 'potential energy surface', 'aenet', 'data augmentation'],
 )
