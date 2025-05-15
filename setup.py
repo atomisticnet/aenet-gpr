@@ -2,7 +2,7 @@
 import sys
 from setuptools import setup
 
-install_requires = ['numpy',
+install_requires = ['numpy<2.0',
                     'torch',
                     'dscribe', 
                     'ase']
