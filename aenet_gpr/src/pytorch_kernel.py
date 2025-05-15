@@ -4,8 +4,8 @@ import gc
 
 from dscribe.descriptors import SOAP
 
-from aenet_GPR.src.pytorch_kerneltypes import SquaredExp  # , Matern, RationalQuad
-from aenet_GPR.util.prepare_data import get_N_batch, get_batch_indexes_N_batch
+from aenet_gpr.src.pytorch_kerneltypes import SquaredExp
+from aenet_gpr.util.prepare_data import get_N_batch, get_batch_indexes_N_batch
 
 
 class BaseKernelType:

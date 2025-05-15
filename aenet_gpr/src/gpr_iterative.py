@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-from aenet_GPR.src.pytorch_kernel import FPKernel, FPKernelNoforces  # , FPKernelParallel
+from aenet_gpr.src.pytorch_kernel import FPKernel, FPKernelNoforces
 
 
 class GaussianProcess(nn.Module):
