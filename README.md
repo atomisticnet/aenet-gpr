@@ -30,8 +30,7 @@ Here, the local GPR models are used for the local approximation of the potential
 
 <a name="installation"></a>
 # Installation
-## Requirements
-In a working Python environment, following packages should be pre-installed:
+(Requirements) In a working Python environment, following packages should be pre-installed:
 * `numpy`: `pip install numpy`
 * `torch`: `pip install torch`
 * `dscribe`: `pip install dscribe`
