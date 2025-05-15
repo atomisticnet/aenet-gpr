@@ -25,7 +25,7 @@ if __name__ == '__main__':
                 version = line.split()[2].strip('\"')
                 break
 
-setup(name='aenet_gpr',
+setup(name='aenet-gpr',
       version=version,
       description='Atomistic simulation tools based on Gaussian processes',
       long_description=long_description,
