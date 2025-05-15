@@ -1,7 +1,3 @@
-import torch
-import numpy as np
-
-
 class InputParameters(object):
     """
     Information from the input file (train.in)

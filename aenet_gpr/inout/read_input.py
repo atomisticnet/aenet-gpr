@@ -1,6 +1,6 @@
 import glob
 import ast
-from aenet_GPR.inout.input_parameter import InputParameters
+from aenet_gpr.inout.input_parameter import InputParameters
 
 
 def read_keyword_argument_same_line(keyword, lines):

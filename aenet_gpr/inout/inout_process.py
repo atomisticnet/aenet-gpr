@@ -4,10 +4,10 @@ import resource
 import numpy as np
 import torch
 
-from aenet_GPR.inout.input_parameter import InputParameters
-from aenet_GPR.util import ReferenceData, AdditionalData
-from aenet_GPR.inout.io_print import *
-from aenet_GPR.util.prepare_data import standard_output, inverse_standard_output
+from aenet_gpr.inout.input_parameter import InputParameters
+from aenet_gpr.util import ReferenceData, AdditionalData
+from aenet_gpr.inout.io_print import *
+from aenet_gpr.util.prepare_data import standard_output, inverse_standard_output
 
 
 class Train(object):
