@@ -8,9 +8,9 @@ import torch
 import ase.io
 from ase import Atoms
 
-from aenet_GPR.src import gpr_iterative
-from aenet_GPR.src import gpr_batch
-from aenet_GPR.util.prepare_data import standard_output, inverse_standard_output
+from aenet_gpr.src import gpr_iterative
+from aenet_gpr.src import gpr_batch
+from aenet_gpr.util.prepare_data import standard_output, inverse_standard_output
 
 
 class ReferenceData(object):

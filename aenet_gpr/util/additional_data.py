@@ -6,8 +6,8 @@ import numpy as np
 import ase.io
 import torch
 
-from aenet_GPR.util.reference_data import ReferenceData
-from aenet_GPR.util.prepare_data import standard_output, inverse_standard_output
+from aenet_gpr.util.reference_data import ReferenceData
+from aenet_gpr.util.prepare_data import standard_output, inverse_standard_output
 
 
 class AdditionalData(object):
