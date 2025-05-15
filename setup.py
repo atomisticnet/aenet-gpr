@@ -7,10 +7,10 @@ install_requires = ['numpy',
                     'dscribe', 
                     'ase']
 
-packages = ['aenet_GPR',
-            'aenet_GPR.inout',
-            'aenet_GPR.src',
-            'aenet_GPR.util',]
+packages = ['aenet_gpr',
+            'aenet_gpr.inout',
+            'aenet_gpr.src',
+            'aenet_gpr.util',]
 
 if __name__ == '__main__':
 
@@ -19,13 +19,13 @@ if __name__ == '__main__':
     with open('./README.md', 'rt', encoding='UTF8') as f:
         long_description = f.read()
 
-    with open('aenet_GPR/__init__.py', 'r') as init_file:
+    with open('aenet_gpr/__init__.py', 'r') as init_file:
         for line in init_file:
             if "__version__" in line:
                 version = line.split()[2].strip('\"')
                 break
 
-setup(name='aenet_gpr',
+setup(name='aenet-gpr',
       version=version,
       description='Atomistic simulation tools based on Gaussian processes',
       long_description=long_description,
