@@ -1,5 +1,5 @@
 import sys
-from setuptools import setup
+from setuptools import setup, find_packages
 
 install_requires = ['numpy<2.0',
                     'torch',
@@ -23,7 +23,7 @@ setup(name='aenet-gpr',
       description='Atomistic simulation tools based on Gaussian processes',
       url='https://github.com/atomisticnet/aenet-gpr',
       license='MPL-2.0',
-      packages=packages,
+      packages=find_packages(),
       install_requires=install_requires,
       python_requires='>=3',
       keywords=['machine learning', 'potential energy surface', 'aenet', 'data augmentation'],
