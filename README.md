@@ -30,15 +30,28 @@ Here, the local GPR models are used for the local approximation of the potential
 
 <a name="installation"></a>
 # Installation
-(Requirements) In a working Python environment, following packages should be pre-installed:
-* `numpy`: `pip install numpy`
-* `torch`: `pip install torch`
-* `dscribe`: `pip install dscribe`
-* `ase`: `pip install ase`
+**ænet-gpr** is written in Python, using the PyTorch framework. The required packages are listed in the following.
 
-```
-$ pip install aenet-gpr
-```
+  - `PyTorch`: should be pre-installed separately 
+  - `Numpy`: should be automatically installed when installing `PyTorch`
+  - `DScribe`: should be automatically installed when installing `aenet-gpr`
+  - `ASE`: 1should be automatically installed when installing `aenet-gpr`
+
+1.  Install PyTorch (install [compatible versions](https://pytorch.org/get-started/locally/#mac-python) depending on availablity of GPU and CUDA)
+
+      - Installation using pip with CUDA (optional for GPU support) support
+
+        `$ pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118`
+
+        or for only CPU usage
+    
+        `$ pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu`
+
+
+2.  Install aenet-gpr
+
+        `$ pip install aenet-gpr`
+
 
 <a name="input-files"></a>
 # Input files
