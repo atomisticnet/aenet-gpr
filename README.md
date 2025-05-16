@@ -32,7 +32,7 @@ Here, the local GPR models are used for the local approximation of the potential
 # Installation
 **ænet-gpr** is written in Python, using the PyTorch framework. The required packages are listed in the following.
 
-  - `PyTorch`: should be pre-installed separately 
+  - `PyTorch`: should be pre-installed separately (see below)
   - `Numpy`: automatically installed when installing `PyTorch`
   - `DScribe`: automatically installed when installing `aenet-gpr`
   - `ASE`: automatically installed when installing `aenet-gpr`
@@ -184,7 +184,15 @@ $ python [path of aenet_GPR]/aenet_gpr.py ./train.in > train.out
 
 Then, the **Train–Test–Augmentation** steps will be carried out sequentially. The progress details can be monitored in the `train.out` file, and the final augmented data files will be saved in XSF format under `./additional_xsf/` directory.  
 
+# Tutorial
 The `./example/` directory of this repository includes example input and output files.
+
+For each example, Jupyter notebook demonstrating how **aenet-gpr** is executed can be found in `./tutorial/*.ipynb`. The notebooks can be run directly using Google Colaboratory and is also shared at the following links:
+
+  - Python interpreter run for the data in `./example/1_H2/`: https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_python_1_H2.ipynb
+  - Command run for the data in `./example/1_H2/`: https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_1_H2.ipynb
+  - Command run for the data in `./example/2_EC-EC/`: https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_2_EC-EC.ipynb
+  - Command run for the data in `./example/3_Li-EC/`: https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_3_Li-EC.ipynb
 
 
 <a name="key-keyword"></a>
