@@ -71,6 +71,17 @@ Refer to [official guide](https://pytorch.org/get-started/locally) and install c
 
      `$ pip install aenet-gpr`
 
+## 📘 Tutorial
+
+The `./example/` directory includes example input and output files.
+
+Find interactive notebooks in the `./tutorial/` folder, or run directly on Google Colab:
+
+- [Tutorial: H₂ system (Python)](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_python_1_H2.ipynb)  
+- [Tutorial: H₂ system (command)](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_1_H2.ipynb)  
+- [Tutorial: EC–EC system](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_2_EC-EC.ipynb)  
+- [Tutorial: Li–EC system](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_3_Li-EC.ipynb)  
+
 ## 📂 Input Files
 
 ### 1. Structure–Energy–Force Data
@@ -151,17 +162,6 @@ With the `train.in` file and datasets prepared, simply run:
 `$ python -m aenet_gpr ./train.in > train.out`
 
 The **Train–Test–Augment** steps will be executed sequentially. Augmented data will be saved in the `./additional_xsf/` directory.
-
-## 📘 Tutorial
-
-The `./example/` directory includes example input and output files.
-
-Find interactive notebooks in the `./tutorial/` folder, or run directly on Google Colab:
-
-- [Tutorial: H₂ system (Python)](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_python_1_H2.ipynb)  
-- [Tutorial: H₂ system (command)](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_1_H2.ipynb)  
-- [Tutorial: EC–EC system](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_2_EC-EC.ipynb)  
-- [Tutorial: Li–EC system](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_3_Li-EC.ipynb)  
 
 ## ⚙️ Tuning Tips
 
