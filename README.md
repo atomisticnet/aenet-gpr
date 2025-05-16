@@ -76,6 +76,7 @@ Refer to [official guide](https://pytorch.org/get-started/locally) and install c
 ### 1. Structure–Energy–Force Data
 
 By default, input data is provided in `.xsf` format. 
+
 Other formats such as **VASP OUTCAR** (with a line of `File_format vasp-out` in `train.in` below) are also supported as long as they can be read through [ASE](https://wiki.fysik.dtu.dk/ase/ase/io/io.html).
 
 #### Example: aenet XSF format (non-periodic)
@@ -200,9 +201,10 @@ weight 1.0
 ```
 
 ### 2. Efficiency – Data Processing Mode
-Computing kernels data-by-data (`data_process iterative`) involves `n_data × n_data` sequential kernel evaluations, minimizing the memory overhead but significantly increasing computational time.  
 
-**aenet-gpr** supports batch processing (`data_process batch`) by grouping the data process into a specific size (`batch_size 25`), which significantly reduces train and evaluation time while keeping memory usage efficient.
+- `data_process iterative`: Computing kernels data-by-data involves `n_data × n_data` sequential kernel evaluations, minimizing the memory overhead but significantly increasing computational time.  
+
+- `data_process batch`: **aenet-gpr** supports batch processing by grouping the data process into a specific size (`batch_size 25`), which significantly reduces train and evaluation time while keeping memory usage efficient.
 
 Below, we provide a benchmark comparing the required time and memory for different batch sizes on the `./example/3_Li-EC/` example.
 
