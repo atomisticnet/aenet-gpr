@@ -25,6 +25,7 @@ Here, the local GPR models are used for the local approximation of the potential
 * [Installation](#installation)
 * [Input files](#input-files)
 * [Usage example](#usage-example)
+* [Tutorial](#tutorial)
 * [Key train.in input keywords](#key-keyword)
 
 
@@ -184,6 +185,7 @@ $ python [path of aenet_GPR]/aenet_gpr.py ./train.in > train.out
 
 Then, the **Train–Test–Augmentation** steps will be carried out sequentially. The progress details can be monitored in the `train.out` file, and the final augmented data files will be saved in XSF format under `./additional_xsf/` directory.  
 
+<a name="tutorial"></a>
 # Tutorial
 The `./example/` directory of this repository includes example input and output files.
 
