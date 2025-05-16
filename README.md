@@ -1,25 +1,45 @@
 # ænet-gpr
-Automated Workflow for Data Augmentation: Gaussian Process Regression (GPR) Surrogate Models for machine-learning potential (MLP) training.
+**Efficient Data Augmentation for ANN Potential Training Using GPR Surrogate Models**
 
-This Python package is designed to support Artificial Neural Network (ANN) force training by using Gaussian Process Regression (GPR) as a surrogate model, aiming to reduce the computational cost for the training, as benchmarked in the reference: [In Won Yeu, Annika Stuke, Jon L.pez-Zorrilla, James M. Stevenson, David R. Reichman, Richard A. Friesner, Alexander Urban, Nongnuch Artrith, "Scalable Training of Neural Network Potentials for Complex Interfaces Through Data Augmentation", arXiv:2412.05773](
-https://doi.org/10.48550/arXiv.2412.05773)  
+`aenet-gpr` is a Python package that enables scalable and cost-efficient training of artificial neural network (ANN) potentials by leveraging Gaussian Process Regression (GPR) as a surrogate model.  
+It automates data augmentation to (1) reduce the number of expensive DFT calculations and (2) significantly lower the ANN training overhead—critical for modeling large-scale, complex, heterogeneous interface systems—without compromising accuracy.
 
-*Contact: In Won Yeu (iy2185@columbia.edu) or Nongnuch Artrith (n.artrith@uu.nl)  
+📄 Reference:  
+[In Won Yeu, Alexander Urban, Nongnuch Artrith et al., “Scalable Training of Neural Network Potentials for Complex Interfaces Through Data Augmentation”, arXiv:2412.05773](https://doi.org/10.48550/arXiv.2412.05773)
 
-## Overall workflow of GPR surrogate model
+📬 Contact:  
+- In Won Yeu (iy2185@columbia.edu)  
+- Nongnuch Artrith (n.artrith@uu.nl)
+---
+## 🔁 Workflow Overview
 <p align="center">
 <img src="doc/source/images/0_flowchart.png" width="700">
 </p>
 
-Starting with an initial DFT database, training begins with dividing an existing database into homogeneous subsets (structures with the same composition and number of atoms). Then, following three main steps are automatically performed:  
+1. **Data Grouping**  
+   - Split the initial DFT dataset into homogeneous subsets (same composition and number of atoms).
 
-**1. Train** – Construct local GPR models from reference training subset data, **structure-energy-atomic forces**  
-**2. Test** – Predict and evaluate target properties for test structures using the trained GPR model  
-**3. Augmentation** – Generate additional structures by perturbing reference training structures and augment the ANN training dataset with GPR-predicted energy tags  
+2. **Train**  
+   - Fit local GPR models using structure, energy, and atomic force data.
 
-The augmented data are saved in the [XCrysDen Structure Format (XSF)](http://ann.atomistic.net/documentation/#structural-energy-reference-data) file format, compatible with the [aenet package](https://github.com/atomisticnet/aenet-PyTorch), so that the output can be readily integrated as input for ANN potential training enabling indirect force training (**GPR-ANN training**).
+3. **Test**  
+   - Predict target properties for test structures using trained GPR models.
 
-Here, the local GPR models are used for the local approximation of the potential energy surface (PES) and the finer PES sampling. The surrogate models can also be used for active learning based on the GPR uncertanty estimate. 
+4. **Augment**  
+   - Generate new structures by perturbing reference data.  
+   - Label these with GPR-predicted energies to expand the ANN training dataset.
+
+✅ Augmented structures are saved in [XCrysDen Structure Format (XSF)](http://ann.atomistic.net/documentation/#structural-energy-reference-data)  
+Compatible with the [ænet package](https://github.com/atomisticnet/aenet-PyTorch) for downstream ANN force training (**GPR-ANN training**).
+---
+## 🔑 Key Features
+
+- GPR-based energy and force prediction with uncertainty estimation
+- Supports Cartesian and SOAP descriptors
+- Handles both periodic and non-periodic systems
+- Batch-mode kernel computation for speed and memory efficiency
+- Flexible input format support (e.g., XSF, VASP OUTCAR, etc.)
+- Fully controlled via a single `train.in` file
 
 # Table of Contents
 * [Installation](#installation)
