@@ -5,11 +5,8 @@
 It automates data augmentation to:
 
 - Reduce the number of expensive DFT calculations  
-- Significantly lower ANN training overhead critical for large-scale, complex, and heterogeneous interface systems  
-- Maintain high accuracy comparable to demanding direct force training
-
-`aenet-gpr` is a Python package that enables scalable and cost-efficient training of artificial neural network (ANN) potentials by leveraging Gaussian Process Regression (GPR) as a surrogate model.  
-It automates data augmentation to (1) reduce the number of expensive DFT calculations and (2) significantly lower the ANN training overhead—critical for modeling large-scale, complex, heterogeneous interface systems—without compromising accuracy.
+- Significantly lower ANN training overhead critical for complex and heterogeneous interface systems  
+- Maintain high accuracy comparable to the demanding direct force training
 
 📄 Reference:  
 [In Won Yeu, Alexander Urban, Nongnuch Artrith et al., “Scalable Training of Neural Network Potentials for Complex Interfaces Through Data Augmentation”, arXiv:2412.05773](https://doi.org/10.48550/arXiv.2412.05773)
@@ -17,7 +14,6 @@ It automates data augmentation to (1) reduce the number of expensive DFT calcula
 📬 Contact:  
 - In Won Yeu (iy2185@columbia.edu)  
 - Nongnuch Artrith (n.artrith@uu.nl)
-
 
 ---
 
