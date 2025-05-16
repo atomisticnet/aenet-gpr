@@ -15,8 +15,6 @@ It automates data augmentation to:
 - In Won Yeu (iy2185@columbia.edu)  
 - Nongnuch Artrith (n.artrith@uu.nl)
 
----
-
 ## 🔁 Workflow Overview
 
 <p align="center">
@@ -38,8 +36,6 @@ It automates data augmentation to:
 
 ✅ Outputs are saved in [XCrysDen Structure Format (XSF)](http://ann.atomistic.net/documentation/#structural-energy-reference-data), fully compatible with the [ænet package](https://github.com/atomisticnet/aenet-PyTorch) for indirect force training (**GPR-ANN**).
 
----
-
 ## 🔑 Key Features
 
 - GPR-based prediction of energies and atomic forces with uncertainty estimates  
@@ -53,7 +49,7 @@ It automates data augmentation to:
 
 **Requirements:**
 
-- Python with PyTorch (to be installed separately)
+- Python with PyTorch (to be installed separately, see below)
 - Other dependencies (`numpy`, `ASE`, `DScribe`) are automatically installed when installing `aenet-gpr`
 
 ### 1. Install PyTorch
@@ -79,9 +75,8 @@ Refer to [official guide](https://pytorch.org/get-started/locally) and install c
 
 ### 1. Structure–Energy–Force Data
 
-By default, input data is provided in `.xsf` format. Other formats (e.g., VASP OUTCAR) are also supported through [ASE](https://wiki.fysik.dtu.dk/ase/ase/io/io.html).
-
-By default, the package uses the XSF format, but it also supports other output files—such as **VASP OUTCAR** (`File_format vasp-out` in `train.in` below)—that can be read via [ASE package](https://wiki.fysik.dtu.dk/ase/ase/io/io.html), as long as they contain the **structure-energy-atomic forces** information.
+By default, input data is provided in `.xsf` format. 
+Other formats such as **VASP OUTCAR** (with a line of `File_format vasp-out` in `train.in` below) are also supported as long as they can be read through [ASE](https://wiki.fysik.dtu.dk/ase/ase/io/io.html).
 
 #### Example: aenet XSF format (non-periodic)
 The first comment line should specify **total energy** of a structure. Each line following the keyword `ATOMS` contains **atomic symbol**, **three Cartesian coordinates**, and the three components of **atomic forces**. The length, energy, and force units are Å, eV, and eV/Å.
@@ -110,16 +105,9 @@ Li     0.02355300000000     6.82569825000000     10.31803445000000     0.0087741
 ...
 ```
 
-## 2. aenet-gpr input file
-A principal input file, named `train.in`, consists of lines in the format: 
+### 2. Configuration File
 
-`keyword 1` `argument 1`  
-`keyword 2` `argument 2`  
-...
-
-In the example below, comments are provided to explain the meaning of keywords.
-
-### Example of train.in
+#### Example: `train.in` (comments are provided to guide the keyword meanings)
 ```
 # File path
 Train_file ./example/3_Li-EC/train_set/file_*.xsf
@@ -155,54 +143,48 @@ Disp_length 0.05
 Num_copy 20  # [num_copy] multiples of reference training data are augmented
 ```
 
-<a name="usage-example"></a>
-# Usage example
-For example, once the `train.in` file above is prepared along with 100 training data files, named `file_{0000..0099}.xsf`, in the directory `./example/3_Li-EC/train_set/` and 300 test data files, named `file_{0000..0299}.xsf` in the directory `./example/3_Li-EC/test_set/`, **aenet-gpr** is executed by the following command:
+## 🚀 Usage Example
 
-```
-$ python [path of aenet_GPR]/aenet_gpr.py ./train.in > train.out
-```
+With the `train.in` file and datasets prepared, simply run:
 
-Then, the **Train–Test–Augmentation** steps will be carried out sequentially. The progress details can be monitored in the `train.out` file, and the final augmented data files will be saved in XSF format under `./additional_xsf/` directory.  
+`$ python -m aenet_gpr ./train.in > train.out`
 
-<a name="tutorial"></a>
-# Tutorial
-The `./example/` directory of this repository includes example input and output files.
+The **Train–Test–Augment** steps will be executed sequentially. Augmented data will be saved in the `./additional_xsf/` directory.
 
-For each example, Jupyter notebook demonstrating how **aenet-gpr** is executed can be found in `./tutorial/*.ipynb`. The notebooks can be run directly using Google Colaboratory and is also shared at the following links:
+## 📘 Tutorial
 
-  - Python interpreter run for the data in `./example/1_H2/`: https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_python_1_H2.ipynb
-  - Command run for the data in `./example/1_H2/`: https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_1_H2.ipynb
-  - Command run for the data in `./example/2_EC-EC/`: https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_2_EC-EC.ipynb
-  - Command run for the data in `./example/3_Li-EC/`: https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_3_Li-EC.ipynb
+The `./example/` directory includes example input and output files.
 
+Find interactive notebooks in the `./tutorial/` folder, or run directly on Google Colab:
 
-<a name="key-keyword"></a>
-## Key `train.in` input keywords that affect performance
-### 1. Accuracy: `Descriptor` and kernel parameter (`scale` and `weight`)
-**aenet-gpr** uses the following `squared exponential (sqexp)` as default kernel function with `scale` and `weight` parameters:
+- [Tutorial: H₂ system (Python)](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_python_1_H2.ipynb)  
+- [Tutorial: H₂ system (command)](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_1_H2.ipynb)  
+- [Tutorial: EC–EC system](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_2_EC-EC.ipynb)  
+- [Tutorial: Li–EC system](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_3_Li-EC.ipynb)  
+
+## ⚙️ Tuning Tips
+
+### 1. Accuracy – Descriptor and Kernel Parameters
+
+- Descriptor: **Cartesian**, **SOAP**, and others supported by [DScribe](https://singroup.github.io/dscribe/latest/index.html)
+- Default kernel: **Squared Exponential (sqexp)**
+- Kernel parameters: **scale** and **weight**
 
 <p align="center">
 <img src="doc/source/images/0_kernel.png" width="300">
 </p>
 
-To achieve more accurate data augmentation, it is recommended to tune the `scale` and `weight` parameters for each specific system.
+It is recommended to optimize the `scale` and `weight` parameters for each specific system by performing a series of **Train–Test** runs prior to **Augment** using a small data subset of training and test data, while varying the `scale` and `weight`.
 
-Perform a series of **Train–Test** runs using a small subset of training and test data, while varying the `scale` and `weight`. This process helps identify the optimal kernel parameters. Following figure shows energy prediction errors of the `./example/3_Li-EC/` example with different kernel parameters and descriptors:
+Following figure shows energy prediction errors of the `./example/3_Li-EC/` example with different kernel parameters and descriptors:
 
 <p align="center">
 <img src="doc/source/images/3_Li-EC_accuracy.png" width="1000">
 </p>
 
-`train.in` input file of default arguments
-```
-Descriptor cart  
-scale 0.4  
-weight 1.0
-```
-are shown above. When using the **Cartesian descriptor** (gray circles), the error decreases as the `scale` parameter increases, and it converges at `scale = 3.0`. In contrast, when using the **periodic SOAP descriptor** (for details, see the [DScribe documentation](https://singroup.github.io/dscribe/latest/tutorials/descriptors/soap.html)), the error is reduced by approximately one order of magnitude compared to the default **Cartesian descriptor**.  
+When using the **Cartesian descriptor** (gray circles), the error decreases as the `scale` parameter increases, and it converges at `scale = 3.0`. In contrast, when using the **periodic SOAP descriptor** (for details, see the [DScribe documentation](https://singroup.github.io/dscribe/latest/tutorials/descriptors/soap.html)), the error is reduced by approximately one order of magnitude compared to the default **Cartesian descriptor**.  
 
-As demonstrated in the examples for the `./example/2_EC-EC/` non-periodic system (results available in the `example` directory) and the `./example/3_Li-EC/` periodic system, non-periodic systems can be well-represented using **non-periodic Cartesian descriptors**, while periodic systems are expected to yield better accuracy when using **SOAP descriptors** with periodic setting.  
+As demonstrated in the examples for the `./example/2_EC-EC/` non-periodic system (results available in the `example` directory), non-periodic systems can be well-represented using **non-periodic Cartesian descriptors**, while periodic systems are expected to yield better accuracy when using **periodic SOAP descriptors**.  
 
 For the example of **SOAP descriptor** here, eight uniformly distributed points in the Li slab Rectangular cuboid were used as `centers` argument for **SOAP**. The corresponding `train.in` input arguments are
 ```
@@ -217,14 +199,12 @@ scale 2.0
 weight 1.0
 ```
 
-### 2. Cost: `data_process` and `batch_size`
-The GPR model fitted to both energy and force data requires computing covariances between the fingerprint tensors of shape `[n_data, n_center, n_feature]` and the [fingerprint derivative](https://singroup.github.io/dscribe/latest/tutorials/derivatives.html) tensors of shape `[n_data, n_center, n_atom, 3, n_feature]`. This leads to high memory demands.  
+### 2. Efficiency – Data Processing Mode
+Computing kernels data-by-data (`data_process iterative`) involves `n_data × n_data` sequential kernel evaluations, minimizing the memory overhead but significantly increasing computational time.  
 
-On the other hand, computing kernels data-by-data (`data_process iterative`) involves `n_data × n_data` sequential kernel evaluations, minimizing the memory overhead but significantly increasing computational time.  
+**aenet-gpr** supports batch processing (`data_process batch`) by grouping the data process into a specific size (`batch_size 25`), which significantly reduces train and evaluation time while keeping memory usage efficient.
 
-To address this, **aenet-gpr** supports batch processing (`data_process batch`) by grouping data process into a specific size (`batch_size 25`), which significantly reduces train and evaluation time while keeping memory usage efficient.
-
-Below, we provide a benchmark comparing the required time and memory for each **Train–Test–Augmentation** step using different batch sizes on the `./example/3_Li-EC/` example.
+Below, we provide a benchmark comparing the required time and memory for different batch sizes on the `./example/3_Li-EC/` example.
 
 <p align="center">
 <img src="doc/source/images/3_Li-EC_cost.png" width="1000">
