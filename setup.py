@@ -1,12 +1,7 @@
 import sys
 from setuptools import setup, find_packages
 
-install_requires = ['numpy<2.0',
-                    'torch',
-                    'dscribe', 
-                    'ase']
-
-packages = ['aenet_gpr']
+install_requires = ['dscribe', 'ase']
 
 if __name__ == '__main__':
 
@@ -20,7 +15,9 @@ if __name__ == '__main__':
 
 setup(name='aenet-gpr',
       version=version,
-      description='Atomistic simulation tools based on Gaussian processes',
+      description='Atomistic simulation tools based on Gaussian Processes Regression',
+      author='In Won Yeu',
+      author_email='iy2185@columbia.edu',
       url='https://github.com/atomisticnet/aenet-gpr',
       license='MPL-2.0',
       packages=find_packages(),
