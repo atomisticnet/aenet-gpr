@@ -60,27 +60,25 @@ It automates data augmentation to:
 
 Refer to [official guide](https://pytorch.org/get-started/locally) and install compatible versions depending on availablity of GPU and CUDA:
 
-1.  Install `PyTorch`
+   - With CUDA (optional for GPU support):
 
-      - Installation using pip with CUDA (optional for GPU support) support
+     `bash $ pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118`
 
-        `$ pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118`
-
-        or for only CPU usage
-    
-        `$ pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu`
+   - CPU-only:
+ 
+     `bash $ pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu`
 
 
-2.  Install `aenet-gpr`
+### 2. Install ænet-gpr
    
-      - Installation using pip
+   - Installation using pip
 
-        `$ pip install aenet-gpr`
+     `bash $ pip install aenet-gpr`
 
 
-<a name="input-files"></a>
-# Input files
-## 1. Data files of structure-energy-atomic forces
+## 📂 Input Files
+
+### 1. Structure–Energy–Force Data
 First, data files containing **structure-energy-atomic forces** must be prepared as training data. By default, the package uses the XSF format, but it also supports other output files—such as **VASP OUTCAR** (`File_format vasp-out` in `train.in` below)—that can be read via [ASE package](https://wiki.fysik.dtu.dk/ase/ase/io/io.html), as long as they contain the **structure-energy-atomic forces** information.
 
 ### Example of aenet XSF file of a non-periodic structure:
