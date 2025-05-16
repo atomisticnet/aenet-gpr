@@ -2,6 +2,13 @@
 **Efficient Data Augmentation for ANN Potential Training Using GPR Surrogate Models**
 
 `aenet-gpr` is a Python package that enables scalable and cost-efficient training of artificial neural network (ANN) potentials by leveraging Gaussian Process Regression (GPR) as a surrogate model.  
+It automates data augmentation to:
+
+- Reduce the number of expensive DFT calculations  
+- Significantly lower ANN training overhead critical for large-scale, complex, and heterogeneous interface systems  
+- Maintain high accuracy comparable to demanding direct force training
+
+`aenet-gpr` is a Python package that enables scalable and cost-efficient training of artificial neural network (ANN) potentials by leveraging Gaussian Process Regression (GPR) as a surrogate model.  
 It automates data augmentation to (1) reduce the number of expensive DFT calculations and (2) significantly lower the ANN training overhead—critical for modeling large-scale, complex, heterogeneous interface systems—without compromising accuracy.
 
 📄 Reference:  
@@ -10,57 +17,54 @@ It automates data augmentation to (1) reduce the number of expensive DFT calcula
 📬 Contact:  
 - In Won Yeu (iy2185@columbia.edu)  
 - Nongnuch Artrith (n.artrith@uu.nl)
-  
+
+
 ---
+
 ## 🔁 Workflow Overview
+
 <p align="center">
 <img src="doc/source/images/0_flowchart.png" width="700">
 </p>
 
 1. **Data Grouping**  
-   - Split the initial DFT dataset into homogeneous subsets (same composition and number of atoms).
+   - Split the initial DFT database into homogeneous subsets (same composition and number of atoms)
 
 2. **Train**  
-   - Fit local GPR models using structure, energy, and atomic force data.
+   - Construct local GPR models using structure, energy, and atomic force data
 
 3. **Test**  
-   - Predict target properties for test structures using trained GPR models.
+   - Predict and evaluate target properties with the trained GPR models
 
 4. **Augment**  
-   - Generate new structures by perturbing reference data.  
-   - Label these with GPR-predicted energies to expand the ANN training dataset.
+   - Perturb reference structures and generate new data  
+   - Tag with GPR-predicted energies to expand the training dataset
 
-✅ Augmented structures are saved in [XCrysDen Structure Format (XSF)](http://ann.atomistic.net/documentation/#structural-energy-reference-data) compatible with the [ænet package](https://github.com/atomisticnet/aenet-PyTorch) for downstream ANN force training (**GPR-ANN training**).
+✅ Outputs are saved in [XCrysDen Structure Format (XSF)](http://ann.atomistic.net/documentation/#structural-energy-reference-data), fully compatible with the [ænet package](https://github.com/atomisticnet/aenet-PyTorch) for indirect force training (**GPR-ANN**).
 
 ---
 
 ## 🔑 Key Features
 
-- GPR-based energy and force prediction with uncertainty estimation
-- Supports Cartesian and SOAP descriptors
-- Handles both periodic and non-periodic systems
-- Batch-mode kernel computation for speed and memory efficiency
-- Flexible input format support (e.g., XSF, VASP OUTCAR, etc.)
-- Fully controlled via a single `train.in` file
+- GPR-based prediction of energies and atomic forces with uncertainty estimates  
+- Supports various descriptors including Cartesian and SOAP  
+- Applicable to periodic and non-periodic systems  
+- Batch-based kernel computation for speed and memory efficiency  
+- Accepts multiple input formats (e.g., XSF, VASP OUTCAR, etc.)  
+- Fully controlled through a single input file (`train.in`)
 
-# Table of Contents
-* [Installation](#installation)
-* [Input files](#input-files)
-* [Usage example](#usage-example)
-* [Tutorial](#tutorial)
-* [Key train.in input keywords](#key-keyword)
+## 📦 Installation
 
+**Requirements:**
 
-<a name="installation"></a>
-# Installation
-**ænet-gpr** is written in Python, using the PyTorch framework. The required packages are listed in the following.
+- Python with PyTorch (to be installed separately)
+- Other dependencies (`numpy`, `ASE`, `DScribe`) are automatically installed when installing `aenet-gpr`
 
-  - `PyTorch`: should be pre-installed separately (see below)
-  - `Numpy`: automatically installed when installing `PyTorch`
-  - `DScribe`: automatically installed when installing `aenet-gpr`
-  - `ASE`: automatically installed when installing `aenet-gpr`
+### 1. Install PyTorch
 
-1.  Install `PyTorch` (install [compatible versions](https://pytorch.org/get-started/locally/#mac-python) depending on availablity of GPU and CUDA)
+Refer to [official guide](https://pytorch.org/get-started/locally) and install compatible versions depending on availablity of GPU and CUDA:
+
+1.  Install `PyTorch`
 
       - Installation using pip with CUDA (optional for GPU support) support
 
