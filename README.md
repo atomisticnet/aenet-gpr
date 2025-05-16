@@ -33,11 +33,11 @@ Here, the local GPR models are used for the local approximation of the potential
 **ænet-gpr** is written in Python, using the PyTorch framework. The required packages are listed in the following.
 
   - `PyTorch`: should be pre-installed separately 
-  - `Numpy`: should be automatically installed when installing `PyTorch`
-  - `DScribe`: should be automatically installed when installing `aenet-gpr`
-  - `ASE`: 1should be automatically installed when installing `aenet-gpr`
+  - `Numpy`: automatically installed when installing `PyTorch`
+  - `DScribe`: automatically installed when installing `aenet-gpr`
+  - `ASE`: automatically installed when installing `aenet-gpr`
 
-1.  Install PyTorch (install [compatible versions](https://pytorch.org/get-started/locally/#mac-python) depending on availablity of GPU and CUDA)
+1.  Install `PyTorch` (install [compatible versions](https://pytorch.org/get-started/locally/#mac-python) depending on availablity of GPU and CUDA)
 
       - Installation using pip with CUDA (optional for GPU support) support
 
@@ -48,7 +48,9 @@ Here, the local GPR models are used for the local approximation of the potential
         `$ pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu`
 
 
-2.  Install aenet-gpr
+2.  Install `aenet-gpr`
+   
+      - Installation using pip
 
         `$ pip install aenet-gpr`
 
@@ -127,7 +129,7 @@ C     5.96527716000000     5.28827675000000     12.66196442000000     -0.9490520
 O     6.36114737000000     4.20557578000000     12.18179519000000     -0.99750467595151     3.95392686199225     1.50773308706430
 ```
 
-## 2. aenet-GPR input file
+## 2. aenet-gpr input file
 A principal input file, named `train.in`, consists of lines in the format: 
 
 `keyword 1` `argument 1`  
@@ -174,7 +176,7 @@ Num_copy 20  # [num_copy] multiples of reference training data are augmented
 
 <a name="usage-example"></a>
 # Usage example
-For example, once the `train.in` file above is prepared along with 100 training data files, named `file_{0000..0099}.xsf`, in the directory `./example/3_Li-EC/train_set/` and 300 test data files, named `file_{0000..0299}.xsf` in the directory `./example/3_Li-EC/test_set/`, **aenet-GPR** is executed by the following command:
+For example, once the `train.in` file above is prepared along with 100 training data files, named `file_{0000..0099}.xsf`, in the directory `./example/3_Li-EC/train_set/` and 300 test data files, named `file_{0000..0299}.xsf` in the directory `./example/3_Li-EC/test_set/`, **aenet-gpr** is executed by the following command:
 
 ```
 $ python [path of aenet_GPR]/aenet_gpr.py ./train.in > train.out
@@ -188,7 +190,7 @@ The `./example/` directory of this repository includes example input and output 
 <a name="key-keyword"></a>
 ## Key `train.in` input keywords that affect performance
 ### 1. Accuracy: `Descriptor` and kernel parameter (`scale` and `weight`)
-**aenet-GPR** uses the following `squared exponential (sqexp)` as default kernel function with `scale` and `weight` parameters:
+**aenet-gpr** uses the following `squared exponential (sqexp)` as default kernel function with `scale` and `weight` parameters:
 
 <p align="center">
 <img src="doc/source/images/0_kernel.png" width="300">
@@ -230,7 +232,7 @@ The GPR model fitted to both energy and force data requires computing covariance
 
 On the other hand, computing kernels data-by-data (`data_process iterative`) involves `n_data × n_data` sequential kernel evaluations, minimizing the memory overhead but significantly increasing computational time.  
 
-To address this, **aenet-GPR** supports batch processing (`data_process batch`) by grouping data process into a specific size (`batch_size 25`), which significantly reduces train and evaluation time while keeping memory usage efficient.
+To address this, **aenet-gpr** supports batch processing (`data_process batch`) by grouping data process into a specific size (`batch_size 25`), which significantly reduces train and evaluation time while keeping memory usage efficient.
 
 Below, we provide a benchmark comparing the required time and memory for each **Train–Test–Augmentation** step using different batch sizes on the `./example/3_Li-EC/` example.
 
