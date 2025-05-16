@@ -9,7 +9,7 @@ File_format xsf
 Descriptor cart
 
 # Uncertainty estimation (default: True)
-Get_variance True
+Get_variance False
 
 # Kernel parameter
 scale 1.5
