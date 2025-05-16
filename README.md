@@ -177,7 +177,7 @@ Find interactive notebooks in the `./tutorial/` folder, or run directly on Googl
 
 It is recommended to optimize the `scale` and `weight` parameters for each specific system by performing a series of **Train–Test** runs prior to **Augment** using a small data subset of training and test data, while varying the `scale` and `weight`.
 
-Following figure shows energy prediction errors of the `./example/3_Li-EC/` example with different kernel parameters and descriptors:
+Following figure shows energy prediction errors of the `./example/3_Li-EC/` example with different kernel parameters and descriptors.
 
 <p align="center">
 <img src="doc/source/images/3_Li-EC_accuracy.png" width="1000">
@@ -187,7 +187,9 @@ When using the **Cartesian descriptor** (gray circles), the error decreases as t
 
 As demonstrated in the examples for the `./example/2_EC-EC/` non-periodic system (results available in the `example` directory), non-periodic systems can be well-represented using **non-periodic Cartesian descriptors**, while periodic systems are expected to yield better accuracy when using **periodic SOAP descriptors**.  
 
-For the example of **SOAP descriptor** here, eight uniformly distributed points in the Li slab Rectangular cuboid were used as `centers` argument for **SOAP**. The corresponding `train.in` input arguments are
+For the example of **SOAP descriptor** here, eight uniformly distributed points in the Li slab Rectangular cuboid were used as `centers` argument for **SOAP**. 
+
+The corresponding `train.in` input arguments are
 ```
 Descriptor soap
 soap_r_cut 5.0
