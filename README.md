@@ -10,6 +10,7 @@ It automates data augmentation to (1) reduce the number of expensive DFT calcula
 📬 Contact:  
 - In Won Yeu (iy2185@columbia.edu)  
 - Nongnuch Artrith (n.artrith@uu.nl)
+  
 ---
 ## 🔁 Workflow Overview
 <p align="center">
@@ -29,10 +30,10 @@ It automates data augmentation to (1) reduce the number of expensive DFT calcula
    - Generate new structures by perturbing reference data.  
    - Label these with GPR-predicted energies to expand the ANN training dataset.
 
-✅ Augmented structures are saved in [XCrysDen Structure Format (XSF)](http://ann.atomistic.net/documentation/#structural-energy-reference-data)  
-Compatible with the [ænet package](https://github.com/atomisticnet/aenet-PyTorch) for downstream ANN force training (**GPR-ANN training**).
+✅ Augmented structures are saved in [XCrysDen Structure Format (XSF)](http://ann.atomistic.net/documentation/#structural-energy-reference-data) compatible with the [ænet package](https://github.com/atomisticnet/aenet-PyTorch) for downstream ANN force training (**GPR-ANN training**).
 
 ---
+
 ## 🔑 Key Features
 
 - GPR-based energy and force prediction with uncertainty estimation
