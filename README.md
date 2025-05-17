@@ -75,7 +75,7 @@ Refer to [official guide](https://pytorch.org/get-started/locally) and install c
 
 The `./example/` directory includes example input and output files.
 
-Find interactive notebooks in the `./tutorial/` folder, or run directly on Google Colab:
+Find interactive notebooks `*.ipynb` in the `./tutorial/` folder, or run directly on Google Colab:
 
 - [Tutorial: H₂ system (Python)](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_python_1_H2.ipynb)  
 - [Tutorial: H₂ system (command)](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_1_H2.ipynb)  
