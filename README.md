@@ -5,7 +5,7 @@
 It automates data augmentation to:
 
 - Reduce the number of expensive DFT calculations  
-- Significantly lower ANN training overhead critical for complex and heterogeneous interface systems  
+- Lower ANN training overhead particularly critical for complex and heterogeneous interface systems  
 - Maintain high accuracy comparable to the demanding direct force training
 
 📄 Reference:  
@@ -25,7 +25,7 @@ It automates data augmentation to:
    - Split the initial DFT database into homogeneous subsets (same composition and number of atoms)
 
 2. **Train**  
-   - Construct local GPR models using structure, energy, and atomic force data
+   - Construct local GPR models using structure, energy, and atomic force data of each subset
 
 3. **Test**  
    - Predict and evaluate target properties with the trained GPR models
