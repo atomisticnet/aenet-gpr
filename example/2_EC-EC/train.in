@@ -2,27 +2,28 @@
 Train_file ./2_EC-EC/train_set_tutorial/file_*.xsf
 Test_file ./2_EC-EC/test_set_tutorial/file_*.xsf
 
+# Train model save (default: False)
+# Train_model_save True
+
 # File format (default: xsf)
 File_format xsf
 
 # Descriptor (default: cartesian coordinates)
 Descriptor cart
 
-# Uncertainty estimation (default: True)
-Get_variance False
-
 # Kernel parameter
-scale 1.5
-weight 1.0
+# scale 1.5
+# weight 1.0
 
-# Chunking to reduce memory usage (default: 25)
+# Data process (default: batch, 25)
+data_process batch
 batch_size 25
 
 # Flags for xsf file writing (default: False)
 Train_write False
 Test_write False
-Additional_write True
+# Additional_write True
 
 # Data augmentation parameter
-Disp_length 0.05
-Num_copy 5
+# Disp_length 0.05
+# Num_copy 5
