@@ -185,7 +185,7 @@ Following figure shows energy prediction errors of the `./example/3_Li-EC/` exam
 
 When using the **Cartesian descriptor** (gray circles), the error decreases as the `scale` parameter increases, and it converges at `scale = 3.0`. In contrast, when using the **periodic SOAP descriptor** (for details, see the [DScribe documentation](https://singroup.github.io/dscribe/latest/tutorials/descriptors/soap.html)), the error is reduced by approximately one order of magnitude compared to the default **Cartesian descriptor**.  
 
-As demonstrated in the examples for the `./example/2_EC-EC/` non-periodic system (results available in the `example` directory), non-periodic systems can be well-represented using **non-periodic Cartesian descriptors**, while periodic systems are expected to yield better accuracy when using **periodic SOAP descriptors**.  
+As demonstrated in the examples for the `./example/2_EC-EC/` (results available in the `example` directory), non-periodic systems can be well-represented using **non-periodic Cartesian descriptors**, while periodic systems are expected to yield better accuracy when using **periodic SOAP descriptors**.  
 
 For the example of **SOAP descriptor** here, eight uniformly distributed points in the Li slab Rectangular cuboid were used as `centers` argument for **SOAP**. 
 
