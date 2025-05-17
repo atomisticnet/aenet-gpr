@@ -26,4 +26,4 @@ Test_write False
 
 # Data augmentation parameter
 # Disp_length 0.05
-# Num_copy 5
+# Num_copy 3
