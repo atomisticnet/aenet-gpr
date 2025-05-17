@@ -88,8 +88,6 @@ Find interactive notebooks in the `./tutorial/` folder, or run directly on Googl
 
 By default, input data is provided in `.xsf` format. 
 
-Other formats such as **VASP OUTCAR** (with a line of `File_format vasp-out` in `train.in` below) are also supported as long as they can be read through [ASE](https://wiki.fysik.dtu.dk/ase/ase/io/io.html).
-
 #### Example: aenet XSF format (non-periodic)
 The first comment line should specify **total energy** of a structure. Each line following the keyword `ATOMS` contains **atomic symbol**, **three Cartesian coordinates**, and the three components of **atomic forces**. The length, energy, and force units are Å, eV, and eV/Å.
 ```
@@ -116,6 +114,8 @@ Li     -0.04431013000000     3.46713645000000     10.25290534000000     0.068654
 Li     0.02355300000000     6.82569825000000     10.31803445000000     0.00877419275000     0.03943267659765     0.14805797440506
 ...
 ```
+
+Other formats such as **VASP OUTCAR** (with a line of `File_format vasp-out` in `train.in` below) are also supported as long as they can be read through [ASE](https://wiki.fysik.dtu.dk/ase/ase/io/io.html).
 
 ### 2. Configuration File
 
