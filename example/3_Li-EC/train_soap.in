@@ -2,8 +2,8 @@
 Train_file ./3_Li-EC/train_set_tutorial/file_*.xsf
 Test_file ./3_Li-EC/test_set_tutorial/file_*.xsf
 
-# Train model save (default: False)
-# Train_model_save True
+# Uncertainty estimation (default: True)
+Get_variance False
 
 # File format (default: xsf)
 File_format xsf
@@ -33,4 +33,4 @@ Additional_write True
 
 # Data augmentation parameter (default: 0.055, 25)
 Disp_length 0.05
-Num_copy 5
+Num_copy 2
