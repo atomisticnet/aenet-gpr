@@ -165,7 +165,7 @@ class FPKernel(BaseKernelType):
         #  [K(dX1Nz,X21), K(dX1Nz,X22), ..., K(dX1Nz,X2N), K(dX1Nz,dX21x), K(dX1Nz,dX21y), ..., K(dX1Nz,dX2Nz)]
 
         K_X1X2 = torch.empty(((1 + 3 * self.Natom) * X1.shape[0],
-                              (1 + 3 * self.Natom) * X2.shape[0]), dtype=self.torch_data_type)
+                              (1 + 3 * self.Natom) * X2.shape[0]), dtype=self.torch_data_type, device=self.device)
 
         # Expand value fingerprint
         X1_expanded = X1[:, None, :, None, :]  # [Ndata1, 1, Ncenter, 1, Nfeature]
@@ -321,7 +321,7 @@ class FPKernel(BaseKernelType):
 
         # Create empty kernel
         kernel = torch.empty((1 + 3 * self.Natom,
-                              1 + 3 * self.Natom), dtype=self.torch_data_type)
+                              1 + 3 * self.Natom), dtype=self.torch_data_type, device=self.device)
 
         # Evaluate the first element of kernel
         kernel[0, 0] = torch.sum(k)
@@ -402,7 +402,7 @@ class FPKernel(BaseKernelType):
 
         _size_ = 1 + 3 * self.Natom
         K_XX = torch.empty((Ndata * _size_,
-                            Ndata * _size_), dtype=self.torch_data_type)
+                            Ndata * _size_), dtype=self.torch_data_type, device=self.device)
 
         for i in range(0, X_N_batch):
             fp_i, dfp_dr_i = self.generate_descriptor(images=images[X_indexes[i][0]:X_indexes[i][1]])
@@ -434,7 +434,7 @@ class FPKernel(BaseKernelType):
         Ndata = len(images)
         _size_ = 1 + 3 * self.Natom
         K_XX = torch.empty((Ndata * _size_,
-                            Ndata * _size_), dtype=self.torch_data_type)
+                            Ndata * _size_), dtype=self.torch_data_type, device=self.device)
 
         for i in range(0, Ndata):
             fp_i, dfp_dr_i = self.generate_descriptor_per_data(image=images[i])
@@ -490,7 +490,7 @@ class FPKernel(BaseKernelType):
 
         _size_ = 1 + 3 * self.Natom
         K_xX = torch.empty((Ntest * _size_,
-                            Ntrain * _size_), dtype=self.torch_data_type)
+                            Ntrain * _size_), dtype=self.torch_data_type, device=self.device)
 
         for i in range(0, x_N_batch):
             fp_i, dfp_dr_i = self.generate_descriptor(images=eval_images[x_indexes[i][0]:x_indexes[i][1]])
@@ -529,7 +529,7 @@ class FPKernel(BaseKernelType):
 
         # if dx is not None and dX is not None:
         K_xX = torch.empty((Ntest * _size_,
-                            Ntrain * _size_), dtype=self.torch_data_type)
+                            Ntrain * _size_), dtype=self.torch_data_type, device=self.device)
 
         for i in range(0, Ntest):
             fp_i, dfp_dr_i = self.generate_descriptor_per_data(image=eval_images[i])
@@ -565,7 +565,7 @@ class FPKernel(BaseKernelType):
         fp_i, dfp_dr_i = self.generate_descriptor_per_data(image=eval_image)
 
         _size_ = 1 + 3 * self.Natom
-        K_xX_i = torch.empty((_size_, Ntrain * _size_), dtype=self.torch_data_type)
+        K_xX_i = torch.empty((_size_, Ntrain * _size_), dtype=self.torch_data_type, device=self.device)
 
         for j in range(0, Ntrain):
             fp_j, dfp_dr_j = self.generate_descriptor_per_data(image=train_images[j])
