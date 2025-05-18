@@ -45,11 +45,11 @@ class GaussianProcess(nn.Module):
             self.weight = nn.Parameter(torch.tensor(weight, dtype=self.torch_data_type), requires_grad=True).to(
                 self.device)
         else:
-            self.scale = torch.tensor(scale, dtype=self.torch_data_type)
-            self.weight = torch.tensor(weight, dtype=self.torch_data_type)
+            self.scale = torch.tensor(scale, dtype=self.torch_data_type, device=self.device)
+            self.weight = torch.tensor(weight, dtype=self.torch_data_type, device=self.device)
 
-        self.noise = torch.tensor(noise, dtype=self.torch_data_type)
-        self.noisefactor = torch.tensor(noisefactor, dtype=self.torch_data_type)
+        self.noise = torch.tensor(noise, dtype=self.torch_data_type, device=self.device)
+        self.noisefactor = torch.tensor(noisefactor, dtype=self.torch_data_type, device=self.device)
 
         self.use_forces = use_forces
         self.images = images
@@ -60,7 +60,7 @@ class GaussianProcess(nn.Module):
 
         self.Y = function  # Y = [Ntrain]
         self.dY = derivative  # dY = [Ntrain, Natom, 3]
-        self.model_vector = torch.empty((self.Ntrain * (1 + 3 * self.Natom),), dtype=self.torch_data_type)
+        self.model_vector = torch.empty((self.Ntrain * (1 + 3 * self.Natom),), dtype=self.torch_data_type, device=self.device)
 
         self.sparse = sparse
         self.train_batch_size = train_batch_size
@@ -274,7 +274,7 @@ class GaussianProcess(nn.Module):
                 # a = torch.tensor(self.Ntrain * [self.hyper_params['noise'] * self.hyper_params['noisefactor']], dtype=torch.float64).reshape(self.Ntrain, 1)
                 # b = torch.tensor(self.Ntrain * 3 * self.Natom * [self.hyper_params['noise']], dtype=torch.float64).reshape(self.Ntrain, -1)
                 a = torch.full((self.Ntrain, 1), self.hyper_params['noise'] * self.hyper_params['noisefactor'],
-                               dtype=self.torch_data_type)
+                               dtype=self.torch_data_type, device=self.device)
                 noise_val = self.hyper_params['noise']
                 b = noise_val.expand(self.Ntrain, 3 * self.Natom)
 
@@ -300,7 +300,8 @@ class GaussianProcess(nn.Module):
 
                         # adjust K_XX
                         adjustment = diag_sum * scaling_factor * torch.ones(self.K_XX_L.shape[0],
-                                                                            dtype=self.torch_data_type)
+                                                                            dtype=self.torch_data_type,
+                                                                            device=self.device)
                         self.K_XX_L.diagonal().add_(adjustment)
 
                         # Step 1: Cholesky decomposition for K_XX after adjusting
@@ -310,7 +311,9 @@ class GaussianProcess(nn.Module):
                 # KK = [Ntrain, Ntrain]
                 __K_XX = self.kernel.kernel_matrix(X=self.X)
 
-                a = torch.tensor(self.Ntrain * [self.hyper_params['noise']], dtype=self.torch_data_type)
+                a = torch.tensor(self.Ntrain * [self.hyper_params['noise']],
+                                 dtype=self.torch_data_type,
+                                 device=self.device)
                 reg = torch.diag(a ** 2)
 
                 __K_XX.add_(reg)
@@ -329,7 +332,8 @@ class GaussianProcess(nn.Module):
 
                         # adjust K_XX
                         adjustment = diag_sum * scaling_factor * torch.ones(__K_XX.shape[0],
-                                                                            dtype=self.torch_data_type)
+                                                                            dtype=self.torch_data_type,
+                                                                            device=self.device)
                         __K_XX.diagonal().add_(adjustment)
 
                         # Step 1: Cholesky decomposition for K_XX after adjusting
