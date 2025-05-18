@@ -11,7 +11,7 @@ from .src import gpr_batch, gpr_iterative, pytorch_kernel, pytorch_kerneltypes
 from .util import additional_data, param_optimization, prepare_data, reference_data
 
 
-__version__ = "1.2.6"
+__version__ = "1.2.7"
 __all__ = ["inout", "inout_process", "input_parameter", "io_print", "read_input",
            "src", "gpr_batch", "gpr_iterative", "pytorch_kernel", "pytorch_kerneltypes",
            "util", "additional_data", "param_optimization", "prepare_data", "reference_data"]
