@@ -116,10 +116,10 @@ class FPKernel(BaseKernelType):
                 dfp_dr.append(torch.as_tensor(np.eye(self.Natom * 3).reshape(self.Natom, -1, 3, order='F'),
                                               dtype=self.torch_data_type).to(self.device))
 
-            fp = torch.stack(fp)  # (Ndata, Natom*3)
+            fp = torch.stack(fp).to(self.device)  # (Ndata, Natom*3)
             fp = fp.unsqueeze(1)  # (Ndata, 1, Natom*3)
 
-            dfp_dr = torch.stack(dfp_dr)  # (Ndata, Natom, Natom*3, 3)
+            dfp_dr = torch.stack(dfp_dr).to(self.device)  # (Ndata, Natom, Natom*3, 3)
             dfp_dr = dfp_dr.transpose(2, 3).unsqueeze(1)  # (Ndata, 1, Natom, 3, Natom*3)
 
         return fp, dfp_dr
