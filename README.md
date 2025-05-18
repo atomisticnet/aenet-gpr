@@ -80,7 +80,7 @@ Find interactive notebooks `*.ipynb` in the `./tutorial/` folder, or run directl
 - [Tutorial: H₂ system (Python)](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_python_1_H2.ipynb)  
 - [Tutorial: H₂ system (command)](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_1_H2.ipynb)  
 - [Tutorial: EC–EC system](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_2_EC-EC.ipynb)  
-- [Tutorial: Li–EC system](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_3_Li-EC.ipynb): Computational time of this tutorial can be significantly lowered by parallel calculations, whether on CPU or GPU. In Colab, you can compare performance by going to **Runtime → Change runtime type** and switching the **Hardware accelerator** between CPU and GPU.
+- [Tutorial: Li–EC system](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_3_Li-EC.ipynb): The computational time of this tutorial can be significantly reduced through parallel execution on either CPU or GPU. In Colab, you can compare performance by going to **Runtime → Change runtime type** and selecting the **Hardware accelerator** as CPU or GPU.
 
 ## 📂 Input Files
 
