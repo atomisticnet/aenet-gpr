@@ -1,0 +1,32 @@
+OUTPUT H2.train
+
+TYPES
+1
+H 0.0  | eV
+
+SETUPS
+H  H.fingerprint.stp
+
+FILES
+21
+./1_H2/train_xsf/file_00000.xsf
+./1_H2/train_xsf/file_00001.xsf
+./1_H2/train_xsf/file_00002.xsf
+./1_H2/train_xsf/file_00003.xsf
+./1_H2/train_xsf/file_00004.xsf
+./1_H2/train_xsf/file_00005.xsf
+./1_H2/train_xsf/file_00006.xsf
+./1_H2/additional_xsf/file_00000.xsf
+./1_H2/additional_xsf/file_00001.xsf
+./1_H2/additional_xsf/file_00002.xsf
+./1_H2/additional_xsf/file_00003.xsf
+./1_H2/additional_xsf/file_00004.xsf
+./1_H2/additional_xsf/file_00005.xsf
+./1_H2/additional_xsf/file_00006.xsf
+./1_H2/additional_xsf/file_00007.xsf
+./1_H2/additional_xsf/file_00008.xsf
+./1_H2/additional_xsf/file_00009.xsf
+./1_H2/additional_xsf/file_00010.xsf
+./1_H2/additional_xsf/file_00011.xsf
+./1_H2/additional_xsf/file_00012.xsf
+./1_H2/additional_xsf/file_00013.xsf
