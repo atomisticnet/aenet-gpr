@@ -80,7 +80,7 @@ Find interactive notebooks `*.ipynb` in the `./tutorial/` folder, or run directl
 - [GPR Tutorial: H₂ system](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_1_H2.ipynb)  
 - [GPR Tutorial: EC–EC system](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_2_EC-EC.ipynb)  
 - [GPR Tutorial: Li–EC system](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_3_Li-EC.ipynb): The computational time of this tutorial can be significantly reduced through parallel execution on either CPU or GPU. In Colab, you can compare performance by going to `Runtime → Change runtime type` and selecting the `Hardware accelerator` as **CPU** or **GPU**.
-- [GPR-ANN Tutorial: H₂ system (Python)](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_python_1_H2.ipynb): This tutorial shows full process of GPR-ANN training by combining `aenet-gpr` with `aenet` (see [aenet tutorial](https://github.com/atomisticnet/MLP-beginners-guide/blob/main/tutorial/aenet_tutorial_beginners_guide.ipynb)). It also shows comparison of GPR-ANN (indirect force training via GPR-augmentation) against Original-ANN (energy-only training). 
+- [GPR-ANN Tutorial: H₂ system (Python)](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_python_1_H2.ipynb): This tutorial shows a full process of GPR-ANN training by combining `aenet-gpr` with `aenet`. It also shows a comparison of **GPR-ANN** (indirect force training via GPR-augmentation) against **Original-ANN** (energy-only training). 
 
 ## 📂 Input Files
 
