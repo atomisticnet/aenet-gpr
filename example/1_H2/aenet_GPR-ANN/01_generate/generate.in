@@ -9,13 +9,13 @@ H  H.fingerprint.stp
 
 FILES
 21
-../train_xsf/file_00000.xsf
-../train_xsf/file_00001.xsf
-../train_xsf/file_00002.xsf
-../train_xsf/file_00003.xsf
-../train_xsf/file_00004.xsf
-../train_xsf/file_00005.xsf
-../train_xsf/file_00006.xsf
+../train_set/file_00000.xsf
+../train_set/file_00001.xsf
+../train_set/file_00002.xsf
+../train_set/file_00003.xsf
+../train_set/file_00004.xsf
+../train_set/file_00005.xsf
+../train_set/file_00006.xsf
 ../additional_xsf/file_00000.xsf
 ../additional_xsf/file_00001.xsf
 ../additional_xsf/file_00002.xsf
