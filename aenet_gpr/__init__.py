@@ -7,11 +7,11 @@ util -> Collection of util modules to handle data
 src -> Collection of src modules for GPR training and evaluation
 """
 from .inout import inout_process, input_parameter, io_print, read_input
-from .src import gpr_batch, gpr_iterative, pytorch_kernel, pytorch_kerneltypes
+from .src import gpr_batch, gpr_iterative, pytorch_kernel, pytorch_kerneltypes, calculator
 from .util import additional_data, param_optimization, prepare_data, reference_data
 
 
-__version__ = "1.2.8"
+__version__ = "1.2.9"
 __all__ = ["inout", "inout_process", "input_parameter", "io_print", "read_input",
-           "src", "gpr_batch", "gpr_iterative", "pytorch_kernel", "pytorch_kerneltypes",
+           "src", "gpr_batch", "gpr_iterative", "pytorch_kernel", "pytorch_kerneltypes", "calculator",
            "util", "additional_data", "param_optimization", "prepare_data", "reference_data"]
