@@ -493,6 +493,26 @@ class GaussianProcess(nn.Module):
 
         return pred, kernel
 
+    def eval_data_per_data(self, eval_image):
+
+        # kernel between test point x and inducing points S
+        if self.sparse:
+            if self.use_forces:
+                kernel = self.kernel.kernel_vector_per_data(eval_image=eval_image,
+                                                            train_images=self.images)
+
+            pred = torch.matmul(kernel, self.model_vector.view(-1))
+
+        # kernel between test point x and training points X
+        else:
+            if self.use_forces:
+                kernel = self.kernel.kernel_vector_per_data(eval_image=eval_image,
+                                                            train_images=self.images)
+
+            pred = torch.matmul(kernel, self.model_vector.view(-1))
+
+        return pred, kernel
+
     def eval_variance_batch(self, get_variance, eval_images, k):
         """
 
