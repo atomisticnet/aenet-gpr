@@ -73,14 +73,15 @@ Refer to [official guide](https://pytorch.org/get-started/locally) and install c
 
 ## 📘 Tutorial
 
-The `./example/` directory includes example input and output files.
-
 Find interactive notebooks `*.ipynb` in the `./tutorial/` folder, or run directly on Google Colab:
 
 - [GPR Tutorial: H₂ system](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_1_H2.ipynb)  
 - [GPR Tutorial: EC–EC system](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_2_EC-EC.ipynb)  
 - [GPR Tutorial: Li–EC system](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_3_Li-EC.ipynb): The computational time of this tutorial can be significantly reduced through parallel execution on either CPU or GPU. In Colab, you can compare performance by going to `Runtime → Change runtime type` and selecting the `Hardware accelerator` as **CPU** or **GPU**.
-- [GPR-ANN Tutorial: H₂ system (Python)](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_python_1_H2.ipynb): This tutorial shows a full process of GPR-ANN training by combining `aenet-gpr` with `aenet`. It also shows a comparison of **GPR-ANN** (indirect force training via GPR-augmentation) against **Original-ANN** (energy-only training). 
+- [GPR-ANN Tutorial: H₂ system (Python)](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_python_1_H2.ipynb): This tutorial shows a full process of GPR-ANN training by combining `aenet-gpr` with `aenet`. It also shows a comparison of **GPR-ANN** (indirect force training via GPR-augmentation) against **Original-ANN** (energy-only training).
+- [GPR-ASE Calculator Tutorial: EC–EC system (Python)](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/aenet_gpr_tutorial_python_2_EC-EC.ipynb): This tutorial shows how to load a constructed `aenet-gpr` model as `ASE Calculator` which can be used to predict energy and atomic forces of `ASE atoms object`.
+
+The `./example/` directory includes example input and output data files.
 
 ## 📂 Input Files
 
