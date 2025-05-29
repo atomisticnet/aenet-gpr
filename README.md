@@ -9,7 +9,7 @@ It automates data augmentation to:
 - Maintain high accuracy comparable to the demanding direct force training
 
 📄 Reference:  
-[In Won Yeu, Alexander Urban, Nongnuch Artrith et al., “Scalable Training of Neural Network Potentials for Complex Interfaces Through Data Augmentation”, arXiv:2412.05773](https://doi.org/10.48550/arXiv.2412.05773)
+[In Won Yeu, Alexander Urban, Nongnuch Artrith et al., “Scalable Training of Neural Network Potentials for Complex Interfaces Through Data Augmentation”, *npj Computational Materials* 11, 156 (2025)](https://doi.org/10.1038/s41524-025-01651-0)
 
 📬 Contact:  
 - In Won Yeu (iy2185@columbia.edu)  
