@@ -164,6 +164,25 @@ With the `train.in` file and datasets prepared, simply run:
 
 The **Train–Test–Augment** steps will be executed sequentially. Augmented data will be saved in the `./additional_xsf/` directory.
 
+## 🖥️ Running on an HPC system (SLURM)
+
+To run `aenet_gpr` on an HPC cluster using SLURM, use a batch script like the following:
+
+```
+#!/bin/bash
+#SBATCH --job-name=aenet-job
+#SBATCH --nodes=1
+#SBATCH --tasks-per-node=8
+#SBATCH --cpus-per-task=4
+#SBATCH --time=1:00:00
+
+module load anaconda3
+source activate aenet-env
+
+ulimit -s unlimited
+python -m aenet_gpr ./train.in > train.out
+```
+
 ## ⚙️ Tuning Tips
 
 ### 1. Accuracy – Descriptor and Kernel Parameters
