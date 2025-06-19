@@ -275,7 +275,6 @@ class ReferenceData(object):
             self.calculator.weight *= _factor.squeeze()
             self.calculator.hyper_params.update(dict(weight=self.calculator.weight))
             self.calculator.kernel.set_params(self.calculator.hyper_params)
-            print(self.calculator.hyper_params)
         else:
             _prior_array = self.calculator.prior.potential_batch(self.images, get_forces=False)
             _n_train = len(self.images)
@@ -283,7 +282,6 @@ class ReferenceData(object):
             self.calculator.weight *= _factor.squeeze()
             self.calculator.hyper_params.update(dict(weight=self.calculator.weight))
             self.calculator.kernel.set_params(self.calculator.hyper_params)
-            print(self.calculator.hyper_params)
 
         self.calculator.train_model()
         return
