@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+from aenet_gpr.src.prior import ConstantPrior
 from aenet_gpr.src.pytorch_kernel import FPKernel, FPKernelNoforces
 from aenet_gpr.util.prepare_data import get_N_batch, get_batch_indexes_N_batch
 
@@ -11,20 +12,18 @@ class GaussianProcess(nn.Module):
     Gaussian Process Regression
     Parameters:
 
-    prior: Prior class, as in ase.optimize.gpmin.prior
-        Defaults to ConstantPrior with zero as constant
+    prior: Defaults to ConstantPrior with zero as constant
 
-    kernel: Kernel function for the regression, as
-       in ase.optimize.gpmin.kernel
-        Defaults to the Squared Exponential kernel with derivatives
+    kernel: Defaults to the Squared Exponential kernel with derivatives
     '''
 
-    def __init__(self, hp=None, prior=None, kernel=None, kerneltype='sqexp',
+    def __init__(self, hp=None, prior=None, prior_update=True, kerneltype='sqexp',
                  scale=0.4, weight=1.0, noise=1e-6, noisefactor=0.5,
                  use_forces=True, images=None, function=None, derivative=None,
                  sparse=None, sparse_derivative=None, autograd=False,
                  train_batch_size=25, eval_batch_size=25,
-                 data_type='float64', device='cpu', soap_param=None, descriptor='cartesian coordinates'):
+                 data_type='float64', device='cpu', soap_param=None, descriptor='cartesian coordinates',
+                 atoms_mask=None):
         super().__init__()
 
         if data_type == 'float32':
@@ -56,11 +55,24 @@ class GaussianProcess(nn.Module):
         self.Ntrain = len(self.images)
         self.species = self.images[0].get_chemical_symbols()
         self.pbc = np.all(self.images[0].get_pbc())
+
         self.Natom = len(self.species)
+        self.atoms_mask = atoms_mask
+
+        if self.atoms_mask is not None:
+            self.Nmask = self.atoms_mask.shape[0]
+        else:
+            self.Nmask = 3 * self.Natom
 
         self.Y = function  # Y = [Ntrain]
         self.dY = derivative  # dY = [Ntrain, Natom, 3]
-        self.model_vector = torch.empty((self.Ntrain * (1 + 3 * self.Natom),), dtype=self.torch_data_type, device=self.device)
+        self.model_vector = torch.empty((self.Ntrain * (1 + self.Nmask),), dtype=self.torch_data_type, device=self.device)
+
+        if prior is None:
+            self.prior = ConstantPrior(0.0, dtype=self.torch_data_type, device=self.device, atoms_mask=self.atoms_mask)
+        else:
+            self.prior = prior
+        self.prior_update = prior_update
 
         self.sparse = sparse
         self.train_batch_size = train_batch_size
@@ -87,7 +99,8 @@ class GaussianProcess(nn.Module):
                                    data_type=self.data_type,
                                    soap_param=self.soap_param,
                                    descriptor=self.descriptor,
-                                   device=self.device)
+                                   device=self.device,
+                                   atoms_mask=self.atoms_mask)
         else:
             self.kernel = FPKernelNoforces(species=self.species,
                                            pbc=self.pbc,
@@ -96,7 +109,8 @@ class GaussianProcess(nn.Module):
                                            data_type=self.data_type,
                                            soap_param=self.soap_param,
                                            descriptor=self.descriptor,
-                                           device=self.device)
+                                           device=self.device,
+                                           atoms_mask=self.atoms_mask)
 
         hyper_params = dict(kerneltype=self.kerneltype,
                             scale=self.scale,
@@ -115,7 +129,11 @@ class GaussianProcess(nn.Module):
 
                 # [Ntrain, Natom, 3] -> [Ntrain * 3 * Natom, 1]
                 # dY_reshaped = self.dY.flatten().unsqueeze(1)
-                dY_reshaped = self.dY.contiguous().view(-1, 1)
+                if self.atoms_mask is not None:
+                    dY_reshaped = self.dY.contiguous().view(self.dY.shape[0], -1)[:, self.atoms_mask]
+                    dY_reshaped = dY_reshaped.view(-1, 1)
+                else:
+                    dY_reshaped = self.dY.contiguous().view(-1, 1)
 
                 # [Ntrain * (1 + 3 * Natom), 1]
                 # [[e1, e2, ..., eN, f11x, f11y, f11z, f12x, f12y, ..., fNzNz]],
@@ -135,10 +153,9 @@ class GaussianProcess(nn.Module):
                 K_XX = self.kernel.kernel_matrix_batch(images=self.images, batch_size=self.train_batch_size)
 
                 # reg = [Ntrain * (1 + 3 * Natom), Ntrain * (1 + 3 * Natom)]
-                a = torch.tensor(self.Ntrain * [self.hyper_params['noise'] * self.hyper_params['noisefactor']],
-                                 dtype=self.torch_data_type).reshape(
+                a = torch.tensor(self.Ntrain * [self.hyper_params['noise'] * self.hyper_params['noisefactor']], dtype=self.torch_data_type).reshape(
                     self.Ntrain, 1)
-                b = torch.tensor(self.Ntrain * 3 * self.Natom * [self.hyper_params['noise']],
+                b = torch.tensor(self.Ntrain * self.Nmask * [self.hyper_params['noise']],
                                  dtype=self.torch_data_type).reshape(self.Ntrain, -1)
                 reg = torch.diag(torch.cat((a, b), 1).flatten() ** 2)
                 self.inv_reg = torch.linalg.inv(reg)
@@ -271,12 +288,10 @@ class GaussianProcess(nn.Module):
                 # covariance matrix between the training points X
                 self.K_XX_L = self.kernel.kernel_matrix_batch(images=self.images, batch_size=self.train_batch_size)
 
-                # a = torch.tensor(self.Ntrain * [self.hyper_params['noise'] * self.hyper_params['noisefactor']], dtype=torch.float64).reshape(self.Ntrain, 1)
-                # b = torch.tensor(self.Ntrain * 3 * self.Natom * [self.hyper_params['noise']], dtype=torch.float64).reshape(self.Ntrain, -1)
                 a = torch.full((self.Ntrain, 1), self.hyper_params['noise'] * self.hyper_params['noisefactor'],
                                dtype=self.torch_data_type, device=self.device)
                 noise_val = self.hyper_params['noise']
-                b = noise_val.expand(self.Ntrain, 3 * self.Natom)
+                b = noise_val.expand(self.Ntrain, self.Nmask)
 
                 # reg = torch.diag(torch.cat((a, b), 1).flatten() ** 2)
                 diagonal_values = torch.cat((a, b), 1).flatten() ** 2
@@ -285,7 +300,6 @@ class GaussianProcess(nn.Module):
 
                 try:
                     self.K_XX_L = torch.linalg.cholesky(self.K_XX_L, upper=False)
-                    # torch.linalg.cholesky(self.K_XX_L, upper=False, out=self.K_XX_L)
 
                 except torch.linalg.LinAlgError:
                     with torch.no_grad():
@@ -339,73 +353,14 @@ class GaussianProcess(nn.Module):
                         # Step 1: Cholesky decomposition for K_XX after adjusting
                         self.K_XX_L = torch.linalg.cholesky(__K_XX, upper=False)
 
-            self.model_vector = torch.cholesky_solve(self.YdY.contiguous().view(-1, 1), self.K_XX_L, upper=False)
+            if self.prior_update:
+                self.prior.update(self.images, self.YdY, self.K_XX_L, self.use_forces)
+
+            _prior_array = self.prior.potential_batch(self.images, self.use_forces)
+            self.model_vector = torch.cholesky_solve(self.YdY.contiguous().view(-1, 1) - _prior_array.view(-1, 1),
+                                                     self.K_XX_L, upper=False)
 
         return
-
-    def calculate_model_vector(self, matrix):
-        """
-        What is the role of self.prior_array?
-        
-        self.YdY.shape  # [Ntrain, 1 + 3 * Natom]
-        model_vector.shape  # [Ntrain * (1 + 3 * Natom)]
-        model_vector.unsqueeze(1).shape  # [Ntrain * (1 + 3 * Natom), 1]
-        self.K_XX_L.shape  # [Ntrain * (1 + 3 * Natom), Ntrain * (1 + 3 * Natom)]
-        """
-
-        # Factorize K-matrix (Cholesky decomposition) using torch.linalg.cholesky:
-        self.K_XX_L = torch.linalg.cholesky(matrix, upper=False)  # Lower triangular by default
-
-        # Compute the prior array
-        # self.prior_array = self.calculate_prior_array(self.X, get_forces=self.use_forces)
-
-        # Flatten Y and compute the model vector
-        model_vector = self.YdY.flatten()  # - self.prior_array
-
-        # Solve the system L * L^T * v = model_vector (Cholesky solve)
-        model_vector = torch.cholesky_solve(model_vector.unsqueeze(1), self.K_XX_L, upper=False)
-
-        return model_vector
-
-    def calculate_model_vector_sparse(self, matrix):
-        # [Nsparse * (1 + 3 * Natom), Ntrain * (1 + 3 * Natom)] * 
-        # [Ntrain * (1 + 3 * Natom), Ntrain * (1 + 3 * Natom)] *
-        # [Ntrain * (1 + 3 * Natom), 1]
-        # -> [Nsparse * (1 + 3 * Natom), 1]
-        reduced_target = torch.einsum('pi,ij,jq->pq', self.K_sX, self.inv_reg, self.YdY.reshape(-1, 1))
-
-        try:
-            matrix_L = torch.linalg.cholesky(matrix, upper=False)
-        except torch.linalg.LinAlgError:
-            with torch.no_grad():
-                # Diagonal sum (trace)
-                diag_sum = torch.sum(torch.diag(matrix))
-
-                # epsilon value
-                eps = torch.finfo(self.torch_data_type).eps
-
-                # scaling factor
-                scaling_factor = 1 / (1 / (4.0 * eps) - 1)
-
-                # adjust K_XX
-                adjustment = diag_sum * scaling_factor * torch.ones(matrix.shape[0],
-                                                                    dtype=self.torch_data_type)
-                matrix.diagonal().add_(adjustment)
-
-                # Step 1: Cholesky decomposition for K_XX after adjusting
-                matrix_L = torch.linalg.cholesky(matrix, upper=False)
-
-        # Solve the system L * L^T * v = model_vector (Cholesky solve)
-        model_vector = torch.cholesky_solve(reduced_target, matrix_L, upper=False)
-
-        return model_vector
-
-    def calculate_prior_array(self, list_of_fingerprints, get_forces=True):
-
-        if get_forces:
-            return list(torch.hstack([self.prior.potential(x) for x in list_of_fingerprints]))
-        else:
-            return list(torch.hstack([self.prior.potential(x)[0] for x in list_of_fingerprints]))
 
     def forward(self, eval_images, get_variance=False):
 
@@ -418,17 +373,19 @@ class GaussianProcess(nn.Module):
                 # E_hat = pred[0:x.shape[0]]
                 # F_hat = pred[x.shape[0]:].reshape(x.shape[0], self.Natom, -1)
                 E_hat = torch.empty((Ntest,), dtype=self.torch_data_type)
-                F_hat = torch.empty((Ntest, self.Natom, 3), dtype=self.torch_data_type)
+                F_hat = torch.zeros((Ntest, self.Natom * 3), dtype=self.torch_data_type)
 
                 for i in range(0, eval_x_N_batch):
                     pred, kernel = self.eval_data_batch(eval_images=eval_images[eval_x_indexes[i][0]:eval_x_indexes[i][1]])
 
                     data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
                     E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
-                    F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :, :] = pred[data_per_batch:].view(data_per_batch,
-                                                                                                        self.Natom, 3)
+                    if self.atoms_mask is not None:
+                        F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], self.atoms_mask] = pred[data_per_batch:].view(data_per_batch, -1)
+                    else:
+                        F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = pred[data_per_batch:].view(data_per_batch, -1)
 
-                return E_hat, F_hat, None
+                return E_hat, F_hat.view((Ntest, self.Natom, 3)), None
 
             else:
                 pass
@@ -439,7 +396,7 @@ class GaussianProcess(nn.Module):
         else:
             if self.use_forces:
                 E_hat = torch.empty((Ntest,), dtype=self.torch_data_type)
-                F_hat = torch.empty((Ntest, self.Natom, 3), dtype=self.torch_data_type)
+                F_hat = torch.zeros((Ntest, self.Natom * 3), dtype=self.torch_data_type)
                 uncertainty = torch.empty((Ntest,), dtype=self.torch_data_type)
 
                 for i in range(0, eval_x_N_batch):
@@ -450,12 +407,14 @@ class GaussianProcess(nn.Module):
 
                     data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
                     E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
-                    F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :, :] = pred[data_per_batch:].view(data_per_batch,
-                                                                                                        self.Natom, 3)
-                    uncertainty[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = torch.sqrt(
-                        torch.diagonal(var)[0:data_per_batch])
+                    if self.atoms_mask is not None:
+                        F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], self.atoms_mask] = pred[data_per_batch:].view(data_per_batch, -1)
+                    else:
+                        F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = pred[data_per_batch:].view(data_per_batch, -1)
 
-                return E_hat, F_hat, uncertainty
+                    uncertainty[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = torch.sqrt(torch.diagonal(var)[0:data_per_batch])
+
+                return E_hat, F_hat.view((Ntest, self.Natom, 3)), uncertainty
 
             else:
                 pass
@@ -489,7 +448,7 @@ class GaussianProcess(nn.Module):
             #     kernel = self.kernel.kernel_vector(x=x, X=self.X)
 
             # pred = torch.einsum('hi,i->h', kernel, self.model_vector.flatten())
-            pred = torch.matmul(kernel, self.model_vector.view(-1))
+            pred = torch.matmul(kernel, self.model_vector.view(-1)) + self.prior.potential_batch(eval_images, self.use_forces)
 
         return pred, kernel
 
@@ -509,7 +468,7 @@ class GaussianProcess(nn.Module):
                 kernel = self.kernel.kernel_vector_per_data(eval_image=eval_image,
                                                             train_images=self.images)
 
-            pred = torch.matmul(kernel, self.model_vector.view(-1))
+            pred = torch.matmul(kernel, self.model_vector.view(-1)) + self.prior.potential_per_data(eval_image, self.use_forces)
 
         return pred, kernel
 
@@ -547,6 +506,32 @@ class GaussianProcess(nn.Module):
             # Adjust variance by subtracting covariance
             if self.use_forces:
                 return self.kernel.kernel_matrix_batch(images=eval_images, batch_size=self.eval_batch_size) - covariance
+            # else:
+            #     return self.kernel.kernel_matrix(X=x) - covariance
+
+        else:
+            return None
+
+    def eval_variance_per_data(self, get_variance, eval_image, k):
+
+        if get_variance:
+
+            # Perform Cholesky decomposition and solve the system
+            if self.sparse:
+                # Step 2: Cholesky solve
+                CK_ss_L = torch.cholesky_solve(k.T.clone(), self.K_ss_L, upper=False)
+
+                covariance = torch.einsum('pi,ij,jq->pq', k,
+                                          torch.eye(self.CQ_ss.shape[0], dtype=self.torch_data_type) - self.CQ_ss,
+                                          CK_ss_L)
+
+            else:
+                # covariance = torch.einsum('ij,jk->ik', k, CK_XX_L)
+                covariance = torch.matmul(k, torch.cholesky_solve(k.T.clone(), self.K_XX_L, upper=False))
+
+            # Adjust variance by subtracting covariance
+            if self.use_forces:
+                return self.kernel.kernel_matrix_per_data(image=eval_image) - covariance
             # else:
             #     return self.kernel.kernel_matrix(X=x) - covariance
 

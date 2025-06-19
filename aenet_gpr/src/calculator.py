@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 from ase.calculators.calculator import Calculator, all_changes
 
 
@@ -14,7 +15,7 @@ class GPRCalculator(Calculator):
         self.results = {}
 
     def calculate(self, atoms=None,
-                  properties=['energy', 'forces'],
+                  properties=['energy', 'forces', 'uncertainty'],
                   system_changes=all_changes):
         '''
         Calculate the energy and forces for a given Atoms structure.
@@ -24,9 +25,17 @@ class GPRCalculator(Calculator):
 
         Calculator.calculate(self, atoms, properties, system_changes)
 
-        pred, _ = self.calculator.eval_data_per_data(eval_image=atoms)
+        pred, kernel = self.calculator.eval_data_per_data(eval_image=atoms)
         energy_gpr = pred[0]
-        force_gpr = pred[1:].view(len(atoms), 3)
+        if self.train_data.mask_constraints:
+            force_gpr = torch.zeros((len(atoms) * 3), dtype=pred.dtype)
+            force_gpr[self.train_data.atoms_mask] = pred[1:]
+            force_gpr = force_gpr.view(len(atoms), 3)
+        else:
+            force_gpr = pred[1:].view(len(atoms), 3)
+
+        var = self.calculator.eval_variance_per_data(get_variance=True, eval_image=atoms, k=kernel)
+        uncertainty_gpr = np.sqrt(var[0, 0].cpu().detach().numpy())
 
         if self.train_data.standardization:
             mean_energy = np.mean(self.train_data.energy)
@@ -40,3 +49,4 @@ class GPRCalculator(Calculator):
 
         self.results['energy'] = energy_gpr
         self.results['forces'] = force_gpr
+        self.results['uncertainty'] = uncertainty_gpr

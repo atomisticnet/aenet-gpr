@@ -45,7 +45,8 @@ class FPKernel(BaseKernelType):
                  data_type='float64',
                  soap_param=None,
                  descriptor='cartesian coordinates',
-                 device='cpu'):
+                 device='cpu',
+                 atoms_mask=None):
         super().__init__()
         '''
         params: dict
@@ -53,6 +54,7 @@ class FPKernel(BaseKernelType):
         '''
         kerneltypes = {'sqexp': SquaredExp}
         self.device = device
+        self.atoms_mask = atoms_mask
 
         if data_type == 'float32':
             self.data_type = 'float32'
@@ -64,6 +66,13 @@ class FPKernel(BaseKernelType):
         self.species = species
         self.pbc = pbc
         self.Natom = Natom
+
+        if self.atoms_mask is not None:
+            self.Nmask = self.atoms_mask.shape[0]
+            self.free_atoms = self.atoms_mask // 3
+            self.free_atoms = torch.unique(self.free_atoms)
+        else:
+            self.Nmask = 3 * self.Natom
 
         if params is None:
             params = {}
@@ -104,8 +113,13 @@ class FPKernel(BaseKernelType):
                                                return_descriptor=True,
                                                n_jobs=self.soap_param.get('n_jobs'))
 
-            dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type).to(self.device)
-            fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)
+            if self.atoms_mask is not None:
+                dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type).to(self.device)[:, :, :, :, self.atoms_mask]  # (Ndata, Ncenters, Natom, 3, Natoms_masked)
+                dfp_dr = dfp_dr[:, :, self.free_atoms, :, :]  # (Ndata, Ncenters, Natom_masked, 3, Natoms_masked)
+                fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)[:, :, self.atoms_mask]  # (Ndata, Ncenters, Natoms_masked)
+            else:
+                dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type).to(self.device)  # (Ndata, Ncenters, Natom, 3, Natom*3)
+                fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Ndata, Ncenters, Natom*3)
 
         else:
             fp = []
@@ -117,10 +131,15 @@ class FPKernel(BaseKernelType):
                                               dtype=self.torch_data_type).to(self.device))
 
             fp = torch.stack(fp).to(self.device)  # (Ndata, Natom*3)
-            fp = fp.unsqueeze(1)  # (Ndata, 1, Natom*3)
-
             dfp_dr = torch.stack(dfp_dr).to(self.device)  # (Ndata, Natom, Natom*3, 3)
-            dfp_dr = dfp_dr.transpose(2, 3).unsqueeze(1)  # (Ndata, 1, Natom, 3, Natom*3)
+
+            if self.atoms_mask is not None:
+                fp = fp.unsqueeze(1)[:, :, self.atoms_mask]  # (Ndata, 1, Natoms_masked)
+                dfp_dr = dfp_dr.transpose(2, 3).unsqueeze(1)[:, :, :, :, self.atoms_mask]  # (Ndata, 1, Natom, 3, Natoms_masked)
+                dfp_dr = dfp_dr[:, :, self.free_atoms, :, :]  # (Ndata, Ncenters, Natom_masked, 3, Natoms_masked)
+            else:
+                fp = fp.unsqueeze(1)  # (Ndata, 1, Natom*3)
+                dfp_dr = dfp_dr.transpose(2, 3).unsqueeze(1)  # (Ndata, 1, Natom, 3, Natom*3)
 
         return fp, dfp_dr
 
@@ -133,16 +152,26 @@ class FPKernel(BaseKernelType):
                                                return_descriptor=True,
                                                n_jobs=self.soap_param.get('n_jobs'))
 
-            dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type).to(self.device)
-            fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)
+            if self.atoms_mask is not None:
+                dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type).to(self.device)[:, :, :, self.atoms_mask]  # (Ncenters, Natom, 3, Natoms_masked)
+                dfp_dr = dfp_dr[:, self.free_atoms, :, :]  # (Ncenters, Natom_masked, 3, Natoms_masked)
+                fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)[:, self.atoms_mask]  # (Ncenters, Natoms_masked)
+            else:
+                dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type).to(self.device)  # (Ncenters, Natom, 3, Natom*3)
+                fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Ncenters, Natom*3)
 
         else:
             fp = torch.as_tensor(image.get_positions(wrap=False).reshape(-1), dtype=self.torch_data_type).to(self.device)
             dfp_dr = torch.as_tensor(np.eye(self.Natom * 3).reshape(self.Natom, -1, 3, order='F'),
                                      dtype=self.torch_data_type).to(self.device)
 
-            fp = fp.unsqueeze(0)
-            dfp_dr = dfp_dr.transpose(1, 2).unsqueeze(0)
+            if self.atoms_mask is not None:
+                fp = fp.unsqueeze(0)[:, self.atoms_mask]
+                dfp_dr = dfp_dr.transpose(1, 2).unsqueeze(0)[:, :, :, self.atoms_mask]
+                dfp_dr = dfp_dr[:, self.free_atoms, :, :]
+            else:
+                fp = fp.unsqueeze(0)
+                dfp_dr = dfp_dr.transpose(1, 2).unsqueeze(0)
 
         return fp, dfp_dr
 
@@ -164,8 +193,8 @@ class FPKernel(BaseKernelType):
         #  ...
         #  [K(dX1Nz,X21), K(dX1Nz,X22), ..., K(dX1Nz,X2N), K(dX1Nz,dX21x), K(dX1Nz,dX21y), ..., K(dX1Nz,dX2Nz)]
 
-        K_X1X2 = torch.empty(((1 + 3 * self.Natom) * X1.shape[0],
-                              (1 + 3 * self.Natom) * X2.shape[0]), dtype=self.torch_data_type, device=self.device)
+        K_X1X2 = torch.empty(((1 + self.Nmask) * X1.shape[0],
+                              (1 + self.Nmask) * X2.shape[0]), dtype=self.torch_data_type, device=self.device)
 
         # Expand value fingerprint
         X1_expanded = X1[:, None, :, None, :]  # [Ndata1, 1, Ncenter, 1, Nfeature]
@@ -203,7 +232,7 @@ class FPKernel(BaseKernelType):
                                                               torch.einsum('xycnf,xcdf->xycnd', X1__outer_minus__X2,
                                                                            dX1_reshaped)).permute(0, 2,
                                                                                                   1).contiguous().view(
-            X1.shape[0] * 3 * self.Natom, X2.shape[0]))
+            X1.shape[0] * self.Nmask, X2.shape[0]))
 
         """K_X1X2[:X1.shape[0], X2.shape[0]: X2.shape[0] * (1 + 3 * Natom)] kernel between fp1 and fp2_deriv"""
         # [Ndata, Ncenter, Natom, 3, Nfeature] -> [Ndata, Ncenter, Natom * 3, Nfeature]
@@ -221,7 +250,7 @@ class FPKernel(BaseKernelType):
         K_X1X2[:X1.shape[0], X2.shape[0]:].copy_(torch.einsum('xycn,xycnd->xyd', __k_X2X1 / self.scale ** 2,
                                                               torch.einsum('xycnf,yndf->xycnd', X2__outer_minus__X1,
                                                                            dX2_reshaped)).view(X1.shape[0], X2.shape[
-            0] * 3 * self.Natom))
+            0] * self.Nmask))
 
         """K_X1X2[X1.shape[0]: X1.shape[0] * (1 + 3 * Natom), X2.shape[0]: X2.shape[0] * (1 + 3 * Natom)] 
         kernel between fp1_deriv and fp2_deriv"""
@@ -287,14 +316,14 @@ class FPKernel(BaseKernelType):
                                                               torch.einsum('xycnb,xycnd->xycnbd', DdD_dr1,
                                                                            DdD_dr2)).permute(0, 2, 1,
                                                                                              3).contiguous().view(
-            X1.shape[0] * 3 * self.Natom, X2.shape[0] * 3 * self.Natom))
+            X1.shape[0] * self.Nmask, X2.shape[0] * self.Nmask))
 
         # intermediate_result = torch.einsum('xcbf,yndf->xycnbd', dX1_reshaped, dX2_reshaped)
         K_X1X2[X1.shape[0]:, X2.shape[0]:].add_(torch.einsum('xycn,xycnbd->xybd', __k_X1X2 / self.scale ** 2,
                                                              torch.einsum('xcbf,yndf->xycnbd', dX1_reshaped,
                                                                           dX2_reshaped)).permute(0, 2, 1,
                                                                                                  3).contiguous().view(
-            X1.shape[0] * 3 * self.Natom, X2.shape[0] * 3 * self.Natom))
+            X1.shape[0] * self.Nmask, X2.shape[0] * self.Nmask))
 
         del X1_expanded, X2_expanded, __k_X1X2, __k_X2X1, X1__outer_minus__X2, X2__outer_minus__X1, \
             DdD_dr1, DdD_dr2, dX1_reshaped, dX2_reshaped
@@ -320,8 +349,8 @@ class FPKernel(BaseKernelType):
         k = self.weight ** 2 * torch.exp(-torch.linalg.norm(X1_outer_minus_X2, dim=2) ** 2 / (2 * self.scale ** 2))
 
         # Create empty kernel
-        kernel = torch.empty((1 + 3 * self.Natom,
-                              1 + 3 * self.Natom), dtype=self.torch_data_type, device=self.device)
+        kernel = torch.empty((1 + self.Nmask,
+                              1 + self.Nmask), dtype=self.torch_data_type, device=self.device)
 
         # Evaluate the first element of kernel
         kernel[0, 0] = torch.sum(k)
@@ -330,7 +359,7 @@ class FPKernel(BaseKernelType):
         intermediate_result = torch.einsum('cnf,c...af->cna',
                                            X1_outer_minus_X2,
                                            dX1.reshape(X1.shape[0],
-                                                       self.Natom * 3,
+                                                       self.Nmask,
                                                        Nfeature))
         kernel[1:, 0] = torch.einsum('cn,cna->a',
                                      k / self.scale ** 2,
@@ -340,7 +369,7 @@ class FPKernel(BaseKernelType):
         intermediate_result = torch.einsum('cnf,...naf->cna',
                                            X2_outer_minus_X1,
                                            dX2.reshape(X2.shape[0],
-                                                       self.Natom * 3,
+                                                       self.Nmask,
                                                        Nfeature))
         kernel[0, 1:] = torch.einsum('cn,cna->a',
                                      k / self.scale ** 2,
@@ -351,12 +380,12 @@ class FPKernel(BaseKernelType):
         DdD_dr1 = torch.einsum('cnf,c...bf->cnb',
                                X1_outer_minus_X2,
                                dX1.reshape(X1.shape[0],
-                                           self.Natom * 3,
+                                           self.Nmask,
                                            Nfeature))
         DdD_dr2 = torch.einsum('cnf,...ndf->cnd',
                                X2_outer_minus_X1,
                                dX2.reshape(X2.shape[0],
-                                           self.Natom * 3,
+                                           self.Nmask,
                                            Nfeature))
 
         # [Ncenter, Natom * 3] * [Ncenter, Natom * 3]
@@ -371,10 +400,10 @@ class FPKernel(BaseKernelType):
         # -> [Ncenter, Natom * 3, Natom * 3]
         intermediate_result = torch.einsum('cbf,ndf->cnbd',
                                            dX1.reshape(X1.shape[0],
-                                                       self.Natom * 3,
+                                                       self.Nmask,
                                                        Nfeature),
                                            dX2.reshape(X2.shape[0],
-                                                       self.Natom * 3,
+                                                       self.Nmask,
                                                        Nfeature))
         C1 = torch.einsum('cn,cnbd->bd',
                           k / self.scale ** 2,
@@ -400,16 +429,15 @@ class FPKernel(BaseKernelType):
         X_N_batch = get_N_batch(Ndata, batch_size)
         X_indexes = get_batch_indexes_N_batch(Ndata, X_N_batch)
 
-        _size_ = 1 + 3 * self.Natom
-        K_XX = torch.empty((Ndata * _size_,
-                            Ndata * _size_), dtype=self.torch_data_type, device=self.device)
+        K_XX = torch.empty((Ndata * (1 + self.Nmask),
+                            Ndata * (1 + self.Nmask)), dtype=self.torch_data_type, device=self.device)
 
         for i in range(0, X_N_batch):
             fp_i, dfp_dr_i = self.generate_descriptor(images=images[X_indexes[i][0]:X_indexes[i][1]])
 
             row_indexes = torch.arange(X_indexes[i][0], X_indexes[i][1])
-            row_deriv_indexes = torch.arange(Ndata + X_indexes[i][0] * 3 * self.Natom,
-                                             Ndata + X_indexes[i][1] * 3 * self.Natom)
+            row_deriv_indexes = torch.arange(Ndata + X_indexes[i][0] * self.Nmask,
+                                             Ndata + X_indexes[i][1] * self.Nmask)
             selected_rows = torch.cat([row_indexes, row_deriv_indexes])
 
             K_XX[selected_rows[:, None], selected_rows] = self.kernel_with_deriv(X1=fp_i, dX1=dfp_dr_i,
@@ -419,8 +447,8 @@ class FPKernel(BaseKernelType):
                 fp_j, dfp_dr_j = self.generate_descriptor(images=images[X_indexes[j][0]:X_indexes[j][1]])
 
                 col_indexes = torch.arange(X_indexes[j][0], X_indexes[j][1])
-                col_deriv_indexes = torch.arange(Ndata + X_indexes[j][0] * 3 * self.Natom,
-                                                 Ndata + X_indexes[j][1] * 3 * self.Natom)
+                col_deriv_indexes = torch.arange(Ndata + X_indexes[j][0] * self.Nmask,
+                                                 Ndata + X_indexes[j][1] * self.Nmask)
                 selected_cols = torch.cat([col_indexes, col_deriv_indexes])
 
                 K_XX[selected_rows[:, None], selected_cols] = self.kernel_with_deriv(X1=fp_i, dX1=dfp_dr_i,
@@ -432,15 +460,15 @@ class FPKernel(BaseKernelType):
     def kernel_matrix_iterative(self, images):
 
         Ndata = len(images)
-        _size_ = 1 + 3 * self.Natom
-        K_XX = torch.empty((Ndata * _size_,
-                            Ndata * _size_), dtype=self.torch_data_type, device=self.device)
+
+        K_XX = torch.empty((Ndata * (1 + self.Nmask),
+                            Ndata * (1 + self.Nmask)), dtype=self.torch_data_type, device=self.device)
 
         for i in range(0, Ndata):
             fp_i, dfp_dr_i = self.generate_descriptor_per_data(image=images[i])
 
             row_index = torch.tensor([i])
-            row_deriv_index = torch.arange(Ndata + i * 3 * self.Natom, Ndata + (i + 1) * 3 * self.Natom)
+            row_deriv_index = torch.arange(Ndata + i * self.Nmask, Ndata + (i + 1) * self.Nmask)
             selected_rows = torch.cat([row_index, row_deriv_index])
 
             K_XX[selected_rows[:, None], selected_rows] = self.kernel_per_data(X1=fp_i, dX1=dfp_dr_i,
@@ -451,7 +479,7 @@ class FPKernel(BaseKernelType):
                 fp_j, dfp_dr_j = self.generate_descriptor_per_data(image=images[j])
 
                 col_index = torch.tensor([j])
-                col_deriv_index = torch.arange(Ndata + j * 3 * self.Natom, Ndata + (j + 1) * 3 * self.Natom)
+                col_deriv_index = torch.arange(Ndata + j * self.Nmask, Ndata + (j + 1) * self.Nmask)
                 selected_cols = torch.cat([col_index, col_deriv_index])
 
                 K_XX[selected_rows[:, None], selected_cols] = self.kernel_per_data(X1=fp_i, dX1=dfp_dr_i,
@@ -488,24 +516,23 @@ class FPKernel(BaseKernelType):
         X_N_batch = get_N_batch(Ntrain, batch_size)
         X_indexes = get_batch_indexes_N_batch(Ntrain, X_N_batch)
 
-        _size_ = 1 + 3 * self.Natom
-        K_xX = torch.empty((Ntest * _size_,
-                            Ntrain * _size_), dtype=self.torch_data_type, device=self.device)
+        K_xX = torch.empty((Ntest * (1 + self.Nmask),
+                            Ntrain * (1 + self.Nmask)), dtype=self.torch_data_type, device=self.device)
 
         for i in range(0, x_N_batch):
             fp_i, dfp_dr_i = self.generate_descriptor(images=eval_images[x_indexes[i][0]:x_indexes[i][1]])
 
             row_indexes = torch.arange(x_indexes[i][0], x_indexes[i][1])
-            row_deriv_indexes = torch.arange(Ntest + x_indexes[i][0] * 3 * self.Natom,
-                                             Ntest + x_indexes[i][1] * 3 * self.Natom)
+            row_deriv_indexes = torch.arange(Ntest + x_indexes[i][0] * self.Nmask,
+                                             Ntest + x_indexes[i][1] * self.Nmask)
             selected_rows = torch.cat([row_indexes, row_deriv_indexes])
 
             for j in range(0, X_N_batch):
                 fp_j, dfp_dr_j = self.generate_descriptor(images=train_images[X_indexes[j][0]:X_indexes[j][1]])
 
                 col_indexes = torch.arange(X_indexes[j][0], X_indexes[j][1])
-                col_deriv_indexes = torch.arange(Ntrain + X_indexes[j][0] * 3 * self.Natom,
-                                                 Ntrain + X_indexes[j][1] * 3 * self.Natom)
+                col_deriv_indexes = torch.arange(Ntrain + X_indexes[j][0] * self.Nmask,
+                                                 Ntrain + X_indexes[j][1] * self.Nmask)
                 selected_cols = torch.cat([col_indexes, col_deriv_indexes])
 
                 K_xX[selected_rows[:, None], selected_cols] = self.kernel_with_deriv(X1=fp_i, dX1=dfp_dr_i,
@@ -525,24 +552,23 @@ class FPKernel(BaseKernelType):
 
         Ntest = len(eval_images)
         Ntrain = len(train_images)
-        _size_ = 1 + 3 * self.Natom
 
         # if dx is not None and dX is not None:
-        K_xX = torch.empty((Ntest * _size_,
-                            Ntrain * _size_), dtype=self.torch_data_type, device=self.device)
+        K_xX = torch.empty((Ntest * (1 + self.Nmask),
+                            Ntrain * (1 + self.Nmask)), dtype=self.torch_data_type, device=self.device)
 
         for i in range(0, Ntest):
             fp_i, dfp_dr_i = self.generate_descriptor_per_data(image=eval_images[i])
 
             row_index = torch.tensor([i])
-            row_deriv_index = torch.arange(Ntest + i * 3 * self.Natom, Ntest + (i + 1) * 3 * self.Natom)
+            row_deriv_index = torch.arange(Ntest + i * self.Nmask, Ntest + (i + 1) * self.Nmask)
             selected_rows = torch.cat([row_index, row_deriv_index])
 
             for j in range(0, Ntrain):
                 fp_j, dfp_dr_j = self.generate_descriptor_per_data(image=train_images[j])
 
                 col_index = torch.tensor([j])
-                col_deriv_index = torch.arange(Ntrain + j * 3 * self.Natom, Ntrain + (j + 1) * 3 * self.Natom)
+                col_deriv_index = torch.arange(Ntrain + j * self.Nmask, Ntrain + (j + 1) * self.Nmask)
                 selected_cols = torch.cat([col_index, col_deriv_index])
 
                 K_xX[selected_rows[:, None], selected_cols] = self.kernel_per_data(X1=fp_i, dX1=dfp_dr_i,
@@ -564,14 +590,13 @@ class FPKernel(BaseKernelType):
 
         fp_i, dfp_dr_i = self.generate_descriptor_per_data(image=eval_image)
 
-        _size_ = 1 + 3 * self.Natom
-        K_xX_i = torch.empty((_size_, Ntrain * _size_), dtype=self.torch_data_type, device=self.device)
+        K_xX_i = torch.empty(((1 + self.Nmask), Ntrain * (1 + self.Nmask)), dtype=self.torch_data_type, device=self.device)
 
         for j in range(0, Ntrain):
             fp_j, dfp_dr_j = self.generate_descriptor_per_data(image=train_images[j])
 
             col_index = torch.tensor([j])
-            col_deriv_index = torch.arange(Ntrain + j * 3 * self.Natom, Ntrain + (j + 1) * 3 * self.Natom)
+            col_deriv_index = torch.arange(Ntrain + j * self.Nmask, Ntrain + (j + 1) * self.Nmask)
             selected_cols = torch.cat([col_index, col_deriv_index])
 
             K_xX_i[:, selected_cols] = self.kernel_per_data(X1=fp_i, dX1=dfp_dr_i,
