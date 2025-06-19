@@ -15,9 +15,6 @@ Get_variance True
 scale 0.4
 weight 1.0
 
-# Update weight parameter (default: True)
-Fit_weight False
-
 # Chunking to reduce memory usage (default: 25)
 batch_size 25
 
