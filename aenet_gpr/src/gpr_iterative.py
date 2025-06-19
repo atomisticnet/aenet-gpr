@@ -349,7 +349,7 @@ class GaussianProcess(nn.Module):
             if self.prior_update:
                 self.prior.update(self.images, self.YdY, self.K_XX_L, self.use_forces)
                 self.hyper_params.update(dict(prior=self.prior.constant))
-                self.kernel.set_params(self.calculator.hyper_params)
+                self.kernel.set_params(self.hyper_params)
 
             _prior_array = self.prior.potential_batch(self.images, self.use_forces)
             self.model_vector = torch.cholesky_solve(self.YdY.contiguous().view(-1, 1) - _prior_array.view(-1, 1),
