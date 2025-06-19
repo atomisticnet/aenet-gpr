@@ -454,7 +454,7 @@ class GaussianProcess(nn.Module):
                         F_hat[i, self.atoms_mask] = pred[1:].view(-1)
                     else:
                         F_hat[i, :] = pred[1:].view(-1)
-                    uncertainty[i] = torch.sqrt(torch.diagonal(var)[0])
+                    uncertainty[i] = torch.sqrt(torch.diagonal(var)[0]) / self.weight
 
                 return E_hat, F_hat((Ntest, self.Natom, 3)), uncertainty
 

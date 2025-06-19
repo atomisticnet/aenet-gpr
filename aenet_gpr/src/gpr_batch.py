@@ -415,7 +415,7 @@ class GaussianProcess(nn.Module):
                     else:
                         F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = pred[data_per_batch:].view(data_per_batch, -1)
 
-                    uncertainty[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = torch.sqrt(torch.diagonal(var)[0:data_per_batch])
+                    uncertainty[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = torch.sqrt(torch.diagonal(var)[0:data_per_batch]) / self.weight
 
                 return E_hat, F_hat.view((Ntest, self.Natom, 3)), uncertainty
 

@@ -35,7 +35,8 @@ class GPRCalculator(Calculator):
             force_gpr = pred[1:].view(len(atoms), 3)
 
         var = self.calculator.eval_variance_per_data(get_variance=True, eval_image=atoms, k=kernel)
-        uncertainty_gpr = np.sqrt(var[0, 0].cpu().detach().numpy())
+        uncertainty_gpr = torch.sqrt(var[0, 0]) / self.calculator.weight
+        uncertainty_gpr = uncertainty_gpr.cpu().detach().numpy()
 
         if self.train_data.standardization:
             mean_energy = np.mean(self.train_data.energy)
