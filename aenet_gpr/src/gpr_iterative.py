@@ -110,7 +110,8 @@ class GaussianProcess(nn.Module):
                             scale=self.scale,
                             weight=self.weight,
                             noise=self.noise,
-                            noisefactor=self.noisefactor)
+                            noisefactor=self.noisefactor,
+                            prior=self.prior.constant)
 
         self.hyper_params = hyper_params
         self.kernel.set_params(self.hyper_params)
