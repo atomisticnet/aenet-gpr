@@ -10,9 +10,9 @@ from aenet_gpr.tool.aidneb import AIDNEB
 
 
 # NEB parameters
-neb_F_max = 0.05  # cretirian of the force for the convergence.
+neb_F_max = 0.05  # criteria of the force for the convergence.
 neb_interpol = "idpp"  # "linear", "idpp", path to trajectory file
-neb_n_images = 5  # change as you want. The number of images include the two (initial and final) end-points of the NEB path.
+neb_n_images = 10  # total images including initial and final
 use_mic = False
 
 
@@ -52,7 +52,7 @@ def main():
     #     neb.initial_interpolation = neb.images[:]
 
     io.write("initial_images.traj", neb.images)
-    neb.run(fmax=neb_F_max, unc_convergence=0.05, dt=0.05, ml_steps=200)
+    neb.run(fmax=neb_F_max, unc_convergence=0.1, dt=0.05, ml_steps=200)
 
 
 if __name__ == "__main__":
