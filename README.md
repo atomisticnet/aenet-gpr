@@ -195,8 +195,6 @@ python -m aenet_gpr ./train.in > train.out
 <img src="doc/source/images/0_kernel.png" width="300">
 </p>
 
-It is recommended to optimize the `scale` and `weight` parameters for each specific system by performing a series of **Train–Test** runs prior to **Augment** using a small data subset of training and test data, while varying the `scale` and `weight`.
-
 Following figure shows energy prediction errors of the `./example/3_Li-EC/` example with different kernel parameters and descriptors.
 
 <p align="center">
