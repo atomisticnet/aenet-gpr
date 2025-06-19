@@ -16,8 +16,8 @@ soap_centers [[2.20113706670393, 2.328998192856251, 6.952547732109352], [2.20113
 soap_n_jobs 32
 
 # Kernel parameter
-scale 2.0
-weight 1.0
+# scale 0.4
+# weight 1.0
 
 # Data process (default: batch, 25)
 data_process batch
