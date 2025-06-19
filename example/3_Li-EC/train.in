@@ -12,7 +12,7 @@ File_format xsf
 Descriptor cart
 
 # Kernel parameter
-# scale 3.0
+# scale 0.4
 # weight 1.0
 
 # Data process (default: batch, 25)
