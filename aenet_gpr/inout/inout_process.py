@@ -25,7 +25,9 @@ class Train(object):
                                         standardization=self.input_param.standardization,
                                         data_type=self.input_param.data_type,
                                         data_process=self.input_param.data_process,
-                                        soap_param=self.input_param.soap_param)
+                                        soap_param=self.input_param.soap_param,
+                                        mask_constraints=self.input_param.mask_constraints,
+                                        fit_weight=self.input_param.fit_weight)
         self.train_data.set_data()
         self.train_data.standardize_energy_force(self.train_data.energy)
         io_data_read_finalize(t=start,
@@ -97,7 +99,9 @@ class Test(object):
                                        standardization=self.input_param.standardization,
                                        data_type=self.input_param.data_type,
                                        data_process=self.input_param.data_process,
-                                       soap_param=self.input_param.soap_param)
+                                       soap_param=self.input_param.soap_param,
+                                       mask_constraints=self.input_param.mask_constraints,
+                                       fit_weight=self.input_param.fit_weight)
         self.test_data.set_data()
         if self.test_data.energy is not None:
             test_data_energy_shape = self.test_data.energy.shape

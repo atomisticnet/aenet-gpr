@@ -15,6 +15,8 @@ class InputParameters(object):
         self.data_process = 'batch'
         self.descriptor        = 'cartesian coordinates'
         self.standardization   = True
+        self.mask_constraints  = False
+        self.fit_weight        = True
 
         self.soap_r_cut        = 5.0
         self.soap_n_max        = 6

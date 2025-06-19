@@ -34,7 +34,7 @@ def read_keyword_list_same_line(keyword, lines):
 def read_train_in(infile):
 	with open(infile, "r") as f:
 
-		# Initiialize InputParameters with default values
+		# Initialize InputParameters with default values
 		input_param = InputParameters()
 
 		# Remove comments from input file:
@@ -48,12 +48,26 @@ def read_train_in(infile):
 			lines.pop(i)
 
 		# Logical parameters:
-		standardization, found = read_keyword_argument_same_line("stand", lines)
+		standardization, found = read_keyword_argument_same_line("standardization", lines)
 		if found:
 			if "F" in standardization.upper():
 				input_param.standardization = False
 			else:
 				input_param.standardization = True
+
+		constraints, found = read_keyword_argument_same_line("constraints", lines)
+		if found:
+			if "F" in constraints.upper():
+				input_param.mask_constraints = False
+			else:
+				input_param.mask_constraints = True
+
+		fit_weight, found = read_keyword_argument_same_line("fit_weight", lines)
+		if found:
+			if "F" in fit_weight.upper():
+				input_param.fit_weight = False
+			else:
+				input_param.fit_weight = True
 
 		use_forces, found = read_keyword_argument_same_line("force", lines)
 		if found:
@@ -62,14 +76,14 @@ def read_train_in(infile):
 			else:
 				input_param.use_forces = True
 
-		get_variance, found = read_keyword_argument_same_line("var", lines)
+		get_variance, found = read_keyword_argument_same_line("get_variance", lines)
 		if found:
 			if "F" in get_variance.upper():
 				input_param.get_variance = False
 			else:
 				input_param.get_variance = True
 
-		autograd, found = read_keyword_argument_same_line("auto", lines)
+		autograd, found = read_keyword_argument_same_line("autograd", lines)
 		if found:
 			if "F" in autograd.upper():
 				input_param.autograd = False
