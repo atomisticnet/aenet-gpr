@@ -327,8 +327,10 @@ class AIDNEB:
             middle = int(self.n_images * (2. / 3.))
             e_is = self.i_endpoint.get_potential_energy()
             e_fs = self.e_endpoint.get_potential_energy()
-            if e_is >= e_fs:
+
+            if e_is > e_fs:
                 middle = int(self.n_images * (1. / 3.))
+
             self.atoms.positions = self.images[middle].get_positions()
             self.atoms.calc = self.ase_calc
             self.atoms.get_potential_energy(
@@ -364,6 +366,7 @@ class AIDNEB:
             # 2. Prepare a calculator.
             print('Training data size: ', len(train_data.images))
             train_data.config_calculator(kerneltype='sqexp', scale=0.4, weight=weight_update)
+            print('GPR model hyperparameters: ', train_data.calculator.hyper_params)
             self.model_calculator = GPRCalculator(calculator=train_data.calculator, train_data=train_data)
             weight_update = train_data.calculator.weight.clone().detach().item()
 
@@ -498,7 +501,7 @@ def get_neb_predictions(images):
     neb_pred_unc = []
     for i in images:
         neb_pred_energy.append(i.get_potential_energy())
-        unc = 2. * i.calc.results['uncertainty']
+        unc = i.calc.results['uncertainty']
         neb_pred_unc.append(unc)
     neb_pred_unc[0] = 0.0
     neb_pred_unc[-1] = 0.0
