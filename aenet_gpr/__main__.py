@@ -61,5 +61,6 @@ def main():
         augmentation_process.model_additional_evaluation()
         augmentation_process.write_additional_xsf()
 
+
 if __name__ == "__main__":
     main()
