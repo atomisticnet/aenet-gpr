@@ -28,6 +28,9 @@ class AdditionalData(object):
         self.fix_ind = self.reference_training_data.fix_ind
         self.descriptor = self.reference_training_data.descriptor
 
+        self.mask_constraints = self.reference_training_data.mask_constraints
+        self.atoms_mask = self.reference_training_data.atoms_mask
+
         self.additional_images = []
         self.energy_additional = np.array([], dtype=self.numpy_data_type)  # [Ndata]
         self.force_additional = np.array([], dtype=self.numpy_data_type)  # [Ndata, Natom, 3]

@@ -21,7 +21,9 @@ class ReferenceData(object):
                  standardization=True,
                  data_type='float64',
                  data_process='batch',
-                 soap_param=None):
+                 soap_param=None,
+                 mask_constraints=False,
+                 fit_weight=True):
 
         self.data_process = data_process
         if data_type == 'float32':
@@ -66,6 +68,13 @@ class ReferenceData(object):
                                'n_jobs': 1}
         else:
             self.soap_param = soap_param
+
+        self.fit_weight = fit_weight
+        self.mask_constraints = mask_constraints
+        if self.mask_constraints:
+            self.atoms_mask = self.create_mask()
+        else:
+            self.atoms_mask = None
 
         # self.dfp_dr = np.array([], dtype=self.numpy_data_type)  # [Ndata, Ncenter, Natom, 3, Nfeature]
         # self.fp = np.array([], dtype=self.numpy_data_type)  # [Ndata, Ncenter, Nfeature]
@@ -157,6 +166,37 @@ class ReferenceData(object):
 
         self.num_atom = len(self.species)
 
+    def create_mask(self):
+        """
+        This function mask atoms coordinates that will not participate in the
+        model, i.e. the coordinates of the atoms that are kept fixed
+        or constraint.
+        """
+        atoms = self.images[0]
+        constraints = atoms.constraints
+        mask_constraints = torch.ones_like(torch.tensor(atoms.positions), dtype=torch.bool)
+        for i in range(0, len(constraints)):
+            try:
+                mask_constraints[constraints[i].a] = ~constraints[i].mask
+            except Exception:
+                pass
+
+            try:
+                mask_constraints[constraints[i].index] = False
+            except Exception:
+                pass
+
+            try:
+                mask_constraints[constraints[0].a] = ~constraints[0].mask
+            except Exception:
+                pass
+
+            try:
+                mask_constraints[constraints[-1].a] = ~constraints[-1].mask
+            except Exception:
+                pass
+        return torch.argwhere(mask_constraints.reshape(-1)).reshape(-1)
+
     def set_fix_index_by_coord(self, max, axis=2):
         pos = self.images[0].get_positions()
         self.fix_ind = np.where(pos[:, axis] < max)
@@ -194,7 +234,8 @@ class ReferenceData(object):
                                                             data_type=self.data_type,
                                                             device=self.device,
                                                             soap_param=self.soap_param,
-                                                            descriptor=self.descriptor)
+                                                            descriptor=self.descriptor,
+                                                            atoms_mask=self.atoms_mask)
         elif self.data_process == 'batch':
             self.calculator = gpr_batch.GaussianProcess(kerneltype=kerneltype,
                                                         scale=scale,
@@ -213,9 +254,39 @@ class ReferenceData(object):
                                                         data_type=self.data_type,
                                                         device=self.device,
                                                         soap_param=self.soap_param,
-                                                        descriptor=self.descriptor)
+                                                        descriptor=self.descriptor,
+                                                        atoms_mask=self.atoms_mask)
 
         self.calculator.train_model()
+        if self.fit_weight:
+            self.update_weight(use_forces=True)
+
+    def update_weight(self, use_forces=True):
+        """
+        Fit weight of the kernel keeping all other hyperparameters fixed.
+        Here we assume the kernel k(x,x',theta) can be factorized as:
+        k = weight**2 * sqexp(x,x',other hyperparameters)
+        """
+
+        if use_forces:
+            _prior_array = self.calculator.prior.potential_batch(self.images, get_forces=True)
+            _factor = torch.sqrt(torch.matmul(self.calculator.YdY.flatten() - _prior_array,
+                                              self.calculator.model_vector) / _prior_array.shape[0])
+            self.calculator.weight *= _factor.squeeze()
+            self.calculator.hyper_params.update(dict(weight=self.calculator.weight))
+            self.calculator.kernel.set_params(self.calculator.hyper_params)
+            print(self.calculator.hyper_params)
+        else:
+            _prior_array = self.calculator.prior.potential_batch(self.images, get_forces=False)
+            _n_train = len(self.images)
+            _factor = torch.sqrt(torch.matmul(self.calculator.YdY.flatten()[:_n_train] - _prior_array, self.calculator.model_vector[:_n_train]) / _prior_array.shape[0])
+            self.calculator.weight *= _factor.squeeze()
+            self.calculator.hyper_params.update(dict(weight=self.calculator.weight))
+            self.calculator.kernel.set_params(self.calculator.hyper_params)
+            print(self.calculator.hyper_params)
+
+        self.calculator.train_model()
+        return
 
     def evaluation(self, get_variance=False):
 
