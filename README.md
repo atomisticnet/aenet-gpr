@@ -82,10 +82,10 @@ Find interactive notebooks `*.ipynb` in the `./tutorial/` folder, or run directl
 - [GPR Tutorial: EC–EC](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/tutorial_2_EC-EC.ipynb)  
 - [GPR Tutorial: Li–EC](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/tutorial_3_Li-EC.ipynb)
 
-### GPR applications for accelerating calculations
+### GPR applications for accelerating atomistic simulations
 
-- [GPR-ANN: accelerating ANN potential training](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/tutorial_python_GPR-ANN.ipynb)
-- [GPR-NEB: accelerating NEB](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/tutorial_python_GPR-NEB.ipynb)
+- [GPR-ANN: accelerating ANN potential training through GPR data augmentation](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/tutorial_python_GPR-ANN.ipynb)
+- [GPR-NEB: accelerating NEB through GPR surrogate model](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/tutorial_python_GPR-NEB.ipynb)
 - [GPR-ASE: ASE GPRCalculator](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/tutorial_python_ASE-GPRCalculator.ipynb)
 
 The `./example/` directory includes example input and output data files.
