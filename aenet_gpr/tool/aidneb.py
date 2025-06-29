@@ -16,11 +16,12 @@ from aenet_gpr.src import GPRCalculator
 from aenet_gpr.util import ReferenceData
 from aenet_gpr.tool import acquisition
 from aenet_gpr.tool import dump_observation, get_fmax
+from aenet_gpr.inout.input_parameter import InputParameters
 
 
 class AIDNEB:
 
-    def __init__(self, start, end, model_calculator=None, calculator=None,
+    def __init__(self, start, end, input_param: InputParameters, model_calculator=None, calculator=None,
                  interpolation='idpp', n_images=15, k=None, mic=False,
                  neb_method='improvedtangent',  #'improvedtangent', 'aseneb'
                  remove_rotation_and_translation=False,
@@ -167,6 +168,7 @@ class AIDNEB:
             interp_path = 'initial_path.traj'
 
         # NEB parameters.
+        self.input_param = input_param
         self.start = start
         self.end = end
         self.n_images = n_images
@@ -357,8 +359,11 @@ class AIDNEB:
             train_images = io.read(trajectory_observations, ':')
             train_data = ReferenceData(structure_files=train_images,
                                        file_format='ase',
-                                       device='cpu',
-                                       descriptor='cartesian coordinates',
+                                       device=self.input_param.device,
+                                       descriptor=self.input_param.descriptor,
+                                       data_type=self.input_param.data_type,
+                                       data_process=self.input_param.data_process,
+                                       soap_param=self.input_param.soap_param,
                                        standardization=False, mask_constraints=True, fit_weight=True)
             train_data.set_data()
             train_data.standardize_energy_force(train_data.energy)
