@@ -43,7 +43,11 @@ class ReferenceData(object):
         if structure_files is not None:
             self.read_structure_files(structure_files, file_format)
 
-        self.device = device
+        if device == 'cpu':
+            self.device = device
+        else:
+            self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
         self.descriptor = descriptor
         self.standardization = standardization
         self.calculator = None
