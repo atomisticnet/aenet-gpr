@@ -364,7 +364,9 @@ class AIDNEB:
                                        data_type=self.input_param.data_type,
                                        data_process=self.input_param.data_process,
                                        soap_param=self.input_param.soap_param,
-                                       standardization=False, mask_constraints=True, fit_weight=True)
+                                       standardization=self.input_param.standardization,
+                                       mask_constraints=True,
+                                       fit_weight=self.input_param.fit_weight)
             train_data.set_data()
             train_data.standardize_energy_force(train_data.energy)
 
@@ -398,7 +400,7 @@ class AIDNEB:
                 climbing_neb = True
             ml_neb = NEB(self.images, climb=climbing_neb,
                          method=self.neb_method, k=self.spring)
-            neb_opt = MDMin(ml_neb, dt=dt, trajectory=self.trajectory)
+            neb_opt = FIRE(ml_neb, trajectory=self.trajectory)
 
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_step:
