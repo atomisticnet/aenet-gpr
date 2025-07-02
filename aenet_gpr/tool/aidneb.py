@@ -345,7 +345,7 @@ class AIDNEB:
             self.force_calls += 1
             self.step += 1
 
-        weight_update = 1.0
+        weight_update = self.input_param.weight
         while True:
 
             # 0. Start from initial interpolation every 50 steps.
@@ -364,8 +364,8 @@ class AIDNEB:
                                        data_type=self.input_param.data_type,
                                        data_process=self.input_param.data_process,
                                        soap_param=self.input_param.soap_param,
-                                       standardization=self.input_param.standardization,
-                                       mask_constraints=True,
+                                       standardization=False,
+                                       mask_constraints=self.input_param.mask_constraints,
                                        fit_weight=self.input_param.fit_weight)
             train_data.set_data()
             train_data.standardize_energy_force(train_data.energy)
