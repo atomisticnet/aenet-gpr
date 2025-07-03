@@ -577,7 +577,7 @@ class FPKernel(BaseKernelType):
 
         return K_xX
 
-    def kernel_vector_per_data(self, eval_image, train_images):
+    def kernel_vector_per_data(self, eval_image, train_images, batch_size=25):
         '''
         Calculates C(x,X) i.e. the kernel matrix between fingerprint "x" and the training data fingerprints in "X".
         x = [Ncenter, Nfeature]
@@ -588,19 +588,35 @@ class FPKernel(BaseKernelType):
 
         Ntrain = len(train_images)
 
+        X_N_batch = get_N_batch(Ntrain, batch_size)
+        X_indexes = get_batch_indexes_N_batch(Ntrain, X_N_batch)
+
         fp_i, dfp_dr_i = self.generate_descriptor_per_data(image=eval_image)
 
-        K_xX_i = torch.empty(((1 + self.Nmask), Ntrain * (1 + self.Nmask)), dtype=self.torch_data_type, device=self.device)
+        # K_xX_i = torch.empty(((1 + self.Nmask),
+        # Ntrain * (1 + self.Nmask)), dtype=self.torch_data_type, device=self.device)
+        K_xX_i = torch.empty((1 * (1 + self.Nmask),
+                              Ntrain * (1 + self.Nmask)), dtype=self.torch_data_type, device=self.device)
 
-        for j in range(0, Ntrain):
-            fp_j, dfp_dr_j = self.generate_descriptor_per_data(image=train_images[j])
+        for j in range(0, X_N_batch):
+            fp_j, dfp_dr_j = self.generate_descriptor(images=train_images[X_indexes[j][0]:X_indexes[j][1]])
 
-            col_index = torch.tensor([j])
-            col_deriv_index = torch.arange(Ntrain + j * self.Nmask, Ntrain + (j + 1) * self.Nmask)
-            selected_cols = torch.cat([col_index, col_deriv_index])
+            col_indexes = torch.arange(X_indexes[j][0], X_indexes[j][1])
+            col_deriv_indexes = torch.arange(Ntrain + X_indexes[j][0] * self.Nmask,
+                                             Ntrain + X_indexes[j][1] * self.Nmask)
+            selected_cols = torch.cat([col_indexes, col_deriv_indexes])
 
-            K_xX_i[:, selected_cols] = self.kernel_per_data(X1=fp_i, dX1=dfp_dr_i,
-                                                            X2=fp_j, dX2=dfp_dr_j, iter=j)
+            K_xX_i[:, selected_cols] = self.kernel_with_deriv(X1=fp_i, dX1=dfp_dr_i, X2=fp_j, dX2=dfp_dr_j)
+
+        # for j in range(0, Ntrain):
+        #     fp_j, dfp_dr_j = self.generate_descriptor_per_data(image=train_images[j])
+        #
+        #     col_index = torch.tensor([j])
+        #     col_deriv_index = torch.arange(Ntrain + j * self.Nmask, Ntrain + (j + 1) * self.Nmask)
+        #     selected_cols = torch.cat([col_index, col_deriv_index])
+        #
+        #     K_xX_i[:, selected_cols] = self.kernel_per_data(X1=fp_i, dX1=dfp_dr_i,
+        #                                                     X2=fp_j, dX2=dfp_dr_j, iter=j)
 
         return K_xX_i
 
