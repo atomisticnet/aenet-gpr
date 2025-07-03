@@ -273,8 +273,7 @@ class AIDNEB:
         # Save initial interpolation.
         self.initial_interpolation = self.images[:]
 
-    def run(self, fmax=0.05, unc_convergence=0.025, dt=0.05, ml_steps=100,
-            max_step=2.0):
+    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=100, max_step=2.0):
 
         """
         Executing run will start the NEB optimization process.
@@ -400,7 +399,7 @@ class AIDNEB:
                 climbing_neb = True
             ml_neb = NEB(self.images, climb=climbing_neb,
                          method=self.neb_method, k=self.spring)
-            neb_opt = FIRE(ml_neb, trajectory=self.trajectory)
+            neb_opt = MDMin(ml_neb, dt=dt, trajectory=self.trajectory)
 
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_step:
