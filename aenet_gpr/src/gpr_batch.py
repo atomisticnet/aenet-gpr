@@ -75,7 +75,7 @@ class GaussianProcess(nn.Module):
         self.prior_update = prior_update
 
         self.sparse = sparse
-        self.traieval_data_per_databatch_size = train_batch_size
+        self.train_batch_size = train_batch_size
         self.eval_batch_size = eval_batch_size
 
         if sparse is not None:
