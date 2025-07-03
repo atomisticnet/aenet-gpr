@@ -273,7 +273,7 @@ class AIDNEB:
         # Save initial interpolation.
         self.initial_interpolation = self.images[:]
 
-    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=100, max_step=2.0):
+    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=100, max_unc=2.0):
 
         """
         Executing run will start the NEB optimization process.
@@ -296,11 +296,11 @@ class AIDNEB:
             Maximum number of steps for the NEB optimization on the
             modelled potential energy surface.
 
-        max_step: float
+        max_unc: float
             Safe control parameter. This parameter controls the degree of
             freedom of the NEB optimization in the modelled potential energy
             surface or the. If the uncertainty of the NEB lies above the
-            'max_step' threshold the NEB won't be optimized and the image
+            'max_unc' threshold the NEB won't be optimized and the image
             with maximum uncertainty is evaluated. This prevents exploring
             very uncertain regions which can lead to probe unrealistic
             structures.
@@ -334,8 +334,7 @@ class AIDNEB:
 
             self.atoms.positions = self.images[middle].get_positions()
             self.atoms.calc = self.ase_calc
-            self.atoms.get_potential_energy(
-                force_consistent=self.force_consistent)
+            self.atoms.get_potential_energy(force_consistent=self.force_consistent)
             self.atoms.get_forces()
             dump_observation(atoms=self.atoms, method='neb',
                              filename=trajectory_observations,
@@ -387,23 +386,23 @@ class AIDNEB:
 
             # 3. Optimize the NEB in the predicted PES.
             # Get path uncertainty for deciding whether NEB or CI-NEB.
-            predictions = get_neb_predictions(self.images)
-            neb_pred_uncertainty = predictions['uncertainty']
+            # predictions = get_neb_predictions(self.images)
+            # neb_pred_uncertainty = predictions['uncertainty']
 
             # Climbing image NEB mode is risky when the model is trained
             # with a few data points. Switch on climbing image (CI-NEB) only
             # when the uncertainty of the NEB is low.
             climbing_neb = False
-            if np.max(neb_pred_uncertainty) <= unc_convergence:
-                parprint('Climbing image is now activated.')
-                climbing_neb = True
-            ml_neb = NEB(self.images, climb=climbing_neb,
-                         method=self.neb_method, k=self.spring)
+            # if np.max(neb_pred_uncertainty) <= unc_convergence:
+            #     parprint('Climbing image is now activated.')
+            #     climbing_neb = True
+            ml_neb = NEB(self.images, climb=climbing_neb, method=self.neb_method, k=self.spring)
             neb_opt = MDMin(ml_neb, dt=dt, trajectory=self.trajectory)
 
             # Safe check to optimize the images.
-            if np.max(neb_pred_uncertainty) <= max_step:
-                neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
+            # if np.max(neb_pred_uncertainty) <= max_unc:
+            #     neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
+            neb_opt.run(fmax=fmax, steps=ml_steps)
 
             predictions = get_neb_predictions(self.images)
             neb_pred_energy = predictions['energy']
