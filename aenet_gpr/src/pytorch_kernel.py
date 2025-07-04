@@ -592,6 +592,8 @@ class FPKernel(BaseKernelType):
         X_indexes = get_batch_indexes_N_batch(Ntrain, X_N_batch)
 
         fp_i, dfp_dr_i = self.generate_descriptor_per_data(image=eval_image)
+        fp_i = fp_i.unsqueeze(0)
+        dfp_dr_i = dfp_dr_i.unsqueeze(0)
 
         # K_xX_i = torch.empty(((1 + self.Nmask),
         # Ntrain * (1 + self.Nmask)), dtype=self.torch_data_type, device=self.device)
