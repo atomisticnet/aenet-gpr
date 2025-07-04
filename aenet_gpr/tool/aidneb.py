@@ -344,6 +344,7 @@ class AIDNEB:
             self.step += 1
 
         weight_update = self.input_param.weight
+        user_descriptor = self.input_param.descriptor
         while True:
 
             # 0. Start from initial interpolation every 50 steps.
@@ -356,7 +357,6 @@ class AIDNEB:
             # (and/or parallel) runs.
             train_images = io.read(trajectory_observations, ':')
 
-            user_descriptor = self.input_param.descriptor
             if user_descriptor == "soap" and self.force_calls < 10:
                 self.input_param.descriptor = 'cartesian coordinates'
 
