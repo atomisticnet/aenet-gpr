@@ -273,7 +273,7 @@ class AIDNEB:
         # Save initial interpolation.
         self.initial_interpolation = self.images[:]
 
-    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=100, max_unc=2.0):
+    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=100, threshold_fmax=0.5, max_unc=2.0):
 
         """
         Executing run will start the NEB optimization process.
@@ -355,6 +355,11 @@ class AIDNEB:
             # This serves to use_previous_observations from a previous
             # (and/or parallel) runs.
             train_images = io.read(trajectory_observations, ':')
+
+            user_descriptor = self.input_param.descriptor
+            if user_descriptor == "soap" and self.force_calls < 10:
+                self.input_param.descriptor = 'cartesian coordinates'
+
             train_data = ReferenceData(structure_files=train_images,
                                        file_format='ase',
                                        device=self.input_param.device,
@@ -370,8 +375,11 @@ class AIDNEB:
 
             # 2. Prepare a calculator.
             print('Training data size: ', len(train_data.images))
+            print('Descriptor: ', self.input_param.descriptor)
+
             train_data.config_calculator(kerneltype='sqexp', scale=0.4, weight=weight_update)
             print('GPR model hyperparameters: ', train_data.calculator.hyper_params)
+
             self.model_calculator = GPRCalculator(calculator=train_data.calculator, train_data=train_data)
             weight_update = train_data.calculator.weight.clone().detach().item()
 
@@ -386,23 +394,22 @@ class AIDNEB:
 
             # 3. Optimize the NEB in the predicted PES.
             # Get path uncertainty for deciding whether NEB or CI-NEB.
-            # predictions = get_neb_predictions(self.images)
-            # neb_pred_uncertainty = predictions['uncertainty']
+            predictions = get_neb_predictions(self.images)
+            neb_pred_uncertainty = predictions['uncertainty']
 
             # Climbing image NEB mode is risky when the model is trained
             # with a few data points. Switch on climbing image (CI-NEB) only
             # when the uncertainty of the NEB is low.
             climbing_neb = False
-            # if np.max(neb_pred_uncertainty) <= unc_convergence:
-            #     parprint('Climbing image is now activated.')
-            #     climbing_neb = True
+            if np.max(neb_pred_uncertainty) <= unc_convergence:
+                parprint('Climbing image is now activated.')
+                climbing_neb = True
             ml_neb = NEB(self.images, climb=climbing_neb, method=self.neb_method, k=self.spring)
             neb_opt = MDMin(ml_neb, dt=dt, trajectory=self.trajectory)
 
             # Safe check to optimize the images.
             # if np.max(neb_pred_uncertainty) <= max_unc:
-            #     neb_opt.run(fmax=(fmax * 0.80), steps=ml_steps)
-            neb_opt.run(fmax=fmax, steps=ml_steps)
+            neb_opt.run(fmax=(fmax * 1.0), steps=ml_steps)
 
             predictions = get_neb_predictions(self.images)
             neb_pred_energy = predictions['energy']
@@ -410,20 +417,23 @@ class AIDNEB:
 
             # 5. Print output.
             max_e = np.max(neb_pred_energy)
-            pbf = max_e - self.i_endpoint.get_potential_energy(
-                force_consistent=self.force_consistent)
-            pbb = max_e - self.e_endpoint.get_potential_energy(
-                force_consistent=self.force_consistent)
+            pbf = max_e - self.i_endpoint.get_potential_energy(force_consistent=self.force_consistent)
+            pbb = max_e - self.e_endpoint.get_potential_energy(force_consistent=self.force_consistent)
+
+            max_f = get_fmax(train_images[-1])
+            if user_descriptor == "soap" and self.force_calls >= 10 and max_f < threshold_fmax:
+                self.input_param.descriptor = "soap"
+                print(">> Switching to SOAP descriptor <<")
+
             msg = "--------------------------------------------------------"
             parprint(msg)
             parprint('Step:', self.step)
-            parprint('Time:', time.strftime("%m/%d/%Y, %H:%M:%S",
-                                            time.localtime()))
+            parprint('Time:', time.strftime("%m/%d/%Y, %H:%M:%S", time.localtime()))
             parprint('Predicted barrier (-->):', pbf)
             parprint('Predicted barrier (<--):', pbb)
             parprint('Max. uncertainty:', np.max(neb_pred_uncertainty))
             parprint('Number of images:', len(self.images))
-            parprint("fmax:", get_fmax(train_images[-1]))
+            parprint("fmax:", max_f)
             msg = "--------------------------------------------------------\n"
             parprint(msg)
 
