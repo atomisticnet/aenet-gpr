@@ -14,8 +14,7 @@ except ModuleNotFoundError:
 
 from aenet_gpr.src import GPRCalculator
 from aenet_gpr.util import ReferenceData
-from aenet_gpr.tool import acquisition
-from aenet_gpr.tool import dump_observation, get_fmax
+from aenet_gpr.tool import acquisition, prepare_neb_images, dump_observation, get_fmax
 from aenet_gpr.inout.input_parameter import InputParameters
 
 
@@ -156,10 +155,18 @@ class AIDNEB:
         # Convert Atoms and list of Atoms to trajectory files.
         # if isinstance(start, Atoms):
         #     io.write('initial.traj', start)
-        #     start = 'initial.traj'
+        #     start = '00_initial.traj'
         # if isinstance(end, Atoms):
         #     io.write('final.traj', end)
-        #     end = 'final.traj'
+        #     end = '01_final.traj'
+
+        if isinstance(start, Atoms) and isinstance(end, Atoms):
+            prepare_neb_images(start, end)
+            start = '00_initial.traj'
+            end = '01_final.traj'
+        else:
+            raise ValueError("Both images must be Atoms object.")
+
         interp_path = None
         if interpolation != 'idpp' and interpolation != 'linear':
             interp_path = interpolation
