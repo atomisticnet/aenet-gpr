@@ -154,12 +154,12 @@ class AIDNEB:
         """
 
         # Convert Atoms and list of Atoms to trajectory files.
-        if isinstance(start, Atoms):
-            io.write('initial.traj', start)
-            start = 'initial.traj'
-        if isinstance(end, Atoms):
-            io.write('final.traj', end)
-            end = 'final.traj'
+        # if isinstance(start, Atoms):
+        #     io.write('initial.traj', start)
+        #     start = 'initial.traj'
+        # if isinstance(end, Atoms):
+        #     io.write('final.traj', end)
+        #     end = 'final.traj'
         interp_path = None
         if interpolation != 'idpp' and interpolation != 'linear':
             interp_path = interpolation
@@ -227,8 +227,6 @@ class AIDNEB:
         self.e_endpoint.get_forces()
 
         # Calculate the distance between the initial and final endpoints.
-        # d_start_end = sqeuclidean(self.i_endpoint.positions.flatten(),
-        #                           self.e_endpoint.positions.flatten())
         d_start_end = np.sum((self.i_endpoint.positions.flatten() -
                               self.e_endpoint.positions.flatten()) ** 2)
 
@@ -272,6 +270,9 @@ class AIDNEB:
             self.spring = 2. * (np.sqrt(self.n_images - 1) / d_start_end)
         # Save initial interpolation.
         self.initial_interpolation = self.images[:]
+
+        print('d_start_end: ', d_start_end)
+        print('spring_constant: ', self.spring)
 
     def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=100, threshold_fmax=0.5, max_unc=2.0):
 

@@ -5,12 +5,212 @@ Collection of utilities for the ASE Tools package.
 from subprocess import run, PIPE
 import numpy as np
 from copy import deepcopy
+from ase.io import read, write
 
 
-__author__ = "Alexander Urban; Jianzhou Qu"
+__author__ = "Alexander Urban; Jianzhou Qu; In Won Yeu"
 __email__ = "aurban@atomistic.net"
-__date__ = "2021-03-29"
-__version__ = "0.1"
+__date__ = "2025-07-05"
+__version__ = "1.0"
+
+
+def prepare_neb_images(atoms_init, atoms_final, output_dir='./', species=None):
+    """
+    Prepares two PBC structures for NEB by aligning periodic images and wrapping into the unit cell.
+
+    Parameters
+    ----------
+    atoms_init : Atoms
+        initial structure.
+    atoms_final : Atoms
+        final structure.
+    output_dir : str
+        Directory where the processed structures will be saved.
+    species : list or set, optional
+        Subset of species to use for alignment/wrapping.
+    """
+    from pathlib import Path
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    is_init_pbc = all(atoms_init.pbc)
+    is_final_pbc = all(atoms_final.pbc)
+
+    if is_init_pbc and is_final_pbc:
+        # Step 1: align final to initial using periodic image shift
+        aligned_final = pbc_align(atoms_final, atoms_init, species=species)
+
+        # Step 2: wrap both structures back into the unit cell
+        wrapped_init = pbc_wrap(atoms_init, species=species)
+        wrapped_final = pbc_wrap(aligned_final, species=species)
+
+    elif not is_init_pbc and not is_final_pbc:
+        # Non-periodic molecule: align by center
+        wrapped_init = deepcopy(atoms_init)
+        wrapped_final = align_molecule_centers(atoms_init, atoms_final, species=species)
+
+    else:
+        raise ValueError("Both structures must be either periodic or non-periodic.")
+
+    # Save
+    write(f"{output_dir}/00_initial.traj", wrapped_init)
+    write(f"{output_dir}/01_final.traj", wrapped_final)
+
+    print(f"NEB-ready images written to: {output_dir}/00_initial.traj and 01_final.traj")
+
+
+def pbc_wrap(atoms, species=None, translate=False, eps=1.0e-6):
+    """
+    Wrap coordinates back into the unit cell.
+
+    Arguments:
+      atoms (Atoms): Structure to be wrapped
+      species (list or set): Optional list of atomic symbols (e.g., ['O', 'H']) to use for center calculation.
+                           If None, use all atoms.
+      translate (bool): If True, translate the structure such that the geometric center of all atoms
+      (or all selected atoms if species is set) lies exactly in the center of the unit cell.
+      After wrapping, the reverse shift will be applied so that the returned structure is compatible with the input structure.
+      eps (float): Numerical precision to be used for comparison
+
+    """
+    # if not all(atoms.pbc):
+    #     return
+    # deepcopy is needed to preserve calculators
+    new_atoms = deepcopy(atoms)
+
+    if species is None:
+        species = set(new_atoms.symbols)
+    frac_coords = new_atoms.get_scaled_positions()
+
+    if translate:
+        # translate geometric center to the center of the unit cell
+        idx = [i for i, s in enumerate(new_atoms.symbols) if s in species]
+        C = np.sum(frac_coords[idx], axis=0) / len(idx)
+        shift = np.array([0.5, 0.5, 0.5]) - C
+    else:
+        shift = np.array([0.0, 0.0, 0.0])
+    frac_coords += shift
+
+    for iatom, coo in enumerate(frac_coords):
+        if new_atoms.symbols[iatom] in species:
+            for i in range(3):
+                while (coo[i] < 0.0):
+                    coo[i] += 1.0
+                while (coo[i] >= (1.0 - eps)):
+                    coo[i] -= 1.0
+    frac_coords -= shift
+    new_atoms.set_scaled_positions(frac_coords)
+
+    if hasattr(new_atoms, "calc") and new_atoms._calc is not None:
+        new_atoms._calc.atoms.positions[:] = new_atoms.positions[:]
+    return new_atoms
+
+
+def pbc_align(atoms, reference, species=None):
+    """
+    Return a new Atoms object where each atom is shifted into the same periodic image
+    as its counterpart in the reference structure.
+
+    Parameters
+    ----------
+    atoms : The structure to be aligned.
+    reference : The reference structure. Must be the same size and atom order as `atoms`.
+    species : list or set, optional
+        A list or set of atomic symbols to limit which atoms are aligned.
+        If None, all atoms are considered.
+
+    Returns
+    -------
+    aligned_atoms : Atoms
+        A new Atoms object with adjusted atomic positions such that atoms are in
+        the same periodic image as in the reference structure.
+    """
+    # if not all(atoms.pbc):
+    #     return
+    if len(atoms) != len(reference):
+        raise ValueError("Input atoms and reference must contain the same number of atoms.")
+
+    aligned_atoms = deepcopy(atoms)
+
+    if species is not None:
+        species = set(species)
+
+    recip = aligned_atoms.cell.reciprocal().T
+    cell = np.array(aligned_atoms.cell)
+
+    for i, (sym, pos_ref, pos) in enumerate(zip(reference.symbols, reference.positions, aligned_atoms.positions)):
+        if species is not None and sym not in species:
+            continue
+        # Vector from atoms to reference
+        delta = pos_ref - pos
+        # Compute how many unit cells to shift
+        shift_frac = np.round(np.dot(delta, recip))
+        # Convert back to cartesian and apply shift
+        shift_cart = np.dot(shift_frac, cell)
+        aligned_atoms.positions[i] += shift_cart
+
+    # Update calculator if present
+    if aligned_atoms._calc is not None:
+        aligned_atoms._calc.atoms.positions[:] = aligned_atoms.positions[:]
+
+    return aligned_atoms
+
+
+def align_molecule_centers(atoms_ref, atoms_target, species=None):
+    """
+    Translate `atoms_target` such that its center of geometry matches that of `atoms_ref`.
+
+    Parameters:
+    -----------
+    atoms_ref (Atoms): Reference structure
+    atoms_target (Atoms): Structure to be shifted
+    species (list or set): Optional list of atomic symbols (e.g., ['O', 'H']) to use for center calculation.
+                           If None, use all atoms.
+
+    Returns:
+    --------
+    new_atoms (Atoms): Shifted copy of `atoms_target` aligned to `atoms_ref`
+    """
+
+    new_atoms = deepcopy(atoms_target)
+
+    if species is None:
+        idx_ref = np.arange(len(atoms_ref))
+        idx_target = np.arange(len(new_atoms))
+    else:
+        idx_ref = [i for i, s in enumerate(atoms_ref.get_chemical_symbols()) if s in species]
+        idx_target = [i for i, s in enumerate(new_atoms.get_chemical_symbols()) if s in species]
+
+    # Compute centers
+    center_ref = atoms_ref.get_positions()[idx_ref].mean(axis=0)
+    center_target = new_atoms.get_positions()[idx_target].mean(axis=0)
+
+    shift = center_ref - center_target
+    new_atoms.translate(shift)
+
+    if hasattr(new_atoms, "calc") and new_atoms._calc is not None:
+        new_atoms._calc.atoms.positions[:] = new_atoms.positions[:]
+
+    return new_atoms
+
+
+def runcmd(command, maxtime=300):
+    """
+    Run cmd command based on `bash`.
+    Args:
+        command: String
+            Can be the same way in command line.
+        maxtime: Int
+            The maximum time (second) for running this command.
+    """
+    runit = run(
+        command, stdout=PIPE, stderr=PIPE, shell=True, encoding="utf-8",
+        executable="/bin/bash", timeout=maxtime
+    )
+    if runit.returncode == 0:
+        print("Succeed to run command", command)
+    else:
+        print("Error:", runit)
+    return None
 
 
 def csv2list(csvlist):
@@ -45,32 +245,6 @@ def csv2list(csvlist):
     return lst
 
 
-def pbc_align(atoms, reference, species=None):
-    """
-    Align an atomic structure with a reference by ensuring that the same
-    periodic images of all atoms are used.
-
-    Arguments:
-      atoms (Atoms): Structure to be aligned
-      reference (Atoms): Reference structure to be aligned with
-      species (list): list of chemical symbols of the species that should
-        be considered for alignment
-
-    """
-    if not all(atoms.pbc):
-        return
-    for i, coo in enumerate(reference.positions):
-        if species is not None and atoms.symbols[i] not in species:
-            continue
-        vec = coo - atoms.positions[i]
-        vec = np.round(np.dot(vec, atoms.cell.reciprocal().T))
-        vec = np.dot(vec, np.array(atoms.cell))
-        atoms.positions[i] += vec
-    if atoms._calc is not None:
-        atoms._calc.atoms.positions[:] = atoms.positions[:]
-    return atoms
-
-
 def pbc_group(atoms, atom_groups):
     """
     Select periodic images of grouped atoms such that all grouped atoms
@@ -98,68 +272,3 @@ def pbc_group(atoms, atom_groups):
     if atoms._calc is not None:
         atoms._calc.atoms.positions[:] = atoms.positions[:]
     return atoms
-
-
-def pbc_wrap(atoms, species=None, translate=False, eps=1.0e-6):
-    """
-    Wrap coordinates back into the unit cell.
-
-    Arguments:
-      atoms (Atoms): Structure to be wrapped
-      species (list): List of chemical symbols that should be considered
-        for wrapping
-      translate (bool): If True, translate the structure such that the
-        geometric center of all atoms (or all selected atoms if species is
-        set) lies exactly in the center of the unit cell.  After wrapping,
-        the reverse shift will be applied so that the returned structure
-        is compatible with the input structure.
-      eps (float): Numerical precision to be used for comparison
-
-    """
-    if not all(atoms.pbc):
-        return
-    # deepcopy is needed to preserve calculators
-    new_atoms = deepcopy(atoms)
-    if species is None:
-        species = set(new_atoms.symbols)
-    frac_coords = new_atoms.get_scaled_positions()
-    if translate:
-        # translate geometric center to the center of the unit cell
-        idx = [i for i, s in enumerate(new_atoms.symbols) if s in species]
-        C = np.sum(frac_coords[idx], axis=0) / len(idx)
-        shift = np.array([0.5, 0.5, 0.5]) - C
-    else:
-        shift = np.array([0.0, 0.0, 0.0])
-    frac_coords += shift
-    for iatom, coo in enumerate(frac_coords):
-        if new_atoms.symbols[iatom] in species:
-            for i in range(3):
-                while (coo[i] < 0.0):
-                    coo[i] += 1.0
-                while (coo[i] >= (1.0 - eps)):
-                    coo[i] -= 1.0
-    frac_coords -= shift
-    new_atoms.set_scaled_positions(frac_coords)
-    if new_atoms._calc is not None:
-        new_atoms._calc.atoms.positions[:] = new_atoms.positions[:]
-    return new_atoms
-
-
-def runcmd(command, maxtime=300):
-    """
-    Run cmd command based on `bash`.
-    Args:
-        command: String
-            Can be the same way in command line.
-        maxtime: Int
-            The maximum time (second) for running this command.
-    """
-    runit = run(
-        command, stdout=PIPE, stderr=PIPE, shell=True, encoding="utf-8",
-        executable="/bin/bash", timeout=maxtime
-    )
-    if runit.returncode == 0:
-        print("Succeed to run command", command)
-    else:
-        print("Error:", runit)
-    return None
