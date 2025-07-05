@@ -357,7 +357,7 @@ class AIDNEB:
             # (and/or parallel) runs.
             train_images = io.read(trajectory_observations, ':')
 
-            if user_descriptor == "soap" and self.force_calls < 10:
+            if user_descriptor == "soap" and len(train_data.images) < 15:
                 self.input_param.descriptor = 'cartesian coordinates'
 
             train_data = ReferenceData(structure_files=train_images,
@@ -405,7 +405,7 @@ class AIDNEB:
                 parprint('Climbing image is now activated.')
                 climbing_neb = True
             ml_neb = NEB(self.images, climb=climbing_neb, method=self.neb_method, k=self.spring)
-            neb_opt = MDMin(ml_neb, dt=dt, trajectory=self.trajectory)
+            neb_opt = FIRE(ml_neb, trajectory=self.trajectory)
 
             # Safe check to optimize the images.
             # if np.max(neb_pred_uncertainty) <= max_unc:
@@ -421,7 +421,7 @@ class AIDNEB:
             pbb = max_e - self.e_endpoint.get_potential_energy(force_consistent=self.force_consistent)
 
             max_f = get_fmax(train_images[-1])
-            if user_descriptor == "soap" and self.force_calls >= 10 and max_f < threshold_fmax:
+            if user_descriptor == "soap" and len(train_data.images) >= 15 and max_f < threshold_fmax:
                 self.input_param.descriptor = "soap"
                 print(">> Switching to SOAP descriptor <<")
 
