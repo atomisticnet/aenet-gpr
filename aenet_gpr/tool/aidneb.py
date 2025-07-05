@@ -365,7 +365,7 @@ class AIDNEB:
             # (and/or parallel) runs.
             train_images = io.read(trajectory_observations, ':')
 
-            if user_descriptor == "soap" and len(train_data.images) < 15:
+            if user_descriptor == "soap" and len(train_images) < 15:
                 self.input_param.descriptor = 'cartesian coordinates'
 
             train_data = ReferenceData(structure_files=train_images,
@@ -382,7 +382,7 @@ class AIDNEB:
             train_data.standardize_energy_force(train_data.energy)
 
             # 2. Prepare a calculator.
-            print('Training data size: ', len(train_data.images))
+            print('Training data size: ', len(train_images))
             print('Descriptor: ', self.input_param.descriptor)
 
             train_data.config_calculator(kerneltype='sqexp', scale=0.4, weight=weight_update)
@@ -429,7 +429,7 @@ class AIDNEB:
             pbb = max_e - self.e_endpoint.get_potential_energy(force_consistent=self.force_consistent)
 
             max_f = get_fmax(train_images[-1])
-            if user_descriptor == "soap" and len(train_data.images) >= 15 and max_f < threshold_fmax:
+            if user_descriptor == "soap" and len(train_images) >= 15 and max_f < threshold_fmax:
                 self.input_param.descriptor = "soap"
                 print(">> Switching to SOAP descriptor <<")
 
