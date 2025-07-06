@@ -281,7 +281,7 @@ class AIDNEB:
         print('d_start_end: ', d_start_end)
         print('spring_constant: ', self.spring)
 
-    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=100, threshold=0.5, max_unc=1.0):
+    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=100, threshold=0.5, max_unc_trheshold=1.0):
 
         """
         Executing run will start the NEB optimization process.
@@ -304,11 +304,11 @@ class AIDNEB:
             Maximum number of steps for the NEB optimization on the
             modelled potential energy surface.
 
-        max_unc: float
+        max_unc_trheshold: float
             Safe control parameter. This parameter controls the degree of
             freedom of the NEB optimization in the modelled potential energy
             surface or the. If the uncertainty of the NEB lies above the
-            'max_unc' threshold the NEB won't be optimized and the image
+            'max_unc_trheshold' threshold the NEB won't be optimized and the image
             with maximum uncertainty is evaluated. This prevents exploring
             very uncertain regions which can lead to probe unrealistic
             structures.
@@ -367,6 +367,9 @@ class AIDNEB:
 
             if user_descriptor == "soap" and len(train_images) < 15:
                 self.input_param.descriptor = 'cartesian coordinates'
+            else:
+                print("The uncertainty of the NEB lies above the max_unc threshold (1.0).")
+                print("NEB won't be optimized and the image with maximum uncertainty is just evaluated and added")
 
             train_data = ReferenceData(structure_files=train_images,
                                        file_format='ase',
@@ -416,7 +419,7 @@ class AIDNEB:
             neb_opt = FIRE(ml_neb, trajectory=self.trajectory)
 
             # Safe check to optimize the images.
-            if np.max(neb_pred_uncertainty) <= max_unc:
+            if np.max(neb_pred_uncertainty) <= max_unc_trheshold:
                 neb_opt.run(fmax=(fmax * 1.0), steps=ml_steps)
 
             predictions = get_neb_predictions(self.images)
