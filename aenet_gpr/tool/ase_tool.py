@@ -36,24 +36,24 @@ def prepare_neb_images(atoms_init, atoms_final, output_dir='./', species=None):
     is_final_pbc = all(atoms_final.pbc)
 
     if is_init_pbc and is_final_pbc:
-        # Step 1: align final to initial using periodic image shift
-        aligned_final = pbc_align(atoms_final, atoms_init, species=species)
-
-        # Step 2: wrap both structures back into the unit cell
+        # Step 1: wrap both structures back into the unit cell
         wrapped_init = pbc_wrap(atoms_init, species=species)
-        wrapped_final = pbc_wrap(aligned_final, species=species)
+        wrapped_final = pbc_wrap(atoms_final, species=species)
+
+        # Step 2: Match periodic images
+        matched_final = pbc_match_images(wrapped_final, wrapped_init)
 
     elif not is_init_pbc and not is_final_pbc:
         # Non-periodic molecule: align by center
         wrapped_init = deepcopy(atoms_init)
-        wrapped_final = align_molecule_centers(atoms_init, atoms_final, species=species)
+        matched_final = align_molecule_centers(atoms_init, atoms_final, species=species)
 
     else:
         raise ValueError("Both structures must be either periodic or non-periodic.")
 
     # Save
     write(f"{output_dir}/00_initial.traj", wrapped_init)
-    write(f"{output_dir}/01_final.traj", wrapped_final)
+    write(f"{output_dir}/01_final.traj", matched_final)
 
     print(f"NEB-ready images written to: {output_dir}/00_initial.traj and 01_final.traj")
 
@@ -149,6 +149,55 @@ def pbc_align(atoms, reference, species=None):
         aligned_atoms.positions[i] += shift_cart
 
     # Update calculator if present
+    if aligned_atoms._calc is not None:
+        aligned_atoms._calc.atoms.positions[:] = aligned_atoms.positions[:]
+
+    return aligned_atoms
+
+
+def pbc_match_images(atoms, reference, species=None):
+    """
+    Adjust atoms' positions such that each selected atom is moved to the periodic image
+    closest to its counterpart in the reference structure.
+
+    Parameters
+    ----------
+    atoms : Atoms
+        Structure to be shifted.
+    reference : Atoms
+        Reference structure (same length and atomic order).
+    species : list or set, optional
+        Only atoms with matching chemical symbols will be shifted.
+        If None, all atoms are considered.
+
+    Returns
+    -------
+    aligned_atoms : Atoms
+        Atoms object with positions adjusted to match reference images.
+    """
+    if not all(atoms.pbc):
+        raise ValueError("pbc_match_images requires full periodic boundary conditions.")
+
+    if len(atoms) != len(reference):
+        raise ValueError("atoms and reference must contain the same number of atoms.")
+
+    if species is not None:
+        species = set(species)
+
+    aligned_atoms = deepcopy(atoms)
+    cell = np.array(atoms.cell)
+    recip = atoms.cell.reciprocal().T  # reciprocal lattice vectors
+
+    for i in range(len(atoms)):
+        if species is not None and atoms.symbols[i] not in species:
+            continue  # skip atoms not in species list
+
+        delta = reference.positions[i] - aligned_atoms.positions[i]
+        shift_frac = np.round(np.dot(delta, recip))  # periodic shift in fractional coordinates
+        shift_cart = np.dot(shift_frac, cell)  # convert back to Cartesian
+        aligned_atoms.positions[i] += shift_cart
+
+    # Update attached calculator if necessary
     if aligned_atoms._calc is not None:
         aligned_atoms._calc.atoms.positions[:] = aligned_atoms.positions[:]
 

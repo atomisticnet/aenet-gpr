@@ -244,7 +244,8 @@ class AIDNEB:
             if self. n_images <= 3:
                 self.n_images = 3
             self.images = make_neb(self)
-            self.spring = 1. * np.sqrt(self.n_images - 1) / d_start_end  # 1 or 2?
+            raw_spring = 1. * np.sqrt(self.n_images - 1) / np.sqrt(d_start_end)  # 1 or 2?
+            self.spring = np.clip(raw_spring, 0.05, 0.15)
 
             neb_interpolation = NEB(self.images, climb=False, k=self.spring,
                                     method=self.neb_method,
@@ -274,11 +275,12 @@ class AIDNEB:
 
         # Guess spring constant (k) if not defined by the user.
         if self.spring is None:
-            self.spring = 1. * (np.sqrt(self.n_images - 1) / d_start_end)  # 1 or 2?
+            raw_spring = 1. * np.sqrt(self.n_images - 1) / np.sqrt(d_start_end)  # 1 or 2?
+            self.spring = np.clip(raw_spring, 0.05, 0.15)
         # Save initial interpolation.
         self.initial_interpolation = self.images[:]
 
-        print('d_start_end: ', d_start_end)
+        print('d_start_end: ', np.sqrt(d_start_end))
         print('spring_constant: ', self.spring)
 
     def run(self, fmax=0.05, unc_convergence=0.05, dt=0.1, ml_steps=100, optimizer="fire", max_unc_trheshold=1.0):
@@ -455,8 +457,7 @@ class AIDNEB:
             parprint(msg)
 
             # 6. Check convergence.
-            # Max.forces and NEB images uncertainty must be below *fmax* and
-            # *unc_convergence* thresholds.
+            # Max.forces and NEB images uncertainty must be below *fmax* and *unc_convergence* thresholds.
             if len(train_images) > 2 and get_fmax(train_images[-1]) <= fmax:
                 parprint('A saddle point was found.')
                 if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
@@ -470,7 +471,6 @@ class AIDNEB:
                     break
 
             # 7. Select next point to train (acquisition function):
-
             # Candidates are the optimized NEB images in the predicted PES.
             candidates = copy.deepcopy(self.images)[1:-1]
 
