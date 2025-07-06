@@ -281,7 +281,7 @@ class AIDNEB:
         print('d_start_end: ', d_start_end)
         print('spring_constant: ', self.spring)
 
-    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=100, threshold=0.5, max_unc_trheshold=1.0):
+    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.1, ml_steps=100, optimizer="fire", max_unc_trheshold=1.0):
 
         """
         Executing run will start the NEB optimization process.
@@ -365,11 +365,8 @@ class AIDNEB:
             # (and/or parallel) runs.
             train_images = io.read(trajectory_observations, ':')
 
-            if user_descriptor == "soap" and len(train_images) < 15:
-                self.input_param.descriptor = 'cartesian coordinates'
-            else:
-                print("The uncertainty of the NEB lies above the max_unc threshold (1.0).")
-                print("NEB won't be optimized and the image with maximum uncertainty is just evaluated and added")
+            # if user_descriptor == "soap" and len(train_images) < 15:
+            #     self.input_param.descriptor = 'cartesian coordinates'
 
             train_data = ReferenceData(structure_files=train_images,
                                        file_format='ase',
@@ -415,12 +412,19 @@ class AIDNEB:
             if np.max(neb_pred_uncertainty) <= unc_convergence:
                 parprint('Climbing image is now activated.')
                 climbing_neb = True
+
             ml_neb = NEB(self.images, climb=climbing_neb, method=self.neb_method, k=self.spring)
-            neb_opt = FIRE(ml_neb, trajectory=self.trajectory)
+            if optimizer.lower() == 'mdmin':
+                neb_opt = MDMin(ml_neb, dt=dt, trajectory=self.trajectory)
+            else:
+                neb_opt = FIRE(ml_neb, trajectory=self.trajectory)
 
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_unc_trheshold:
                 neb_opt.run(fmax=(fmax * 1.0), steps=ml_steps)
+            else:
+                print("The uncertainty of the NEB lies above the max_unc threshold (1.0).")
+                print("NEB won't be optimized and the image with maximum uncertainty is just evaluated and added")
 
             predictions = get_neb_predictions(self.images)
             neb_pred_energy = predictions['energy']
@@ -433,10 +437,10 @@ class AIDNEB:
             max_unc = np.max(neb_pred_uncertainty)
 
             max_f = get_fmax(train_images[-1])
-            if self.input_param.descriptor == 'cartesian coordinates':
-                if user_descriptor == "soap" and len(train_images) >= 15 and max_f < threshold and max_unc < threshold:
-                    self.input_param.descriptor = "soap"
-                    print(">> Switching to SOAP descriptor <<")
+            # if self.input_param.descriptor == 'cartesian coordinates':
+            #     if user_descriptor == "soap" and len(train_images) >= 15 and max_f < threshold and max_unc < threshold:
+            #         self.input_param.descriptor = "soap"
+            #         print(">> Switching to SOAP descriptor <<")
 
             msg = "--------------------------------------------------------"
             parprint(msg)
