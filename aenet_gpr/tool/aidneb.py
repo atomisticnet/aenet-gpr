@@ -244,7 +244,7 @@ class AIDNEB:
             if self. n_images <= 3:
                 self.n_images = 3
             self.images = make_neb(self)
-            self.spring = 2. * np.sqrt(self.n_images - 1) / d_start_end
+            self.spring = 1. * np.sqrt(self.n_images - 1) / d_start_end  # 1 or 2?
 
             neb_interpolation = NEB(self.images, climb=False, k=self.spring,
                                     method=self.neb_method,
@@ -274,14 +274,14 @@ class AIDNEB:
 
         # Guess spring constant (k) if not defined by the user.
         if self.spring is None:
-            self.spring = 2. * (np.sqrt(self.n_images - 1) / d_start_end)
+            self.spring = 1. * (np.sqrt(self.n_images - 1) / d_start_end)  # 1 or 2?
         # Save initial interpolation.
         self.initial_interpolation = self.images[:]
 
         print('d_start_end: ', d_start_end)
         print('spring_constant: ', self.spring)
 
-    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=100, threshold_fmax=0.5, max_unc=2.0):
+    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=100, threshold=0.5, max_unc=1.0):
 
         """
         Executing run will start the NEB optimization process.
@@ -416,8 +416,8 @@ class AIDNEB:
             neb_opt = FIRE(ml_neb, trajectory=self.trajectory)
 
             # Safe check to optimize the images.
-            # if np.max(neb_pred_uncertainty) <= max_unc:
-            neb_opt.run(fmax=(fmax * 1.0), steps=ml_steps)
+            if np.max(neb_pred_uncertainty) <= max_unc:
+                neb_opt.run(fmax=(fmax * 1.0), steps=ml_steps)
 
             predictions = get_neb_predictions(self.images)
             neb_pred_energy = predictions['energy']
@@ -427,11 +427,13 @@ class AIDNEB:
             max_e = np.max(neb_pred_energy)
             pbf = max_e - self.i_endpoint.get_potential_energy(force_consistent=self.force_consistent)
             pbb = max_e - self.e_endpoint.get_potential_energy(force_consistent=self.force_consistent)
+            max_unc = np.max(neb_pred_uncertainty)
 
             max_f = get_fmax(train_images[-1])
-            if user_descriptor == "soap" and len(train_images) >= 15 and max_f < threshold_fmax:
-                self.input_param.descriptor = "soap"
-                print(">> Switching to SOAP descriptor <<")
+            if self.input_param.descriptor == 'cartesian coordinates':
+                if user_descriptor == "soap" and len(train_images) >= 15 and max_f < threshold and max_unc < threshold:
+                    self.input_param.descriptor = "soap"
+                    print(">> Switching to SOAP descriptor <<")
 
             msg = "--------------------------------------------------------"
             parprint(msg)
@@ -439,7 +441,7 @@ class AIDNEB:
             parprint('Time:', time.strftime("%m/%d/%Y, %H:%M:%S", time.localtime()))
             parprint('Predicted barrier (-->):', pbf)
             parprint('Predicted barrier (<--):', pbb)
-            parprint('Max. uncertainty:', np.max(neb_pred_uncertainty))
+            parprint('Max. uncertainty:', max_unc)
             parprint('Number of images:', len(self.images))
             parprint("fmax:", max_f)
             msg = "--------------------------------------------------------\n"
