@@ -14,7 +14,7 @@ __date__ = "2025-07-05"
 __version__ = "1.0"
 
 
-def prepare_neb_images(atoms_init, atoms_final, output_dir='./', species=None):
+def prepare_neb_images(atoms_init, atoms_final, species=None, pair1=(0, 1), pair2=(0, 2)):
     """
     Prepares two PBC structures for NEB by aligning periodic images and wrapping into the unit cell.
 
@@ -24,38 +24,34 @@ def prepare_neb_images(atoms_init, atoms_final, output_dir='./', species=None):
         initial structure.
     atoms_final : Atoms
         final structure.
-    output_dir : str
-        Directory where the processed structures will be saved.
     species : list or set, optional
         Subset of species to use for alignment/wrapping.
+    pair1 : tuple, list or set, optional
+        (a, b): main direction vector to align with z-axis
+    pair2 : tuple, list or set, optional
+        (a, c): secondary vector to define the xz-plane
     """
-    from pathlib import Path
-    Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     is_init_pbc = all(atoms_init.pbc)
     is_final_pbc = all(atoms_final.pbc)
 
     if is_init_pbc and is_final_pbc:
         # Step 1: wrap both structures back into the unit cell
-        wrapped_init = pbc_wrap(atoms_init, species=species)
-        wrapped_final = pbc_wrap(atoms_final, species=species)
+        aligned_init = pbc_wrap(atoms_init, species=species)
+        aligned_final = pbc_wrap(atoms_final, species=species)
 
         # Step 2: Match periodic images
-        matched_final = pbc_match_images(wrapped_final, wrapped_init)
+        aligned_final = pbc_match_images(aligned_final, aligned_init)
 
     elif not is_init_pbc and not is_final_pbc:
         # Non-periodic molecule: align by center
-        wrapped_init = deepcopy(atoms_init)
-        matched_final = align_molecule_centers(atoms_init, atoms_final, species=species)
+        aligned_init = align_molecule_by_two_vectors(atoms_init, pair1=pair1, pair2=pair2)
+        aligned_final = align_molecule_by_two_vectors(atoms_final, pair1=pair1, pair2=pair2)
 
     else:
         raise ValueError("Both structures must be either periodic or non-periodic.")
 
-    # Save
-    write(f"{output_dir}/00_initial.traj", wrapped_init)
-    write(f"{output_dir}/01_final.traj", matched_final)
-
-    print(f"NEB-ready images written to: {output_dir}/00_initial.traj and 01_final.traj")
+    return aligned_init, aligned_final
 
 
 def pbc_wrap(atoms, species=None, translate=False, eps=1.0e-6):
@@ -202,6 +198,37 @@ def pbc_match_images(atoms, reference, species=None):
         aligned_atoms._calc.atoms.positions[:] = aligned_atoms.positions[:]
 
     return aligned_atoms
+
+
+def align_molecule_by_two_vectors(atoms_target, pair1, pair2):
+    """
+    Align atoms_target using two direction vectors:
+    - pair1 = (a, b): main direction vector to align with z-axis
+    - pair2 = (a, c): secondary vector to define the xz-plane
+    Also moves atom a to origin.
+    """
+    a, b = pair1
+    _, c = pair2
+
+    new_atoms = deepcopy(atoms_target)
+    pos = new_atoms.get_positions()
+
+    # Compute local frame in target
+    v1 = pos[b] - pos[a]  # main direction (to z)
+    v2 = pos[c] - pos[a]  # secondary direction
+
+    z_axis = v1 / np.linalg.norm(v1)
+    x_temp = v2 - np.dot(v2, z_axis) * z_axis  # project v2 to plane orthogonal to z
+    x_axis = x_temp / np.linalg.norm(x_temp)
+    y_axis = np.cross(z_axis, x_axis)
+
+    R = np.vstack([x_axis, y_axis, z_axis]).T  # rotation matrix from local to global frame
+
+    # Apply inverse rotation to align local frame to global axes
+    rotated = (pos - pos[a]) @ R
+    new_atoms.set_positions(rotated)
+
+    return new_atoms
 
 
 def align_molecule_centers(atoms_ref, atoms_target, species=None):
