@@ -155,10 +155,10 @@ class AIDNEB:
         # Convert Atoms and list of Atoms to trajectory files.
         if isinstance(start, Atoms):
             io.write('initial.traj', start)
-            start = '00_initial.traj'
+            start = 'initial.traj'
         if isinstance(end, Atoms):
             io.write('final.traj', end)
-            end = '01_final.traj'
+            end = 'final.traj'
 
         # if isinstance(start, Atoms) and isinstance(end, Atoms):
         #     prepare_neb_images(start, end)
