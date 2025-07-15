@@ -266,12 +266,15 @@ class AIDNEB:
             images_path = io.read(interp_path, ':')
             first_image = images_path[0].get_positions().reshape(-1)
             last_image = images_path[-1].get_positions().reshape(-1)
+
             is_pos = self.i_endpoint.get_positions().reshape(-1)
             fs_pos = self.e_endpoint.get_positions().reshape(-1)
+
             if not np.array_equal(first_image, is_pos):
                 images_path.insert(0, self.i_endpoint)
             if not np.array_equal(last_image, fs_pos):
                 images_path.append(self.e_endpoint)
+
             self.n_images = len(images_path)
             self.images = make_neb(self, images_interpolation=images_path)
 
@@ -285,7 +288,7 @@ class AIDNEB:
         print('d_start_end: ', np.sqrt(d_start_end))
         print('spring_constant: ', self.spring)
 
-    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.1, ml_steps=200, optimizer="MDMin", max_unc_trheshold=1.0):
+    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=200, optimizer="MDMin", max_unc_trheshold=1.0):
 
         """
         Executing run will start the NEB optimization process.
@@ -389,7 +392,18 @@ class AIDNEB:
             print('Training data size: ', len(train_images))
             print('Descriptor: ', self.input_param.descriptor)
 
-            train_data.config_calculator(kerneltype='sqexp', scale=0.4, weight=weight_update)
+            train_data.config_calculator(kerneltype='sqexp',
+                                         scale=self.input_param.scale,
+                                         weight=weight_update,
+                                         noise=self.input_param.noise,
+                                         noisefactor=self.input_param.noisefactor,
+                                         use_forces=self.input_param.use_forces,
+                                         sparse=self.input_param.sparse,
+                                         sparse_derivative=self.input_param.sparse_derivative,
+                                         autograd=self.input_param.autograd,
+                                         train_batch_size=self.input_param.train_batch_size,
+                                         eval_batch_size=self.input_param.eval_batch_size)
+
             print('GPR model hyperparameters: ', train_data.calculator.hyper_params)
 
             self.model_calculator = GPRCalculator(calculator=train_data.calculator, train_data=train_data)
@@ -425,7 +439,7 @@ class AIDNEB:
 
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_unc_trheshold:
-                neb_opt.run(fmax=(fmax * 1.0), steps=ml_steps)
+                neb_opt.run(fmax=(fmax * 0.8), steps=ml_steps)
             else:
                 print("The uncertainty of the NEB lies above the max_unc threshold (1.0).")
                 print("NEB won't be optimized and the image with maximum uncertainty is just evaluated and added")
