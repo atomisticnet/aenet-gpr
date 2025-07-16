@@ -4,7 +4,7 @@ import time
 
 from ase import io
 from ase.atoms import Atoms
-from ase.optimize import MDMin, FIRE
+from ase.optimize import FIRE, MDMin, LBFGS, BFGS
 from ase.parallel import parprint, parallel_function
 
 try:
@@ -288,7 +288,7 @@ class AIDNEB:
         print('d_start_end: ', np.sqrt(d_start_end))
         print('spring_constant: ', self.spring)
 
-    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=200, optimizer="MDMin", max_unc_trheshold=1.0):
+    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=200, optimizer="FIRE", max_unc_trheshold=1.0):
 
         """
         Executing run will start the NEB optimization process.
@@ -432,10 +432,15 @@ class AIDNEB:
                 climbing_neb = True
 
             ml_neb = NEB(self.images, climb=climbing_neb, method=self.neb_method, k=self.spring)
-            if optimizer.lower() == 'fire':
-                neb_opt = FIRE(ml_neb, dt=dt, trajectory=self.trajectory)
+            # FIRE, MDMin, LBFGS, BFGS
+            if optimizer.lower() == 'mdmin':
+                neb_opt = MDMin(ml_neb, dt=dt, trajectory=self.trajectory)
+            elif optimizer.lower() == 'lbfgs':
+                neb_opt = LBFGS(ml_neb, trajectory=self.trajectory)
+            elif optimizer.lower() == 'bfgs':
+                neb_opt = BFGS(ml_neb, trajectory=self.trajectory)
             else:
-                neb_opt = MDMin(ml_neb, trajectory=self.trajectory)
+                neb_opt = FIRE(ml_neb, dt=dt, trajectory=self.trajectory)
 
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_unc_trheshold:
