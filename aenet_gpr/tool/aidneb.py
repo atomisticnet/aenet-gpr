@@ -247,7 +247,7 @@ class AIDNEB:
             raw_spring = 1. * np.sqrt(self.n_images - 1) / np.sqrt(d_start_end)  # 1 or 2?
             # np.sqrt(self.n_images - 1): 3~5
             # d_start_end: 3~10
-            self.spring = np.clip(raw_spring, 0.05, 0.15)
+            self.spring = np.clip(raw_spring, 0.05, 0.1)
 
             neb_interpolation = NEB(self.images, climb=False, k=self.spring,
                                     method=self.neb_method,
@@ -444,7 +444,7 @@ class AIDNEB:
 
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_unc_trheshold:
-                neb_opt.run(fmax=(fmax * 0.8), steps=ml_steps)
+                neb_opt.run(fmax=(fmax * 1.0), steps=ml_steps)
             else:
                 print("The uncertainty of the NEB lies above the max_unc threshold (1.0).")
                 print("NEB won't be optimized and the image with maximum uncertainty is just evaluated and added")
