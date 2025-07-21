@@ -319,10 +319,10 @@ class FPKernel(BaseKernelType):
             X1.shape[0] * self.Nmask, X2.shape[0] * self.Nmask))
 
         # intermediate_result = torch.einsum('xcbf,yndf->xycnbd', dX1_reshaped, dX2_reshaped)
-        K_X1X2[X1.shape[0]:, X2.shape[0]:].add_(torch.einsum('xycn,xycnbd->xybd', __k_X1X2 / self.scale ** 2,
-                                                             torch.einsum('xcbf,yndf->xycnbd', dX1_reshaped,
-                                                                          dX2_reshaped)).permute(0, 2, 1,
-                                                                                                 3).contiguous().view(
+        K_X1X2[X1.shape[0]:, X2.shape[0]:].subtract_(torch.einsum('xycn,xycnbd->xybd', __k_X1X2 / self.scale ** 2,
+                                                                  torch.einsum('xcbf,yndf->xycnbd', dX1_reshaped,
+                                                                               dX2_reshaped)).permute(0, 2, 1,
+                                                                                                      3).contiguous().view(
             X1.shape[0] * self.Nmask, X2.shape[0] * self.Nmask))
 
         del X1_expanded, X2_expanded, __k_X1X2, __k_X2X1, X1__outer_minus__X2, X2__outer_minus__X1, \
@@ -408,7 +408,7 @@ class FPKernel(BaseKernelType):
         C1 = torch.einsum('cn,cnbd->bd',
                           k / self.scale ** 2,
                           intermediate_result)
-        kernel[1:, 1:] = C0 + C1
+        kernel[1:, 1:] = C0 - C1
 
         if iter % 10 == 9:
             del X1_expanded, X2_expanded, X1_outer_minus_X2, X2_outer_minus_X1, k, intermediate_result, \
