@@ -228,7 +228,7 @@ class FPKernel(BaseKernelType):
         # K_X1X2[X1.shape[0]:, :X2.shape[0]] = kernel.permute(0, 2, 1).reshape(X1.shape[0] * 3 * self.Natom, X2.shape[0])
         # K_X1X2[X1.shape[0]:, :X2.shape[0]].copy_(
         #     kernel.permute(0, 2, 1).contiguous().view(X1.shape[0] * 3 * self.Natom, X2.shape[0]))
-        K_X1X2[X1.shape[0]:, :X2.shape[0]].copy_(torch.einsum('xycn,xycnd->xyd', -1 * __k_X1X2 / self.scale ** 2,
+        K_X1X2[X1.shape[0]:, :X2.shape[0]].copy_(torch.einsum('xycn,xycnd->xyd', __k_X1X2 / self.scale ** 2,
                                                               torch.einsum('xycnf,xcdf->xycnd', X1__outer_minus__X2,
                                                                            dX1_reshaped)).permute(0, 2,
                                                                                                   1).contiguous().view(
@@ -247,7 +247,7 @@ class FPKernel(BaseKernelType):
         # K_X1X2[:X1.shape[0], X2.shape[0]:] = kernel.reshape(X1.shape[0], X2.shape[0] * 3 * self.Natom)
         # K_X1X2[:X1.shape[0], X2.shape[0]:].copy_(
         #     kernel.view(X1.shape[0], X2.shape[0] * 3 * self.Natom))
-        K_X1X2[:X1.shape[0], X2.shape[0]:].copy_(torch.einsum('xycn,xycnd->xyd', -1 * __k_X2X1 / self.scale ** 2,
+        K_X1X2[:X1.shape[0], X2.shape[0]:].copy_(torch.einsum('xycn,xycnd->xyd', __k_X2X1 / self.scale ** 2,
                                                               torch.einsum('xycnf,yndf->xycnd', X2__outer_minus__X1,
                                                                            dX2_reshaped)).view(X1.shape[0], X2.shape[
             0] * self.Nmask))
@@ -362,7 +362,7 @@ class FPKernel(BaseKernelType):
                                                        self.Nmask,
                                                        Nfeature))
         kernel[1:, 0] = torch.einsum('cn,cna->a',
-                                     -k / self.scale ** 2,
+                                     k / self.scale ** 2,
                                      intermediate_result)
 
         # Evaluate the first row of kernel using einsum
@@ -372,7 +372,7 @@ class FPKernel(BaseKernelType):
                                                        self.Nmask,
                                                        Nfeature))
         kernel[0, 1:] = torch.einsum('cn,cna->a',
-                                     -k / self.scale ** 2,
+                                     k / self.scale ** 2,
                                      intermediate_result)
 
         # [Ncenter, Nfeature] * [Ncenter, Natom * 3, Nfeature]

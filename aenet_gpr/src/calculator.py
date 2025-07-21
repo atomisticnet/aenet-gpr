@@ -29,7 +29,7 @@ class GPRCalculator(Calculator):
         energy_gpr = pred[0]
         if self.train_data.mask_constraints:
             force_gpr = torch.zeros((len(atoms) * 3), dtype=pred.dtype)
-            force_gpr[self.train_data.atoms_mask] = -pred[1:]
+            force_gpr[self.train_data.atoms_mask] = pred[1:]
             force_gpr = force_gpr.view(len(atoms), 3)
         else:
             force_gpr = pred[1:].view(len(atoms), 3)
