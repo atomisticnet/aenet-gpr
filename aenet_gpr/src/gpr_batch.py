@@ -384,9 +384,9 @@ class GaussianProcess(nn.Module):
                     data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
                     E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
                     if self.atoms_mask is not None:
-                        F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], self.atoms_mask] = pred[data_per_batch:].view(data_per_batch, -1)
+                        F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], self.atoms_mask] = -pred[data_per_batch:].view(data_per_batch, -1)
                     else:
-                        F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = pred[data_per_batch:].view(data_per_batch, -1)
+                        F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = -pred[data_per_batch:].view(data_per_batch, -1)
 
                 return E_hat, F_hat.view((Ntest, self.Natom, 3)), None
 
@@ -411,9 +411,9 @@ class GaussianProcess(nn.Module):
                     data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
                     E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
                     if self.atoms_mask is not None:
-                        F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], self.atoms_mask] = pred[data_per_batch:].view(data_per_batch, -1)
+                        F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], self.atoms_mask] = -pred[data_per_batch:].view(data_per_batch, -1)
                     else:
-                        F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = pred[data_per_batch:].view(data_per_batch, -1)
+                        F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = -pred[data_per_batch:].view(data_per_batch, -1)
 
                     uncertainty[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = torch.sqrt(torch.diagonal(var)[0:data_per_batch]) / self.weight
 

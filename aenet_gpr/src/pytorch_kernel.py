@@ -228,7 +228,7 @@ class FPKernel(BaseKernelType):
         # K_X1X2[X1.shape[0]:, :X2.shape[0]] = kernel.permute(0, 2, 1).reshape(X1.shape[0] * 3 * self.Natom, X2.shape[0])
         # K_X1X2[X1.shape[0]:, :X2.shape[0]].copy_(
         #     kernel.permute(0, 2, 1).contiguous().view(X1.shape[0] * 3 * self.Natom, X2.shape[0]))
-        K_X1X2[X1.shape[0]:, :X2.shape[0]].copy_(torch.einsum('xycn,xycnd->xyd', __k_X1X2 / self.scale ** 2,
+        K_X1X2[X1.shape[0]:, :X2.shape[0]].copy_(torch.einsum('xycn,xycnd->xyd', -1 * __k_X1X2 / self.scale ** 2,
                                                               torch.einsum('xycnf,xcdf->xycnd', X1__outer_minus__X2,
                                                                            dX1_reshaped)).permute(0, 2,
                                                                                                   1).contiguous().view(
@@ -247,7 +247,7 @@ class FPKernel(BaseKernelType):
         # K_X1X2[:X1.shape[0], X2.shape[0]:] = kernel.reshape(X1.shape[0], X2.shape[0] * 3 * self.Natom)
         # K_X1X2[:X1.shape[0], X2.shape[0]:].copy_(
         #     kernel.view(X1.shape[0], X2.shape[0] * 3 * self.Natom))
-        K_X1X2[:X1.shape[0], X2.shape[0]:].copy_(torch.einsum('xycn,xycnd->xyd', __k_X2X1 / self.scale ** 2,
+        K_X1X2[:X1.shape[0], X2.shape[0]:].copy_(torch.einsum('xycn,xycnd->xyd', -1 * __k_X2X1 / self.scale ** 2,
                                                               torch.einsum('xycnf,yndf->xycnd', X2__outer_minus__X1,
                                                                            dX2_reshaped)).view(X1.shape[0], X2.shape[
             0] * self.Nmask))
@@ -319,10 +319,10 @@ class FPKernel(BaseKernelType):
             X1.shape[0] * self.Nmask, X2.shape[0] * self.Nmask))
 
         # intermediate_result = torch.einsum('xcbf,yndf->xycnbd', dX1_reshaped, dX2_reshaped)
-        K_X1X2[X1.shape[0]:, X2.shape[0]:].subtract_(torch.einsum('xycn,xycnbd->xybd', __k_X1X2 / self.scale ** 2,
-                                                                  torch.einsum('xcbf,yndf->xycnbd', dX1_reshaped,
-                                                                               dX2_reshaped)).permute(0, 2, 1,
-                                                                                                      3).contiguous().view(
+        K_X1X2[X1.shape[0]:, X2.shape[0]:].add_(torch.einsum('xycn,xycnbd->xybd', __k_X1X2 / self.scale ** 2,
+                                                             torch.einsum('xcbf,yndf->xycnbd', dX1_reshaped,
+                                                                          dX2_reshaped)).permute(0, 2, 1,
+                                                                                                 3).contiguous().view(
             X1.shape[0] * self.Nmask, X2.shape[0] * self.Nmask))
 
         del X1_expanded, X2_expanded, __k_X1X2, __k_X2X1, X1__outer_minus__X2, X2__outer_minus__X1, \
@@ -362,7 +362,7 @@ class FPKernel(BaseKernelType):
                                                        self.Nmask,
                                                        Nfeature))
         kernel[1:, 0] = torch.einsum('cn,cna->a',
-                                     k / self.scale ** 2,
+                                     -k / self.scale ** 2,
                                      intermediate_result)
 
         # Evaluate the first row of kernel using einsum
@@ -372,7 +372,7 @@ class FPKernel(BaseKernelType):
                                                        self.Nmask,
                                                        Nfeature))
         kernel[0, 1:] = torch.einsum('cn,cna->a',
-                                     k / self.scale ** 2,
+                                     -k / self.scale ** 2,
                                      intermediate_result)
 
         # [Ncenter, Nfeature] * [Ncenter, Natom * 3, Nfeature]
@@ -408,7 +408,7 @@ class FPKernel(BaseKernelType):
         C1 = torch.einsum('cn,cnbd->bd',
                           k / self.scale ** 2,
                           intermediate_result)
-        kernel[1:, 1:] = C0 - C1
+        kernel[1:, 1:] = C0 + C1
 
         if iter % 10 == 9:
             del X1_expanded, X2_expanded, X1_outer_minus_X2, X2_outer_minus_X1, k, intermediate_result, \
