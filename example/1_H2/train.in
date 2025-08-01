@@ -9,4 +9,4 @@ File_format xsf
 Descriptor cart
 
 # Threshold to remove too close data (default: 0.2)
-filter_threshold 0.05
+filter_threshold 0.01
