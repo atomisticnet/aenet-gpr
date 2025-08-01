@@ -2,6 +2,7 @@ import numpy as np
 import copy
 import time
 
+import torch
 from ase import io
 from ase.atoms import Atoms
 from ase.optimize import FIRE, MDMin, LBFGS, BFGS
@@ -22,7 +23,7 @@ class AIDNEB:
 
     def __init__(self, start, end, input_param: InputParameters, model_calculator=None, calculator=None,
                  interpolation='idpp', n_images=15, k=None, mic=False,
-                 neb_method='improvedtangent',  #'improvedtangent', 'aseneb'
+                 neb_method='improvedtangent',  # 'improvedtangent', 'aseneb'
                  remove_rotation_and_translation=False,
                  max_train_data=25, force_consistent=None,
                  max_train_data_strategy='nearest_observations',
@@ -188,16 +189,6 @@ class AIDNEB:
 
         # GP calculator:
         self.model_calculator = model_calculator
-        # if model_calculator is None:
-        #     self.model_calculator = GPCalculator(
-        #         train_images=[],
-        #         prior=None, kernel=None,
-        #         fit_weight='update',
-        #         update_prior_strategy='fit',
-        #         kernel_params={'weight': 1.0, 'scale': 0.4},
-        #         noise=0.005,
-        #         max_train_data_strategy=max_train_data_strategy,
-        #         max_train_data=max_train_data)
 
         # Active Learning setup (Single-point calculations).
         self.step = 0
@@ -241,7 +232,7 @@ class AIDNEB:
         if interp_path is None:
             if isinstance(self.n_images, float):
                 self.n_images = int(d_start_end / self.n_images)
-            if self. n_images <= 3:
+            if self.n_images <= 3:
                 self.n_images = 3
             self.images = make_neb(self)
             raw_spring = 1. * np.sqrt(self.n_images - 1) / np.sqrt(d_start_end)  # 1 or 2?
@@ -288,7 +279,7 @@ class AIDNEB:
         print('d_start_end: ', np.sqrt(d_start_end))
         print('spring_constant: ', self.spring)
 
-    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=200, optimizer="FIRE", max_unc_trheshold=1.0):
+    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=150, optimizer="FIRE", max_unc_trheshold=1.0):
 
         """
         Executing run will start the NEB optimization process.
@@ -359,7 +350,8 @@ class AIDNEB:
             self.step += 1
 
         weight_update = self.input_param.weight
-        user_descriptor = self.input_param.descriptor
+        scale_update = self.input_param.scale
+        # user_descriptor = self.input_param.descriptor
         while True:
 
             # 0. Start from initial interpolation every 50 steps.
@@ -372,9 +364,6 @@ class AIDNEB:
             # (and/or parallel) runs.
             train_images = io.read(trajectory_observations, ':')
 
-            # if user_descriptor == "soap" and len(train_images) < 15:
-            #     self.input_param.descriptor = 'cartesian coordinates'
-
             train_data = ReferenceData(structure_files=train_images,
                                        file_format='ase',
                                        device=self.input_param.device,
@@ -383,31 +372,71 @@ class AIDNEB:
                                        data_process=self.input_param.data_process,
                                        soap_param=self.input_param.soap_param,
                                        standardization=False,
-                                       mask_constraints=self.input_param.mask_constraints,
-                                       fit_weight=self.input_param.fit_weight)
-            train_data.set_data()
-            train_data.standardize_energy_force(train_data.energy)
+                                       mask_constraints=self.input_param.mask_constraints)
+
+            if train_data.standardization:
+                train_data.standardize_energy_force(train_data.energy)
 
             # 2. Prepare a calculator.
             print('Training data size: ', len(train_images))
             print('Descriptor: ', self.input_param.descriptor)
 
-            train_data.config_calculator(kerneltype='sqexp',
-                                         scale=self.input_param.scale,
-                                         weight=weight_update,
-                                         noise=self.input_param.noise,
-                                         noisefactor=self.input_param.noisefactor,
-                                         use_forces=self.input_param.use_forces,
-                                         sparse=self.input_param.sparse,
-                                         sparse_derivative=self.input_param.sparse_derivative,
-                                         autograd=self.input_param.autograd,
-                                         train_batch_size=self.input_param.train_batch_size,
-                                         eval_batch_size=self.input_param.eval_batch_size)
+            threshold = 0.2
+            max_weight = 4.0
+            if len(train_images) % 50 == 10:
+                self.input_param.fit_weight = True
+                self.input_param.fit_scale = True
+
+                while True:
+                    train_data.filter_similar_data(threshold=threshold)
+
+                    try:
+                        train_data.config_calculator(kerneltype='sqexp',
+                                                     scale=scale_update,
+                                                     weight=weight_update,
+                                                     noise=self.input_param.noise,
+                                                     noisefactor=self.input_param.noisefactor,
+                                                     use_forces=self.input_param.use_forces,
+                                                     sparse=self.input_param.sparse,
+                                                     sparse_derivative=self.input_param.sparse_derivative,
+                                                     autograd=self.input_param.autograd,
+                                                     train_batch_size=self.input_param.train_batch_size,
+                                                     eval_batch_size=self.input_param.eval_batch_size,
+                                                     fit_weight=self.input_param.fit_weight,
+                                                     fit_scale=self.input_param.fit_scale)
+
+                        if train_data.calculator.weight < max_weight:
+                            break
+                        else:
+                            raise ValueError(f"Weight parameter too high ({train_data.calculator.weight}).")
+
+                    except Exception as e:
+                        print(f"{e} Increasing threshold and retrying.")
+                        threshold += 0.2
+
+            else:
+                self.input_param.fit_weight = False
+                self.input_param.fit_scale = False
+
+                train_data.config_calculator(kerneltype='sqexp',
+                                             scale=scale_update,
+                                             weight=weight_update,
+                                             noise=self.input_param.noise,
+                                             noisefactor=self.input_param.noisefactor,
+                                             use_forces=self.input_param.use_forces,
+                                             sparse=self.input_param.sparse,
+                                             sparse_derivative=self.input_param.sparse_derivative,
+                                             autograd=self.input_param.autograd,
+                                             train_batch_size=self.input_param.train_batch_size,
+                                             eval_batch_size=self.input_param.eval_batch_size,
+                                             fit_weight=self.input_param.fit_weight,
+                                             fit_scale=self.input_param.fit_scale)
 
             print('GPR model hyperparameters: ', train_data.calculator.hyper_params)
 
             self.model_calculator = GPRCalculator(calculator=train_data.calculator, train_data=train_data)
             weight_update = train_data.calculator.weight.clone().detach().item()
+            scale_update = train_data.calculator.scale.clone().detach().item()
 
             # Detach calculator from the prev. optimized images (speed up).
             # for i in self.images:
@@ -444,7 +473,7 @@ class AIDNEB:
 
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_unc_trheshold:
-                neb_opt.run(fmax=(fmax * 1.0), steps=ml_steps)
+                neb_opt.run(fmax=(fmax * 0.8), steps=ml_steps)
             else:
                 print("The uncertainty of the NEB lies above the max_unc threshold (1.0).")
                 print("NEB won't be optimized and the image with maximum uncertainty is just evaluated and added")
@@ -455,13 +484,11 @@ class AIDNEB:
 
             # 5. Print output.
             max_e = np.max(neb_pred_energy)
+            max_e_ind = np.argsort(neb_pred_energy)[-1]
+            max_f = get_fmax(self.images[max_e_ind])
+
             pbf = max_e - self.i_endpoint.get_potential_energy(force_consistent=self.force_consistent)
             pbb = max_e - self.e_endpoint.get_potential_energy(force_consistent=self.force_consistent)
-
-            # if self.input_param.descriptor == 'cartesian coordinates':
-            #     if user_descriptor == "soap" and len(train_images) >= 15 and max_f < threshold and max_unc < threshold:
-            #         self.input_param.descriptor = "soap"
-            #         print(">> Switching to SOAP descriptor <<")
 
             msg = "--------------------------------------------------------"
             parprint(msg)
@@ -469,25 +496,26 @@ class AIDNEB:
             parprint('Time:', time.strftime("%m/%d/%Y, %H:%M:%S", time.localtime()))
             parprint('Predicted barrier (-->):', pbf)
             parprint('Predicted barrier (<--):', pbb)
-            parprint('Max. uncertainty:', np.max(neb_pred_uncertainty))
             parprint('Number of images:', len(self.images))
-            parprint("fmax:", get_fmax(train_images[-1]))
+            parprint('Max. uncertainty:', np.max(neb_pred_uncertainty))
+            parprint("Max. force of energy maximum image:", max_f.item())
             msg = "--------------------------------------------------------\n"
             parprint(msg)
 
             # 6. Check convergence.
             # Max.forces and NEB images uncertainty must be below *fmax* and *unc_convergence* thresholds.
-            if len(train_images) > 2 and get_fmax(train_images[-1]) <= fmax:
+            if len(train_images) > 2 and max_f <= fmax and np.max(neb_pred_uncertainty[1:-1]) <= unc_convergence:
                 parprint('A saddle point was found.')
-                if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
-                    io.write(self.trajectory, self.images)
-                    parprint('Uncertainty of the images above threshold.')
-                    parprint('NEB converged.')
-                    parprint('The NEB path can be found in:', self.trajectory)
-                    msg = "Visualize the last path using 'ase gui "
-                    msg += self.trajectory
-                    parprint(msg)
-                    break
+
+                # if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
+                io.write(self.trajectory, self.images)
+                parprint('Uncertainty of the images above threshold.')
+                parprint('NEB converged.')
+                parprint('The NEB path can be found in:', self.trajectory)
+                msg = "Visualize the last path using 'ase gui "
+                msg += self.trajectory
+                parprint(msg)
+                break
 
             # 7. Select next point to train (acquisition function):
             # Candidates are the optimized NEB images in the predicted PES.
@@ -511,7 +539,25 @@ class AIDNEB:
                                                     objective='max')
 
             # Select the best candidate.
-            best_candidate = sorted_candidates.pop(0)
+            accepted = False
+
+            fp_train = train_data.generate_cartesian(train_data.images)
+            N = fp_train.shape[0]
+
+            while sorted_candidates and not accepted:
+                best_candidate = sorted_candidates.pop(0)
+                fp_candidate = train_data.generate_cartesian_per_data(best_candidate).flatten()
+
+                for i in range(N):
+                    xi = fp_train[i].flatten()
+                    dist = torch.linalg.norm(xi - fp_candidate)
+
+                    if dist < threshold:
+                        # print(f"Candidate rejected (distance: {dist:.4f} < threshold {threshold})")
+                        break
+                else:
+                    accepted = True
+                    # print("Candidate accepted")
 
             # Save the other candidates for multi-task optimization.
             io.write(trajectory_candidates, sorted_candidates)
@@ -549,14 +595,17 @@ def make_neb(self, images_interpolation=None):
 @parallel_function
 def get_neb_predictions(images):
     neb_pred_energy = []
+    # neb_pred_forces = []
     neb_pred_unc = []
     for i in images:
         neb_pred_energy.append(i.get_potential_energy())
+        # neb_pred_forces.append(i.get_forces())
         unc = i.calc.results['uncertainty']
         neb_pred_unc.append(unc)
     neb_pred_unc[0] = 0.0
     neb_pred_unc[-1] = 0.0
     predictions = {'energy': neb_pred_energy, 'uncertainty': neb_pred_unc}
+
     return predictions
 
 
