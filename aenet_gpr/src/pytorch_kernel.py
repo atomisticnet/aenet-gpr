@@ -92,6 +92,27 @@ class FPKernel(BaseKernelType):
                           rbf=self.soap_param.get('rbf'),
                           sparse=self.soap_param.get('sparse'))
 
+    def pairwise_distances(self, fingerprints, sin_transform=False):
+        # fingerprints: (Ndata, Ncenter, Nfeature)
+        Ndata = fingerprints.shape[0]
+
+        distances = []
+        for i in range(Ndata):
+            for j in range(i + 1, Ndata):
+                diff = fingerprints[i].flatten() - fingerprints[j].flatten()
+                if sin_transform:
+                    diff = torch.sin(diff / 2)
+                distance = torch.linalg.norm(diff)
+                distances.append(distance.item())
+
+        distances = torch.tensor(distances)
+        mean_distance = torch.mean(distances)
+        std_distance = torch.std(distances)
+        max_distance = torch.max(distances)
+        min_distance = torch.min(distances)
+
+        return mean_distance, std_distance, max_distance, min_distance
+
     def set_soap(self, r_cut=5.0, n_max=6, l_max=4, sigma=0.5, rbf='gto', sparse=False):
         self.soap = SOAP(
             species=set(self.species),

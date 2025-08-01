@@ -26,13 +26,13 @@ class GPRCalculator(Calculator):
         Calculator.calculate(self, atoms, properties, system_changes)
 
         pred, kernel = self.calculator.eval_data_per_data(eval_image=atoms)
-        energy_gpr = pred[0]
+        energy_gpr = pred[0].cpu().detach().numpy()
         if self.train_data.mask_constraints:
             force_gpr = torch.zeros((len(atoms) * 3), dtype=pred.dtype)
             force_gpr[self.train_data.atoms_mask] = pred[1:]
-            force_gpr = force_gpr.view(len(atoms), 3)
+            force_gpr = force_gpr.view(len(atoms), 3).cpu().detach().numpy()
         else:
-            force_gpr = pred[1:].view(len(atoms), 3)
+            force_gpr = pred[1:].view(len(atoms), 3).cpu().detach().numpy()
 
         var = self.calculator.eval_variance_per_data(get_variance=True, eval_image=atoms, k=kernel)
         uncertainty_gpr = torch.sqrt(var[0, 0]) / self.calculator.weight
@@ -43,10 +43,10 @@ class GPRCalculator(Calculator):
             std_energy = np.std(self.train_data.energy)
 
             # Restore Energy: scaled_energy_target * std + mean
-            energy_gpr = energy_gpr.cpu().detach().numpy() * std_energy + mean_energy
+            energy_gpr = energy_gpr * std_energy + mean_energy
 
             # Restore Force: scaled_force_target * std
-            force_gpr = force_gpr.cpu().detach().numpy() * std_energy
+            force_gpr = force_gpr * std_energy
 
         self.results['energy'] = energy_gpr
         self.results['forces'] = force_gpr
