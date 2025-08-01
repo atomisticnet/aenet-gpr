@@ -5,16 +5,17 @@ import copy
 import numpy as np
 import torch
 
+import chemcoord as cc
 import ase.io
 from ase import Atoms
 from ase.calculators.singlepoint import SinglePointCalculator
 
 from aenet_gpr.src import gpr_iterative
-from aenet_gpr.src import gpr_batch
+from aenet_gpr.src.gpr_batch_internal import GaussianProcessInternal
 from aenet_gpr.util.prepare_data import standard_output, inverse_standard_output
 
 
-class ReferenceData(object):
+class ReferenceDataInternal(object):
     def __init__(self, structure_files: list = None,
                  file_format: str = 'xsf',
                  device='cpu',
@@ -23,7 +24,8 @@ class ReferenceData(object):
                  data_type='float64',
                  data_process='batch',
                  soap_param=None,
-                 mask_constraints=False):
+                 mask_constraints=False,
+                 c_table=None):
 
         self.data_process = data_process
         if data_type == 'float32':
@@ -49,6 +51,7 @@ class ReferenceData(object):
         self.descriptor = descriptor
         self.standardization = standardization
         self.calculator = None
+        self.c_table = c_table
 
         self.fix_ind = None
         self.pbc = None
@@ -80,6 +83,9 @@ class ReferenceData(object):
             self.atoms_mask = self.create_mask()
         else:
             self.atoms_mask = None
+
+        # self.dfp_dr = np.array([], dtype=self.numpy_data_type)  # [Ndata, Ncenter, Natom, 3, Nfeature]
+        # self.fp = np.array([], dtype=self.numpy_data_type)  # [Ndata, Ncenter, Nfeature]
 
     def read_structure_files(self, structure_files=None, file_format: str = 'xsf'):
         # check 1: force unit
@@ -206,23 +212,38 @@ class ReferenceData(object):
     def set_fix_index(self, fix_ind):
         self.fix_ind = fix_ind
 
-    def generate_cartesian(self, images):
+    def generate_internal(self, images):
 
-        fp = []
-        for image in images:
-            fp.append(torch.as_tensor(image.get_positions(wrap=False).reshape(-1), dtype=self.torch_data_type).to(self.device))
+        Ndata = len(images)
+        Ncenter = 3
+        Natom = len(images[0])
+        Nfeature = Natom
 
-        fp = torch.stack(fp).to(self.device)  # (Ndata, Natom*3)
-        fp = fp.unsqueeze(1)  # (Ndata, 1, Natom*3)
+        # (Ndata, 3, Natom)
+        fp = torch.empty((Ndata, Ncenter, Nfeature), dtype=self.torch_data_type, device=self.device)
 
-        return fp
+        # Set the c_table
+        if self.c_table is None:
+            ase.io.write("./tmp.xyz", images[0], plain=True)
+            cc_atom = cc.Cartesian.read_xyz('./tmp.xyz', start_index=1)
+            os.remove("./tmp.xyz")
 
-    def generate_cartesian_per_data(self, image):
+            z_matrix = cc_atom.get_zmat()
+            self.c_table = z_matrix.loc[:, ['b', 'a', 'd']]
 
-        fp = torch.as_tensor(image.get_positions(wrap=False).reshape(-1), dtype=self.torch_data_type).to(self.device)
+            print("c_table has been constructed:")
+            print(self.c_table)
 
-        fp = fp.unsqueeze(0)  # (1, Natom*3)
-        fp = fp.unsqueeze(0)  # (1, 1, Natom*3)
+        for i, image in enumerate(images):
+            ase.io.write("./tmp_{0}.xyz".format(i), image, plain=True)
+            cc_atom = cc.Cartesian.read_xyz('./tmp_{0}.xyz'.format(i), start_index=1)
+            os.remove("./tmp_{0}.xyz".format(i))
+
+            # z-matrix
+            zmat = cc_atom.get_zmat(self.c_table)
+            fp[i, 0, :] = torch.as_tensor(np.array(zmat.safe_loc[:, 'bond']), dtype=self.torch_data_type).to(self.device)
+            fp[i, 1, :] = torch.as_tensor(np.array(zmat.safe_loc[:, 'angle']), dtype=self.torch_data_type).to(self.device)
+            fp[i, 2, :] = torch.as_tensor(np.array(zmat.safe_loc[:, 'dihedral']), dtype=self.torch_data_type).to(self.device)
 
         return fp
 
@@ -233,7 +254,7 @@ class ReferenceData(object):
         Parameters:
             threshold (float): minimum descriptor distance
         """
-        X = self.generate_cartesian(self.images)
+        X = self.generate_internal(self.images)
         N = X.shape[0]
 
         keep_indices = []
@@ -260,10 +281,10 @@ class ReferenceData(object):
             self.read_structure_files(structure_files=keep_images, file_format='ase')
             self.set_data()
 
-    def config_calculator(self, kerneltype='sqexp', scale=0.4, weight=1.0, noise=1e-6, noisefactor=0.5,
+    def config_calculator(self, kerneltype='sqexp', scale_b=0.4, scale_a=0.1, scale_d=0.1, weight=1.0, noise=1e-6, noisefactor=0.5,
                           use_forces=True, sparse=None, sparse_derivative=None, autograd=False,
                           train_batch_size=25, eval_batch_size=25,
-                          fit_weight=True, fit_scale=True):
+                          fit_weight=True, fit_scale=False):
 
         # X_train_tensor = torch.as_tensor(self.fp, dtype=self.torch_data_type).to(self.device)
         # dX_train_tensor = torch.as_tensor(self.dfp_dr, dtype=self.torch_data_type).to(self.device)
@@ -275,44 +296,27 @@ class ReferenceData(object):
             Y_train_tensor = torch.as_tensor(self.energy, dtype=self.torch_data_type).to(self.device)
             dY_train_tensor = torch.as_tensor(self.force, dtype=self.torch_data_type).to(self.device)
 
-        if self.data_process == 'iterative':
-            self.calculator = gpr_iterative.GaussianProcess(kerneltype=kerneltype,
-                                                            scale=scale,
-                                                            weight=weight,
-                                                            noise=noise,
-                                                            noisefactor=noisefactor,
-                                                            use_forces=use_forces,
-                                                            images=self.images,
-                                                            function=Y_train_tensor,
-                                                            derivative=dY_train_tensor,
-                                                            sparse=sparse,
-                                                            sparse_derivative=sparse_derivative,
-                                                            autograd=autograd,
-                                                            data_type=self.data_type,
-                                                            device=self.device,
-                                                            soap_param=self.soap_param,
-                                                            descriptor=self.descriptor,
-                                                            atoms_mask=self.atoms_mask)
-        elif self.data_process == 'batch':
-            self.calculator = gpr_batch.GaussianProcess(kerneltype=kerneltype,
-                                                        scale=scale,
-                                                        weight=weight,
-                                                        noise=noise,
-                                                        noisefactor=noisefactor,
-                                                        use_forces=use_forces,
-                                                        images=self.images,
-                                                        function=Y_train_tensor,
-                                                        derivative=dY_train_tensor,
-                                                        sparse=sparse,
-                                                        sparse_derivative=sparse_derivative,
-                                                        autograd=autograd,
-                                                        train_batch_size=train_batch_size,
-                                                        eval_batch_size=eval_batch_size,
-                                                        data_type=self.data_type,
-                                                        device=self.device,
-                                                        soap_param=self.soap_param,
-                                                        descriptor=self.descriptor,
-                                                        atoms_mask=self.atoms_mask)
+        if self.data_process == 'batch':
+            self.calculator = GaussianProcessInternal(kerneltype=kerneltype,
+                                                      scale_b=scale_b, scale_a=scale_a, scale_d=scale_d,
+                                                      weight=weight,
+                                                      noise=noise,
+                                                      noisefactor=noisefactor,
+                                                      use_forces=use_forces,
+                                                      images=self.images,
+                                                      function=Y_train_tensor,
+                                                      derivative=dY_train_tensor,
+                                                      sparse=sparse,
+                                                      sparse_derivative=sparse_derivative,
+                                                      autograd=autograd,
+                                                      train_batch_size=train_batch_size,
+                                                      eval_batch_size=eval_batch_size,
+                                                      data_type=self.data_type,
+                                                      device=self.device,
+                                                      soap_param=self.soap_param,
+                                                      descriptor=self.descriptor,
+                                                      atoms_mask=self.atoms_mask,
+                                                      c_table=self.c_table)
 
         self.calculator.train_model()
         if fit_scale:
@@ -344,7 +348,7 @@ class ReferenceData(object):
             self.calculator.hyper_params.update(dict(weight=self.calculator.weight))
             self.calculator.kernel.set_params(self.calculator.hyper_params)
 
-        print('Updated weight:', self.calculator.weight.item())
+        print('Updated weight:', self.calculator.weight)
 
         self.calculator.train_model()
 
@@ -363,44 +367,48 @@ class ReferenceData(object):
         Returns:
         Updated scale value
         """
-        current_scale = self.calculator.scale
-        best_scale = current_scale
-        best_logp = -torch.inf
 
-        # Generate candidate scales logarithmically spaced around current scale
-        candidate_scales = current_scale * factor ** torch.linspace(-1, 1, candidates)
+        for key in self.calculator.scale.keys():
+            current_scale = self.calculator.scale.get(key)
+            best_scale = current_scale
+            best_logp = -torch.inf
 
-        print('Candidate scales:', candidate_scales)
-        for candidate_scale in candidate_scales:
-            # Set temporary scale
-            self.calculator.scale = candidate_scale
+            # Generate candidate scales logarithmically spaced around current scale
+            candidate_scales = current_scale * factor ** torch.linspace(-1, 1, candidates)
+
+            print(f'Candidate scales({key}):', candidate_scales)
+            for candidate_scale in candidate_scales:
+                # Set temporary scale
+                self.calculator.scale.update({key: candidate_scale})
+                self.calculator.hyper_params.update(dict(scale=self.calculator.scale))
+                self.calculator.kernel.set_params(self.calculator.hyper_params)
+
+                # Train GP with current candidate scale
+                self.calculator.train_model()
+
+                # Evaluate marginal likelihood
+                y_flat = self.calculator.YdY.flatten()
+                m_ = self.calculator.prior.potential_batch(self.images, get_forces=True)
+                a_ = self.calculator.model_vector
+
+                logP = -0.5 * torch.matmul(y_flat - m_, a_) - torch.sum(torch.log(torch.diag(self.calculator.K_XX_L))) \
+                       - self.calculator.Ntrain * 0.5 * torch.log(torch.as_tensor(2 * torch.pi, dtype=self.torch_data_type).to(self.device))
+
+                # Keep track of best scale
+                if logP > best_logp:
+                    best_logp = logP
+                    best_scale = candidate_scale
+
+            # Update to best scale found
+            self.calculator.scale.update({key: best_scale})
             self.calculator.hyper_params.update(dict(scale=self.calculator.scale))
             self.calculator.kernel.set_params(self.calculator.hyper_params)
+            print(f'Updated scale({key}):', best_scale)
 
-            # Train GP with current candidate scale
+            # Train GP with best candidate scale
             self.calculator.train_model()
 
-            # Evaluate marginal likelihood
-            y_flat = self.calculator.YdY.flatten()
-            m_ = self.calculator.prior.potential_batch(self.images, get_forces=True)
-            a_ = self.calculator.model_vector
-
-            logP = -0.5 * torch.matmul(y_flat - m_, a_) - torch.sum(torch.log(torch.diag(self.calculator.K_XX_L))) \
-                   - self.calculator.Ntrain * 0.5 * torch.log(torch.as_tensor(2 * torch.pi, dtype=self.torch_data_type).to(self.device))
-
-            # Keep track of best scale
-            if logP > best_logp:
-                best_logp = logP
-                best_scale = candidate_scale
-
-        # Update to best scale found
-        self.calculator.scale = best_scale
-        self.calculator.hyper_params.update(dict(scale=self.calculator.scale))
-        self.calculator.kernel.set_params(self.calculator.hyper_params)
-        print('Updated scale:', best_scale.item())
-
-        # Train GP with best candidate scale
-        self.calculator.train_model()
+        print('Updated scale:', self.calculator.scale)
 
         return
 
@@ -442,7 +450,7 @@ class ReferenceData(object):
 
     def read_xsf_image(self, path):
 
-        image = ase.io.read(path, index=':', format='xsf')
+        image = ase.io.read(path, index='-1', format='xsf')
         with open(path, 'r') as infile:
             lines = infile.readlines()
 
@@ -604,18 +612,10 @@ class ReferenceData(object):
                 atom.set_positions(pos)
                 self.images.append(copy.deepcopy(atom))
 
-        if self.data_process == 'iterative':
-            self.calculator = gpr_iterative.GaussianProcess(images=self.images,
-                                                            data_type=self.data_type,
-                                                            device=self.device,
-                                                            soap_param=self.soap_param,
-                                                            descriptor=self.descriptor)
-            self.calculator.load_data()
-
-        elif self.data_process == 'batch':
-            self.calculator = gpr_batch.GaussianProcess(images=self.images,
-                                                        data_type=self.data_type,
-                                                        device=self.device,
-                                                        soap_param=self.soap_param,
-                                                        descriptor=self.descriptor)
+        if self.data_process == 'batch':
+            self.calculator = GaussianProcessInternal(images=self.images,
+                                                      data_type=self.data_type,
+                                                      device=self.device,
+                                                      soap_param=self.soap_param,
+                                                      descriptor=self.descriptor)
             self.calculator.load_data()
