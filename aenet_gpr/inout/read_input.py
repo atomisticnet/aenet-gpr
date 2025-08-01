@@ -69,6 +69,13 @@ def read_train_in(infile):
 			else:
 				input_param.fit_weight = True
 
+		fit_scale, found = read_keyword_argument_same_line("fit_scale", lines)
+		if found:
+			if "F" in fit_scale.upper():
+				input_param.fit_scale = False
+			else:
+				input_param.fit_scale = True
+
 		use_forces, found = read_keyword_argument_same_line("force", lines)
 		if found:
 			if "F" in use_forces.upper():

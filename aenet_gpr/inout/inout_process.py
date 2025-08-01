@@ -26,10 +26,8 @@ class Train(object):
                                         data_type=self.input_param.data_type,
                                         data_process=self.input_param.data_process,
                                         soap_param=self.input_param.soap_param,
-                                        mask_constraints=self.input_param.mask_constraints,
-                                        fit_weight=self.input_param.fit_weight)
-        self.train_data.set_data()
-        self.train_data.standardize_energy_force(self.train_data.energy)
+                                        mask_constraints=self.input_param.mask_constraints)
+
         io_data_read_finalize(t=start,
                               mem_CPU=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2,
                               mem_GPU=torch.cuda.max_memory_allocated() / 1024 ** 3,
@@ -39,17 +37,39 @@ class Train(object):
 
     def train_model(self):
         start = time.time()
-        self.train_data.config_calculator(kerneltype=self.input_param.kerneltype,
-                                          scale=self.input_param.scale,
-                                          weight=self.input_param.weight,
-                                          noise=self.input_param.noise,
-                                          noisefactor=self.input_param.noisefactor,
-                                          use_forces=self.input_param.use_forces,
-                                          sparse=self.input_param.sparse,
-                                          sparse_derivative=self.input_param.sparse_derivative,
-                                          autograd=self.input_param.autograd,
-                                          train_batch_size=self.input_param.train_batch_size,
-                                          eval_batch_size=self.input_param.eval_batch_size)
+
+        threshold = 0.2
+        max_weight = 4.0
+        while True:
+            self.train_data.filter_similar_data(threshold=threshold)
+
+            if self.train_data.standardization:
+                self.train_data.standardize_energy_force(self.train_data.energy)
+
+            try:
+                self.train_data.config_calculator(kerneltype=self.input_param.kerneltype,
+                                                  scale=self.input_param.scale,
+                                                  weight=self.input_param.weight,
+                                                  noise=self.input_param.noise,
+                                                  noisefactor=self.input_param.noisefactor,
+                                                  use_forces=self.input_param.use_forces,
+                                                  sparse=self.input_param.sparse,
+                                                  sparse_derivative=self.input_param.sparse_derivative,
+                                                  autograd=self.input_param.autograd,
+                                                  train_batch_size=self.input_param.train_batch_size,
+                                                  eval_batch_size=self.input_param.eval_batch_size,
+                                                  fit_weight=self.input_param.fit_weight,
+                                                  fit_scale=self.input_param.fit_scale)
+
+                if self.train_data.calculator.weight < max_weight:
+                    break
+                else:
+                    raise ValueError(f"Weight parameter too high ({self.train_data.calculator.weight}).")
+
+            except Exception as e:
+                print(f"{e} Increasing threshold and retrying.")
+                threshold += 0.2
+
         io_train_finalize(t=start,
                           mem_CPU=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2,
                           mem_GPU=torch.cuda.max_memory_allocated() / 1024 ** 3,
@@ -100,9 +120,8 @@ class Test(object):
                                        data_type=self.input_param.data_type,
                                        data_process=self.input_param.data_process,
                                        soap_param=self.input_param.soap_param,
-                                       mask_constraints=self.input_param.mask_constraints,
-                                       fit_weight=self.input_param.fit_weight)
-        self.test_data.set_data()
+                                       mask_constraints=self.input_param.mask_constraints)
+
         if self.test_data.energy is not None:
             test_data_energy_shape = self.test_data.energy.shape
         else:
@@ -124,6 +143,7 @@ class Test(object):
         self.test_data.calculator = self.train_data.calculator
         energy_test_gpr, force_test_gpr, uncertainty_test_gpr = self.test_data.evaluation(
             get_variance=self.input_param.get_variance)
+
         if self.train_data.standardization:
             energy_test_gpr, force_test_gpr = inverse_standard_output(energy_ref=self.train_data.energy,
                                                                       scaled_energy_target=energy_test_gpr,
@@ -142,8 +162,6 @@ class Test(object):
 
             print("GPR energy MAE (eV):", np.absolute(np.subtract(energy_test_gpr, self.test_data.energy)).mean())
             print("GPR force MAE (eV/Ang):", np.absolute(np.subtract(abs_F_test_gpr, abs_F_test)).mean())
-            # print("GPR energy MSE:", np.square(np.subtract(energy_test_gpr, self.test_data.energy)).mean())
-            # print("GPR force MSE:", np.square(np.subtract(abs_F_test_gpr, abs_F_test)).mean())
             print("GPR uncertainty mean ± std: {0} ± {1}".format(uncertainty_test_gpr.mean(), uncertainty_test_gpr.std()))
 
             print("")
