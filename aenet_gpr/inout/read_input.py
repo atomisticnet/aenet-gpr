@@ -216,4 +216,8 @@ def read_train_in(infile):
 		if found:
 			input_param.num_copy = int(num_copy)
 
+		filter_threshold, found = read_keyword_argument_same_line("filter_threshold", lines)
+		if found:
+			input_param.filter_threshold = float(filter_threshold)
+
 		return input_param

@@ -38,7 +38,7 @@ class Train(object):
     def train_model(self):
         start = time.time()
 
-        threshold = 0.2
+        threshold = self.input_param.filter_threshold
         max_weight = 4.0
         while True:
             self.train_data.filter_similar_data(threshold=threshold)
