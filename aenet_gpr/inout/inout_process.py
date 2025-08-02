@@ -53,7 +53,8 @@ class Train(object):
         threshold = self.input_param.filter_threshold
         max_weight = 4.0
         while True:
-            self.train_data.filter_similar_data(threshold=threshold)
+            if self.input_param.filter:
+                self.train_data.filter_similar_data(threshold=threshold)
 
             if self.train_data.standardization:
                 self.train_data.standardize_energy_force(self.train_data.energy)
