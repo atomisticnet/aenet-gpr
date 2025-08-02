@@ -19,7 +19,7 @@ class ReferenceDataInternal(object):
     def __init__(self, structure_files: list = None,
                  file_format: str = 'xsf',
                  device='cpu',
-                 descriptor='cartesian coordinates',
+                 descriptor='internal',
                  standardization=False,
                  data_type='float64',
                  data_process='batch',
@@ -247,7 +247,7 @@ class ReferenceDataInternal(object):
 
         return fp
 
-    def filter_similar_data(self, threshold=0.2):
+    def filter_similar_data(self, threshold=0.1):
         """
         Remove training data that is too close below the threshold
 

@@ -226,7 +226,7 @@ class ReferenceData(object):
 
         return fp
 
-    def filter_similar_data(self, threshold=0.2):
+    def filter_similar_data(self, threshold=0.1):
         """
         Remove training data that is too close below the threshold
 
