@@ -7,3 +7,6 @@ File_format xsf
 
 # Descriptor (default: cartesian coordinates)
 Descriptor cart
+
+# Data filter (remove close data, default: True)
+Filter False
