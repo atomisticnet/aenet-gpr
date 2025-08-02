@@ -450,7 +450,7 @@ class ReferenceDataInternal(object):
 
     def read_xsf_image(self, path):
 
-        image = ase.io.read(path, index='-1', format='xsf')
+        image = ase.io.read(path, index=':', format='xsf')
         with open(path, 'r') as infile:
             lines = infile.readlines()
 
