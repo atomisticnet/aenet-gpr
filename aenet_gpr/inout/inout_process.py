@@ -150,7 +150,7 @@ class Test(object):
                                                    data_process=self.input_param.data_process,
                                                    soap_param=self.input_param.soap_param,
                                                    mask_constraints=self.input_param.mask_constraints,
-                                                   ctable=self.train_data.c_table)
+                                                   c_table=self.train_data.c_table)
 
         else:
             self.test_data = ReferenceData(structure_files=self.input_param.test_file,
