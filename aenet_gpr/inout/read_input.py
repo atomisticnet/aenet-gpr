@@ -125,6 +125,13 @@ def read_train_in(infile):
 			else:
 				input_param.additional_write = True
 
+		filter, found = read_keyword_argument_same_line("filter", lines)
+		if found:
+			if "F" in filter.upper():
+				input_param.filter = False
+			else:
+				input_param.filter = True
+
 		# Optional parameters:
 		train_file, found = read_keyword_argument_same_line("train_file", lines)
 		if found:
@@ -153,6 +160,8 @@ def read_train_in(infile):
 		if found:
 			if "soap" in descriptor.lower():
 				input_param.descriptor = 'soap'
+			elif "internal" in descriptor.lower():
+				input_param.descriptor = 'internal'
 			else:
 				input_param.descriptor = 'cartesian coordinates'
 

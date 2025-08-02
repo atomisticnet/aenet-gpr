@@ -19,7 +19,9 @@ class InputParameters(object):
 
         self.fit_weight        = True
         self.fit_scale         = True
-        self.filter_threshold  = 0.2
+
+        self.filter            = True
+        self.filter_threshold  = 0.1
 
         self.soap_r_cut        = 5.0
         self.soap_n_max        = 6
