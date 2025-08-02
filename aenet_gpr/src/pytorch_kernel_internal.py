@@ -45,7 +45,7 @@ class FPKernelInternal(BaseKernelType):
                  params=None,
                  data_type='float64',
                  soap_param=None,
-                 descriptor='cartesian coordinates',
+                 descriptor='internal',
                  device='cpu',
                  atoms_mask=None,
                  c_table=None):

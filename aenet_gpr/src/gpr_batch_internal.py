@@ -22,7 +22,7 @@ class GaussianProcessInternal(nn.Module):
                  use_forces=True, images=None, function=None, derivative=None,
                  sparse=None, sparse_derivative=None, autograd=False,
                  train_batch_size=25, eval_batch_size=25,
-                 data_type='float64', device='cpu', soap_param=None, descriptor='cartesian coordinates',
+                 data_type='float64', device='cpu', soap_param=None, descriptor='internal',
                  atoms_mask=None, c_table=None):
         super().__init__()
 
