@@ -388,7 +388,8 @@ class AIDNEB:
                 self.input_param.fit_scale = True
 
                 while True:
-                    train_data.filter_similar_data(threshold=threshold)
+                    if self.input_param.filter:
+                        train_data.filter_similar_data(threshold=threshold)
 
                     try:
                         train_data.config_calculator(kerneltype='sqexp',
