@@ -1,7 +1,7 @@
 import sys
 from setuptools import setup, find_packages
 
-install_requires = ['dscribe', 'ase', chemcoord]
+install_requires = ['dscribe', 'ase', 'chemcoord']
 
 if __name__ == '__main__':
 
