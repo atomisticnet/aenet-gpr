@@ -84,7 +84,9 @@ Find interactive notebooks `*.ipynb` in the `./tutorial/` folder, or run directl
 
 ### GPR applications for accelerating atomistic simulations
 
+<!--
 - [GPR-ANN: accelerating ANN potential training through GPR data augmentation](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/tutorial_python_GPR-ANN.ipynb)
+-->
 - [GPR-NEB: accelerating NEB through GPR surrogate model](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/tutorial_python_GPR-NEB.ipynb)
 - [GPR-ASE: ASE GPRCalculator](https://colab.research.google.com/github/atomisticnet/aenet-gpr/blob/main/tutorial/tutorial_python_ASE-GPRCalculator.ipynb)
 
