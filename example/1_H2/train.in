@@ -10,3 +10,6 @@ Descriptor cart
 
 # Data filter (remove close data, default: True)
 Filter False
+
+fit_weight False
+fit_scale False
