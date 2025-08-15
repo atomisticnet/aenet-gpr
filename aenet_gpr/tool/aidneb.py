@@ -288,6 +288,7 @@ class AIDNEB:
         self.initial_interpolation = self.images[:]
 
         print('d_start_end: ', d_start_end)
+        print('r_max: ', self.rmax)
         print('spring_constant: ', self.spring)
 
     def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=150, optimizer="FIRE", max_unc_trheshold=1.0):
@@ -606,7 +607,8 @@ class AIDNEB:
                     # print("Candidate accepted")
 
             # Save the other candidates for multi-task optimization.
-            io.write(trajectory_candidates, sorted_candidates)
+            if sorted_candidates:
+                io.write(trajectory_candidates, sorted_candidates)
 
             # 8. Evaluate the target function and save it in *observations*.
             self.atoms.positions = best_candidate.get_positions()
