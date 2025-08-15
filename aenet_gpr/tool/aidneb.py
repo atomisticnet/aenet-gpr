@@ -563,22 +563,26 @@ class AIDNEB:
             # Candidates are the optimized NEB images in the predicted PES.
             candidates = copy.deepcopy(self.images)[1:-1]
 
-            if np.max(neb_pred_uncertainty) > unc_convergence:
-                sorted_candidates = acquisition(train_images=train_images,
-                                                candidates=candidates,
-                                                mode='uncertainty',
-                                                objective='max')
+            if violated_index is not None:
+                best_candidate = candidates[violated_index]
+                sorted_candidates = False
             else:
-                if self.step % 5 == 0:
+                if np.max(neb_pred_uncertainty) > unc_convergence:
                     sorted_candidates = acquisition(train_images=train_images,
                                                     candidates=candidates,
-                                                    mode='fmax',
-                                                    objective='min')
-                else:
-                    sorted_candidates = acquisition(train_images=train_images,
-                                                    candidates=candidates,
-                                                    mode='ucb',
+                                                    mode='uncertainty',
                                                     objective='max')
+                else:
+                    if self.step % 5 == 0:
+                        sorted_candidates = acquisition(train_images=train_images,
+                                                        candidates=candidates,
+                                                        mode='fmax',
+                                                        objective='min')
+                    else:
+                        sorted_candidates = acquisition(train_images=train_images,
+                                                        candidates=candidates,
+                                                        mode='ucb',
+                                                        objective='max')
 
             # Select the best candidate.
             accepted = False
