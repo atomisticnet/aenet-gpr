@@ -527,7 +527,7 @@ class AIDNEB:
             # 5. Print output.
             max_e = np.max(neb_pred_energy)
             max_e_ind = np.argsort(neb_pred_energy)[-1]
-            max_f = get_fmax(self.images[max_e_ind])  # get_fmax(train_images[-1])
+            max_f = get_fmax(train_images[-1])  # get_fmax(self.images[max_e_ind])
 
             pbf = max_e - self.i_endpoint.get_potential_energy(force_consistent=self.force_consistent)
             pbb = max_e - self.e_endpoint.get_potential_energy(force_consistent=self.force_consistent)
