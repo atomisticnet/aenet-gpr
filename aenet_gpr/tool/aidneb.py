@@ -19,6 +19,17 @@ from aenet_gpr.tool import acquisition, prepare_neb_images, dump_observation, ge
 from aenet_gpr.inout.input_parameter import InputParameters
 
 
+def min_cartesian_dist(img, train_images):
+
+    best = np.inf
+    for t in train_images:
+        dt = img.positions.flatten() - t.positions.flatten()
+        d2 = np.dot(dt, dt)
+        if d2 < best:
+            best = d2
+    return best
+
+
 class AIDNEB:
 
     def __init__(self, start, end, input_param: InputParameters, model_calculator=None, calculator=None,
@@ -226,7 +237,9 @@ class AIDNEB:
 
         # Calculate the distance between the initial and final endpoints.
         d_start_end = np.sum((self.i_endpoint.positions.flatten() -
-                              self.e_endpoint.positions.flatten()) ** 2)
+                              self.e_endpoint.positions.flatten()) ** 2) ** 0.5
+
+        self.rmax = 0.2 * d_start_end
 
         # A) Create images using interpolation if user does define a path.
         if interp_path is None:
@@ -235,9 +248,7 @@ class AIDNEB:
             if self.n_images <= 3:
                 self.n_images = 3
             self.images = make_neb(self)
-            raw_spring = 1. * np.sqrt(self.n_images - 1) / np.sqrt(d_start_end)  # 1 or 2?
-            # np.sqrt(self.n_images - 1): 3~5
-            # d_start_end: 3~10
+            raw_spring = 1. * np.sqrt(self.n_images - 1) / d_start_end  # 1 or 2?
             self.spring = np.clip(raw_spring, 0.05, 0.1)
 
             neb_interpolation = NEB(self.images, climb=False, k=self.spring,
@@ -271,12 +282,12 @@ class AIDNEB:
 
         # Guess spring constant (k) if not defined by the user.
         if self.spring is None:
-            raw_spring = 1. * np.sqrt(self.n_images - 1) / np.sqrt(d_start_end)  # 1 or 2?
+            raw_spring = 1. * np.sqrt(self.n_images - 1) / d_start_end  # 1 or 2?
             self.spring = np.clip(raw_spring, 0.05, 0.10)
         # Save initial interpolation.
         self.initial_interpolation = self.images[:]
 
-        print('d_start_end: ', np.sqrt(d_start_end))
+        print('d_start_end: ', d_start_end)
         print('spring_constant: ', self.spring)
 
     def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=150, optimizer="FIRE", max_unc_trheshold=1.0):
@@ -474,7 +485,37 @@ class AIDNEB:
 
             # Safe check to optimize the images.
             if np.max(neb_pred_uncertainty) <= max_unc_trheshold:
-                neb_opt.run(fmax=(fmax * 0.8), steps=ml_steps)
+                # neb_opt.run(fmax=(fmax * 0.8), steps=ml_steps)
+
+                # 직전 스텝의 전체 밴드 좌표 스냅샷(롤백용)
+                prev_positions = [im.get_positions().copy() for im in self.images]
+
+                for step in range(ml_steps):
+                    # 한 스텝만 진행
+                    neb_opt.run(fmax=fmax * 0.8, steps=1)
+
+                    # 신뢰반경 검사(엔드포인트 제외: 1..len(images)-2)
+                    violated_index = None
+                    for i in range(1, len(self.images) - 1):
+                        d2 = min_cartesian_dist(self.images[i], train_images)
+                        if d2 > (self.rmax ** 2):
+                            violated_index = i
+                            print("Relaxation early stop: the distance from current image {0} to the nearest training data point is larger than rmax".format(violated_index))
+                            break
+
+                    if violated_index is not None:
+                        for im, pos in zip(self.images, prev_positions):
+                            im.set_positions(pos)  # 마지막 GPR 스텝 취소
+
+                        break
+                    else:
+                        # 스텝 확정: 다음 롤백 기준 업데이트
+                        prev_positions = [im.get_positions().copy() for im in self.images]
+
+                    # (선택) 수렴하면 조기 종료
+                    if neb_opt.converged():
+                        break
+
             else:
                 print("The uncertainty of the NEB lies above the max_unc threshold (1.0).")
                 print("NEB won't be optimized and the image with maximum uncertainty is just evaluated and added")
@@ -486,7 +527,7 @@ class AIDNEB:
             # 5. Print output.
             max_e = np.max(neb_pred_energy)
             max_e_ind = np.argsort(neb_pred_energy)[-1]
-            max_f = get_fmax(self.images[max_e_ind])
+            max_f = get_fmax(self.images[max_e_ind])  # get_fmax(train_images[-1])
 
             pbf = max_e - self.i_endpoint.get_potential_energy(force_consistent=self.force_consistent)
             pbb = max_e - self.e_endpoint.get_potential_energy(force_consistent=self.force_consistent)
