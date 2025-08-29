@@ -393,15 +393,15 @@ class AIDNEB:
             print('Training data size: ', len(train_images))
             print('Descriptor: ', self.input_param.descriptor)
 
-            threshold = 0.2
-            max_weight = 4.0
+            self.rmin = 0.1
+            max_weight = 5.0
             if len(train_images) % 50 == 10:
                 self.input_param.fit_weight = True
                 self.input_param.fit_scale = True
 
                 while True:
                     if self.input_param.filter:
-                        train_data.filter_similar_data(threshold=threshold)
+                        train_data.filter_similar_data(threshold=self.rmin)
                         print('Actual training data size (after removing similar data): ', len(train_data.images))
 
                     try:
@@ -425,8 +425,8 @@ class AIDNEB:
                             raise ValueError(f"Weight parameter too high ({train_data.calculator.weight}).")
 
                     except Exception as e:
-                        print(f"{e} Increasing threshold and retrying.")
-                        threshold += 0.2
+                        print(f"{e} Increasing r_min and retrying.")
+                        self.rmin += 0.1
 
                         train_data = ReferenceData(structure_files=train_images,
                                                    file_format='ase',
@@ -443,7 +443,7 @@ class AIDNEB:
                 self.input_param.fit_scale = False
 
                 if self.input_param.filter:
-                    train_data.filter_similar_data(threshold=threshold)
+                    train_data.filter_similar_data(threshold=self.rmin)
                     print('Actual training data size (after removing similar data): ', len(train_data.images))
 
                 train_data.config_calculator(kerneltype='sqexp',
@@ -460,6 +460,8 @@ class AIDNEB:
                                              fit_weight=self.input_param.fit_weight,
                                              fit_scale=self.input_param.fit_scale)
 
+            self.rmin = 0.1
+            print('r_min: ', self.rmin)
             print('GPR model hyperparameters: ', train_data.calculator.hyper_params)
 
             self.model_calculator = GPRCalculator(calculator=train_data.calculator, train_data=train_data)
@@ -543,7 +545,7 @@ class AIDNEB:
             # 5. Print output.
             max_e = np.max(neb_pred_energy)
             max_e_ind = np.argsort(neb_pred_energy)[-1]
-            max_f = get_fmax(self.images[max_e_ind])  # get_fmax(train_images[-1])
+            max_f = get_fmax(self.images[max_e_ind])  # get_fmax(train_images[-1]), train_images 의 calc 는 reference
 
             pbf = max_e - self.i_endpoint.get_potential_energy(force_consistent=self.force_consistent)
             pbb = max_e - self.e_endpoint.get_potential_energy(force_consistent=self.force_consistent)
@@ -579,6 +581,7 @@ class AIDNEB:
             # Candidates are the optimized NEB images in the predicted PES.
             candidates = copy.deepcopy(self.images)[1:-1]
 
+            print("violated_index:", violated_index)
             if violated_index is not None:
                 best_candidate = candidates[violated_index]
                 sorted_candidates = False
@@ -614,8 +617,8 @@ class AIDNEB:
                     xi = fp_train[i].flatten()
                     dist = torch.linalg.norm(xi - fp_candidate)
 
-                    if dist < threshold:
-                        # print(f"Candidate rejected (distance: {dist:.4f} < threshold {threshold})")
+                    if dist < self.rmin:
+                        print(f"Candidate is reclined to be train data since distance with previous train data {i}: {dist:.4f} < r_min {self.rmin}")
                         break
                 else:
                     accepted = True
