@@ -403,7 +403,8 @@ class AIDNEB:
                 update_step = self.step
                 set_update_step = True
 
-            if self.step % 25 == update_step:
+            if self.step >= update_step:
+                update_step *= 2
                 self.input_param.fit_weight = True
                 self.input_param.fit_scale = True
 
@@ -445,6 +446,12 @@ class AIDNEB:
                                                    soap_param=self.input_param.soap_param,
                                                    standardization=False,
                                                    mask_constraints=self.input_param.mask_constraints)
+
+                if self.rmin >= self.rmax:
+                    half_rmax = self.rmax / 2.0
+                    new_rmin = (int(half_rmax * 10) / 10.0)
+                    self.rmin = max(new_rmin, 0.1)
+                    print(f"r_min exceeded r_max → reset to {self.rmin:.1f} (≈ half of r_max)")
 
             else:
                 self.input_param.fit_weight = False
