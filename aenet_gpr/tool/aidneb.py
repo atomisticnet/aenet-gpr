@@ -597,27 +597,22 @@ class AIDNEB:
             # Candidates are the optimized NEB images in the predicted PES.
             candidates = copy.deepcopy(self.images)[1:-1]
 
-            if violated_index is not None:
-                best_candidate = candidates[violated_index - 1]
-                sorted_candidates = False
-
+            if np.max(neb_pred_uncertainty) > unc_convergence:
+                sorted_candidates = acquisition(train_images=train_images,
+                                                candidates=candidates,
+                                                mode='uncertainty',
+                                                objective='max')
             else:
-                if np.max(neb_pred_uncertainty) > unc_convergence:
+                if self.step % 5 == 0:
                     sorted_candidates = acquisition(train_images=train_images,
                                                     candidates=candidates,
-                                                    mode='uncertainty',
-                                                    objective='max')
+                                                    mode='fmax',
+                                                    objective='min')
                 else:
-                    if self.step % 5 == 0:
-                        sorted_candidates = acquisition(train_images=train_images,
-                                                        candidates=candidates,
-                                                        mode='fmax',
-                                                        objective='min')
-                    else:
-                        sorted_candidates = acquisition(train_images=train_images,
-                                                        candidates=candidates,
-                                                        mode='ucb',
-                                                        objective='max')
+                    sorted_candidates = acquisition(train_images=train_images,
+                                                    candidates=candidates,
+                                                    mode='ucb',
+                                                    objective='max')
 
             # Select the best candidate.
             accepted = False
@@ -625,7 +620,7 @@ class AIDNEB:
             fp_train = train_data.generate_cartesian(train_data.images)
             N = fp_train.shape[0]
 
-            while sorted_candidates and not accepted:
+            while not accepted:
                 best_candidate = sorted_candidates.pop(0)
                 fp_candidate = train_data.generate_cartesian_per_data(best_candidate).flatten()
 
