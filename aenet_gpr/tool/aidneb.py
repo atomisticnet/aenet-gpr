@@ -291,7 +291,7 @@ class AIDNEB:
         print(f"r_max (threshold to prevent over-relaxation when training data is sparse): {self.rmax:.4f}")
         print('spring_constant: ', self.spring)
 
-    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=150, optimizer="FIRE", max_unc_trheshold=1.0):
+    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.1, ml_steps=150, optimizer="FIRE", max_unc_trheshold=1.0):
 
         """
         Executing run will start the NEB optimization process.
@@ -580,7 +580,7 @@ class AIDNEB:
 
             # 6. Check convergence.
             # Max.forces and NEB images uncertainty must be below *fmax* and *unc_convergence* thresholds.
-            if len(train_images) > 2 and max_f <= fmax and np.max(neb_pred_uncertainty[1:-1]) <= unc_convergence:
+            if len(train_images) > 2 and max_f <= fmax and np.max(neb_pred_uncertainty[1:-1]) <= unc_convergence and climbing_neb:
                 parprint('A saddle point was found.')
 
                 # if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
