@@ -288,7 +288,7 @@ class AIDNEB:
         self.initial_interpolation = self.images[:]
 
         print('d_start_end: ', d_start_end)
-        print('r_max: ', self.rmax)
+        print(f"r_max (threshold to prevent over-relaxation when training data is sparse): {self.rmax:.4f}")
         print('spring_constant: ', self.spring)
 
     def run(self, fmax=0.05, unc_convergence=0.05, dt=0.05, ml_steps=150, optimizer="FIRE", max_unc_trheshold=1.0):
@@ -468,8 +468,7 @@ class AIDNEB:
                                              fit_weight=self.input_param.fit_weight,
                                              fit_scale=self.input_param.fit_scale)
 
-            # self.rmin = 0.1
-            print('r_min: ', self.rmin)
+            print(f"r_min (threshold to avoid adding nearly-duplicate training data): {self.rmin:.1f}")
             print('GPR model hyperparameters: ', train_data.calculator.hyper_params)
 
             self.model_calculator = GPRCalculator(calculator=train_data.calculator, train_data=train_data)
@@ -526,7 +525,7 @@ class AIDNEB:
                         d2 = min_cartesian_dist(self.images[i], train_images)
                         if d2 > (self.rmax ** 2):
                             violated_index = i
-                            print("Relaxation early stop: the distance from current image {0} to the nearest training data is larger than r_max".format(violated_index))
+                            print(f"Relaxation stopped early: image {violated_index} lies farther than r_max from all training data")
                             break
 
                     if violated_index is not None:
@@ -592,8 +591,9 @@ class AIDNEB:
             candidates = copy.deepcopy(self.images)[1:-1]
 
             if violated_index is not None:
-                best_candidate = candidates[violated_index]
+                best_candidate = candidates[violated_index - 1]
                 sorted_candidates = False
+
             else:
                 if np.max(neb_pred_uncertainty) > unc_convergence:
                     sorted_candidates = acquisition(train_images=train_images,
@@ -627,7 +627,7 @@ class AIDNEB:
                     dist = torch.linalg.norm(xi - fp_candidate)
 
                     if dist < self.rmin:
-                        print(f"Candidate is reclined to be train data since distance with previous train data {i}: {dist:.4f} < r_min {self.rmin}")
+                        print(f"Candidate rejected: too close to train data {i} (dist={dist:.4f} < r_min={self.rmin:.1f})")
                         break
                 else:
                     accepted = True
