@@ -254,8 +254,8 @@ class ReferenceData(object):
                 remove_indices.append(i)
 
         if remove_indices != []:
-            print("images", remove_indices, "are removed from training data since there are too close images")
-            print(", which can lead to ill-conditioned covariance")
+            print(f"Removed images {remove_indices} from training data (near-duplicates; risk of ill-conditioned covariance).")
+
             keep_images = [self.images[i] for i in keep_indices]
             self.read_structure_files(structure_files=keep_images, file_format='ase')
             self.set_data()
