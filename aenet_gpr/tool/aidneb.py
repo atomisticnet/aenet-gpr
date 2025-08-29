@@ -363,7 +363,7 @@ class AIDNEB:
 
         weight_update = self.input_param.weight
         scale_update = self.input_param.scale
-        # user_descriptor = self.input_param.descriptor
+        violated_index = None
         while True:
 
             # 0. Start from initial interpolation every 50 steps.
@@ -395,7 +395,10 @@ class AIDNEB:
 
             self.rmin = 0.1
             max_weight = 5.0
-            if len(train_images) % 50 == 10:
+            if violated_index is not None:
+                update_step = self.step
+
+            if self.step % 25 == update_step:
                 self.input_param.fit_weight = True
                 self.input_param.fit_scale = True
 
@@ -518,7 +521,7 @@ class AIDNEB:
                         d2 = min_cartesian_dist(self.images[i], train_images)
                         if d2 > (self.rmax ** 2):
                             violated_index = i
-                            print("Relaxation early stop: the distance from current image {0} to the nearest training data point is larger than rmax".format(violated_index))
+                            print("Relaxation early stop: the distance from current image {0} to the nearest training data is larger than r_max".format(violated_index))
                             break
 
                     if violated_index is not None:
@@ -583,7 +586,6 @@ class AIDNEB:
             # Candidates are the optimized NEB images in the predicted PES.
             candidates = copy.deepcopy(self.images)[1:-1]
 
-            print("violated_index:", violated_index)
             if violated_index is not None:
                 best_candidate = candidates[violated_index]
                 sorted_candidates = False
