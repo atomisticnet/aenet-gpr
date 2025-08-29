@@ -402,6 +402,7 @@ class AIDNEB:
                 while True:
                     if self.input_param.filter:
                         train_data.filter_similar_data(threshold=threshold)
+                        print('Actual training data size (after removing similar data): ', len(train_data.images))
 
                     try:
                         train_data.config_calculator(kerneltype='sqexp',
@@ -427,9 +428,23 @@ class AIDNEB:
                         print(f"{e} Increasing threshold and retrying.")
                         threshold += 0.2
 
+                        train_data = ReferenceData(structure_files=train_images,
+                                                   file_format='ase',
+                                                   device=self.input_param.device,
+                                                   descriptor=self.input_param.descriptor,
+                                                   data_type=self.input_param.data_type,
+                                                   data_process=self.input_param.data_process,
+                                                   soap_param=self.input_param.soap_param,
+                                                   standardization=False,
+                                                   mask_constraints=self.input_param.mask_constraints)
+
             else:
                 self.input_param.fit_weight = False
                 self.input_param.fit_scale = False
+
+                if self.input_param.filter:
+                    train_data.filter_similar_data(threshold=threshold)
+                    print('Actual training data size (after removing similar data): ', len(train_data.images))
 
                 train_data.config_calculator(kerneltype='sqexp',
                                              scale=scale_update,
@@ -528,7 +543,7 @@ class AIDNEB:
             # 5. Print output.
             max_e = np.max(neb_pred_energy)
             max_e_ind = np.argsort(neb_pred_energy)[-1]
-            max_f = get_fmax(train_images[-1])  # get_fmax(self.images[max_e_ind])
+            max_f = get_fmax(self.images[max_e_ind])  # get_fmax(train_images[-1])
 
             pbf = max_e - self.i_endpoint.get_potential_energy(force_consistent=self.force_consistent)
             pbb = max_e - self.e_endpoint.get_potential_energy(force_consistent=self.force_consistent)
@@ -541,7 +556,7 @@ class AIDNEB:
             parprint('Predicted barrier (<--):', pbb)
             parprint('Number of images:', len(self.images))
             parprint('Max. uncertainty:', np.max(neb_pred_uncertainty))
-            parprint("Max. force of energy maximum image:", max_f.item())
+            parprint("Max. force:", max_f.item())
             msg = "--------------------------------------------------------\n"
             parprint(msg)
 
