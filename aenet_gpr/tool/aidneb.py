@@ -395,6 +395,7 @@ class AIDNEB:
 
             self.rmin = 0.1
             max_weight = 5.0
+            update_step = 10
             if violated_index is not None:
                 update_step = self.step
 
