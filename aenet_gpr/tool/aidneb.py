@@ -425,7 +425,7 @@ class AIDNEB:
                             raise ValueError(f"Weight parameter too high ({train_data.calculator.weight}).")
 
                     except Exception as e:
-                        print(f"{e} Increasing r_min and retrying.")
+                        print(f"{e} Increase r_min to {self.rmin + 0.1} and retry.")
                         self.rmin += 0.1
 
                         train_data = ReferenceData(structure_files=train_images,
@@ -460,7 +460,7 @@ class AIDNEB:
                                              fit_weight=self.input_param.fit_weight,
                                              fit_scale=self.input_param.fit_scale)
 
-            self.rmin = 0.1
+            # self.rmin = 0.1
             print('r_min: ', self.rmin)
             print('GPR model hyperparameters: ', train_data.calculator.hyper_params)
 
@@ -545,7 +545,9 @@ class AIDNEB:
             # 5. Print output.
             max_e = np.max(neb_pred_energy)
             max_e_ind = np.argsort(neb_pred_energy)[-1]
-            max_f = get_fmax(self.images[max_e_ind])  # get_fmax(train_images[-1]), train_images 의 calc 는 reference
+            # train_images 의 calc 는 reference,
+            # self.images 의 calc 는 GP
+            max_f = get_fmax(self.images[max_e_ind])  # get_fmax(train_images[-1])
 
             pbf = max_e - self.i_endpoint.get_potential_energy(force_consistent=self.force_consistent)
             pbb = max_e - self.e_endpoint.get_potential_energy(force_consistent=self.force_consistent)
