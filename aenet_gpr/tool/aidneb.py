@@ -364,6 +364,8 @@ class AIDNEB:
         weight_update = self.input_param.weight
         scale_update = self.input_param.scale
 
+        self.rmin = 0.1
+        max_weight = 5.0
         violated_index = 0
         set_update_step = False
         update_step = 10
@@ -396,9 +398,6 @@ class AIDNEB:
             # 2. Prepare a calculator.
             print('Training data size: ', len(train_images))
             print('Descriptor: ', self.input_param.descriptor)
-
-            self.rmin = 0.1
-            max_weight = 5.0
 
             if violated_index is None and not set_update_step:
                 update_step = self.step
