@@ -363,7 +363,7 @@ class AIDNEB:
 
         weight_update = self.input_param.weight
         scale_update = self.input_param.scale
-        violated_index = None
+        violated_index = 0
         while True:
 
             # 0. Start from initial interpolation every 50 steps.
@@ -395,9 +395,12 @@ class AIDNEB:
 
             self.rmin = 0.1
             max_weight = 5.0
+
+            set_update_step = False
             update_step = 10
-            if violated_index is not None:
+            if violated_index is None and not set_update_step:
                 update_step = self.step
+                set_update_step = True
 
             if self.step % 25 == update_step:
                 self.input_param.fit_weight = True
