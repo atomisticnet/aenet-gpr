@@ -316,7 +316,7 @@ class ReferenceData(object):
 
         self.calculator.train_model()
         if fit_scale:
-            self.fit_scale_only(candidates=5)
+            self.fit_scale_only()
         if fit_weight:
             self.fit_weight_only(use_forces=True)
 
@@ -350,7 +350,7 @@ class ReferenceData(object):
 
         return
 
-    def fit_scale_only(self, candidates=5, factor=4.0):
+    def fit_scale_only(self, candidates=3, factor=2.0):
         """
         Update the kernel scale keeping all other hyperparameters fixed by evaluating marginal likelihood over candidate scales.
 
