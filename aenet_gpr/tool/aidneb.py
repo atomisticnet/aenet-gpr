@@ -533,7 +533,7 @@ class AIDNEB:
 
             # Safe check to optimize the images.
             nim = len(self.images) - 2
-            nat = self.images[0].get_number_of_atoms()
+            nat = len(self.images[0])
             if np.max(neb_pred_uncertainty) <= max_unc_trheshold:
                 # neb_opt.run(fmax=(fmax * 0.8), steps=ml_steps)
 
@@ -568,7 +568,7 @@ class AIDNEB:
                         ok_forces = True
                         break
 
-                F = neb_opt.get_forces()  # (n_mobile*nat*3) flat
+                F = ml_neb.get_forces()  # (n_mobile*nat*3) flat
                 F = F.reshape(nim, nat, 3)
                 fmax_all = (F ** 2).sum(-1).sqrt().max().item()
 
