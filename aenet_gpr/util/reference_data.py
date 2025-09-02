@@ -390,8 +390,9 @@ class ReferenceData(object):
 
             # MAP 보정: log-normal prior centered at previous (or initial) scale
             log_l = torch.log(candidate_scale)
-            mu = torch.log(0.4)  # self.scale_ref = 직전 best_scale 또는 초기값 0.4
-            log_prior = -0.5 * ((log_l - mu) / 0.5) ** 2 - log_l
+            mu = torch.log(torch.tensor(0.4, dtype=self.torch_data_type, device=self.device))
+            sigma = torch.tensor(0.5, dtype=self.torch_data_type, device=self.device)
+            log_prior = -0.5 * ((log_l - mu) / sigma) ** 2 - log_l
             lambda_prior = 1.0  # 튜닝
             logP_total = logP + lambda_prior * log_prior
 
