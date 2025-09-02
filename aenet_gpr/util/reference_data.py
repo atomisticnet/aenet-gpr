@@ -388,8 +388,15 @@ class ReferenceData(object):
             logP = -0.5 * torch.matmul(y_flat - m_, a_) - torch.sum(torch.log(torch.diag(self.calculator.K_XX_L))) \
                    - self.calculator.Ntrain * 0.5 * torch.log(torch.as_tensor(2 * torch.pi, dtype=self.torch_data_type).to(self.device))
 
+            # MAP 보정: log-normal prior centered at previous (or initial) scale
+            log_l = torch.log(candidate_scale)
+            mu = torch.log(0.4)  # self.scale_ref = 직전 best_scale 또는 초기값 0.4
+            log_prior = -0.5 * ((log_l - mu) / 0.5) ** 2 - log_l
+            lambda_prior = 1.0  # 튜닝
+            logP_total = logP + lambda_prior * log_prior
+
             # Keep track of best scale
-            if logP > best_logp:
+            if logP_total > best_logp:
                 best_logp = logP
                 best_scale = candidate_scale
 
