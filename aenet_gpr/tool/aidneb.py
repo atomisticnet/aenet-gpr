@@ -364,7 +364,7 @@ class AIDNEB:
         weight_update = self.input_param.weight
         scale_update = self.input_param.scale
 
-        self.rmin = 0.1
+        self.rmin = 0.05
         self.max_unc_hist = []
         self.max_unc_hist_after = []
 
@@ -453,8 +453,8 @@ class AIDNEB:
                 if self.rmin >= self.rmax:
                     half_rmax = self.rmax / 2.0
                     new_rmin = (int(half_rmax * 10) / 10.0)
-                    self.rmin = max(new_rmin, 0.1)
-                    print(f"r_min exceeded r_max → reset to {self.rmin:.1f} (≈ half of r_max)")
+                    self.rmin = max(new_rmin, 0.05)
+                    print(f"r_min exceeded r_max → reset to {self.rmin:.2f} (≈ half of r_max)")
 
             else:
                 self.input_param.fit_weight = False
@@ -478,7 +478,7 @@ class AIDNEB:
                                              fit_weight=self.input_param.fit_weight,
                                              fit_scale=self.input_param.fit_scale)
 
-            print(f"r_min (threshold to avoid adding nearly-duplicate training data): {self.rmin:.1f}")
+            print(f"r_min (threshold to avoid adding nearly-duplicate training data): {self.rmin:.2f}")
             print('GPR model hyperparameters: ', train_data.calculator.hyper_params)
 
             self.model_calculator = GPRCalculator(calculator=train_data.calculator, train_data=train_data)
@@ -668,7 +668,7 @@ class AIDNEB:
                     dist = torch.linalg.norm(xi - fp_candidate)
 
                     if dist < self.rmin:
-                        print(f"Candidate rejected: too close to train data {i} (dist={dist:.4f} < r_min={self.rmin:.1f})")
+                        print(f"Candidate rejected: too close to train data {i} (dist={dist:.4f} < r_min={self.rmin:.2f})")
                         break
                 else:
                     accepted = True
