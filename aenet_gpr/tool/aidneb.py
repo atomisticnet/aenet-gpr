@@ -365,6 +365,9 @@ class AIDNEB:
         scale_update = self.input_param.scale
 
         self.rmin = 0.1
+        self.max_unc_hist = []
+        self.max_unc_hist_after = []
+
         max_weight = 5.0
         violated_index = 0
         set_update_step = False
@@ -500,7 +503,20 @@ class AIDNEB:
             # with a few data points. Switch on climbing image (CI-NEB) only
             # when the uncertainty of the NEB is low.
             climbing_neb = False
-            if np.max(neb_pred_uncertainty) <= unc_convergence:
+            max_unc = np.max(neb_pred_uncertainty)
+            if max_unc <= unc_convergence:
+                ok_unc = True
+            else:
+                ok_unc = False
+
+            self.max_unc_hist.append(max_unc)
+            W = 7
+            ok_stall_unc = False
+            if self.step > W:
+                dec_unc = np.diff(np.array(self.max_unc_hist[-W:]))
+                ok_stall_unc = np.all(dec_unc <= 0.01)
+
+            if ok_unc or ok_stall_unc:
                 parprint('Climbing image is now activated.')
                 climbing_neb = True
 
@@ -516,10 +532,13 @@ class AIDNEB:
                 neb_opt = FIRE(ml_neb, dt=dt, trajectory=self.trajectory)
 
             # Safe check to optimize the images.
+            nim = len(self.images) - 2
+            nat = self.images[0].get_number_of_atoms()
             if np.max(neb_pred_uncertainty) <= max_unc_trheshold:
                 # neb_opt.run(fmax=(fmax * 0.8), steps=ml_steps)
 
                 # 직전 스텝의 전체 밴드 좌표 스냅샷(롤백용)
+                ok_forces = False
                 prev_positions = [im.get_positions().copy() for im in self.images]
 
                 for step in range(ml_steps):
@@ -546,11 +565,18 @@ class AIDNEB:
 
                     # (선택) 수렴하면 조기 종료
                     if neb_opt.converged():
+                        ok_forces = True
                         break
+
+                F = neb_opt.get_forces()  # (n_mobile*nat*3) flat
+                F = F.reshape(nim, nat, 3)
+                fmax_all = (F ** 2).sum(-1).sqrt().max().item()
 
             else:
                 print("The uncertainty of the NEB lies above the max_unc threshold (1.0).")
                 print("NEB won't be optimized and the image with maximum uncertainty is just evaluated and added")
+                F = np.array([im.get_forces() for im in self.images[1:-1]])
+                fmax_all = (F ** 2).sum(-1).sqrt().max().item()
 
             predictions = get_neb_predictions(self.images)
             neb_pred_energy = predictions['energy']
@@ -559,9 +585,11 @@ class AIDNEB:
             # 5. Print output.
             max_e = np.max(neb_pred_energy)
             max_e_ind = np.argsort(neb_pred_energy)[-1]
+            max_unc = np.max(neb_pred_uncertainty)
+
             # train_images 의 calc 는 reference,
             # self.images 의 calc 는 GP
-            max_f = get_fmax(self.images[max_e_ind])  # get_fmax(train_images[-1])
+            max_f = get_fmax(self.images[max_e_ind]).item()  # get_fmax(train_images[-1])
 
             pbf = max_e - self.i_endpoint.get_potential_energy(force_consistent=self.force_consistent)
             pbb = max_e - self.e_endpoint.get_potential_energy(force_consistent=self.force_consistent)
@@ -573,19 +601,30 @@ class AIDNEB:
             parprint('Predicted barrier (-->):', pbf)
             parprint('Predicted barrier (<--):', pbb)
             parprint('Number of images:', len(self.images))
-            parprint('Max. uncertainty:', np.max(neb_pred_uncertainty))
-            parprint("Max. force:", max_f.item())
+            parprint('Max. uncertainty:', max_unc)
+            parprint("Max. force:", fmax_all)
             msg = "--------------------------------------------------------\n"
             parprint(msg)
 
             # 6. Check convergence.
+            if max_unc <= unc_convergence:
+                ok_unc = True
+            else:
+                ok_unc = False
+
+            self.max_unc_hist_after.append(max_unc)
+            ok_stall_unc = False
+            if self.step > W:
+                dec_unc = np.diff(np.array(self.max_unc_hist_after[-W:]))
+                ok_stall_unc = np.all(dec_unc <= 0.01)
+
             # Max.forces and NEB images uncertainty must be below *fmax* and *unc_convergence* thresholds.
-            if len(train_images) > 2 and max_f <= fmax and np.max(neb_pred_uncertainty[1:-1]) <= unc_convergence and climbing_neb:
+            if len(train_images) > 2 and fmax_all <= fmax and (ok_unc or ok_stall_unc) and climbing_neb and ok_forces:
                 parprint('A saddle point was found.')
 
                 # if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
                 io.write(self.trajectory, self.images)
-                parprint('Uncertainty of the images above threshold.')
+                parprint('Uncertainty of the images below threshold.')
                 parprint('NEB converged.')
                 parprint('The NEB path can be found in:', self.trajectory)
                 msg = "Visualize the last path using 'ase gui "
