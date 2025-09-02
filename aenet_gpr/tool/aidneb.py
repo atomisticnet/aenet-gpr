@@ -570,13 +570,13 @@ class AIDNEB:
 
                 F = ml_neb.get_forces()  # (n_mobile*nat*3) flat
                 F = F.reshape(nim, nat, 3)
-                fmax_all = (F ** 2).sum(-1).sqrt().max().item()
+                fmax_all = np.sqrt((F ** 2).sum(-1)).max().item()
 
             else:
                 print("The uncertainty of the NEB lies above the max_unc threshold (1.0).")
                 print("NEB won't be optimized and the image with maximum uncertainty is just evaluated and added")
                 F = np.array([im.get_forces() for im in self.images[1:-1]])
-                fmax_all = (F ** 2).sum(-1).sqrt().max().item()
+                fmax_all = np.sqrt((F ** 2).sum(-1)).max().item()
 
             predictions = get_neb_predictions(self.images)
             neb_pred_energy = predictions['energy']
