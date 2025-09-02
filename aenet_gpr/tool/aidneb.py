@@ -249,7 +249,7 @@ class AIDNEB:
                 self.n_images = 3
             self.images = make_neb(self)
             raw_spring = 1. * np.sqrt(self.n_images - 1) / d_start_end  # 1 or 2?
-            self.spring = np.clip(raw_spring, 0.05, 0.1)
+            self.spring = 2. * np.sqrt(self.n_images - 1) / d_start_end ** 2  # np.clip(raw_spring, 0.05, 0.1)
 
             neb_interpolation = NEB(self.images, climb=False, k=self.spring,
                                     method=self.neb_method,
@@ -283,7 +283,7 @@ class AIDNEB:
         # Guess spring constant (k) if not defined by the user.
         if self.spring is None:
             raw_spring = 1. * np.sqrt(self.n_images - 1) / d_start_end  # 1 or 2?
-            self.spring = np.clip(raw_spring, 0.05, 0.10)
+            self.spring = 2. * np.sqrt(self.n_images - 1) / d_start_end ** 2  # np.clip(raw_spring, 0.05, 0.10)
         # Save initial interpolation.
         self.initial_interpolation = self.images[:]
 
