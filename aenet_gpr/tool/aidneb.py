@@ -364,7 +364,7 @@ class AIDNEB:
         weight_update = self.input_param.weight
         scale_update = self.input_param.scale
 
-        self.rmin = 0.05
+        self.rmin = 0.1
         self.max_unc_hist = []
         self.max_unc_hist_after = []
 
@@ -512,9 +512,9 @@ class AIDNEB:
             self.max_unc_hist.append(max_unc)
             W = 7
             ok_stall_unc = False
-            if self.step > W:
+            if len(self.max_unc_hist) > W:
                 dec_unc = np.diff(np.array(self.max_unc_hist[-W:]))
-                ok_stall_unc = np.all(dec_unc <= 0.01)
+                ok_stall_unc = np.all(np.abs(dec_unc) <= 0.02)
 
             if ok_unc or ok_stall_unc:
                 parprint('Climbing image is now activated.')
@@ -614,12 +614,12 @@ class AIDNEB:
 
             self.max_unc_hist_after.append(max_unc)
             ok_stall_unc = False
-            if self.step > W:
+            if len(self.max_unc_hist_after) > W:
                 dec_unc = np.diff(np.array(self.max_unc_hist_after[-W:]))
-                ok_stall_unc = np.all(dec_unc <= 0.01)
+                ok_stall_unc = np.all(np.abs(dec_unc) <= 0.02)
 
             # Max.forces and NEB images uncertainty must be below *fmax* and *unc_convergence* thresholds.
-            if len(train_images) > 2 and fmax_all <= fmax and (ok_unc or ok_stall_unc) and climbing_neb and ok_forces:
+            if len(train_images) > 2 and fmax_all <= fmax and (ok_unc or ok_stall_unc) and max_unc < unc_convergence * 5 and climbing_neb and ok_forces:
                 parprint('A saddle point was found.')
 
                 # if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
@@ -655,24 +655,45 @@ class AIDNEB:
 
             # Select the best candidate.
             accepted = False
+            sorted_candidates_tmp = copy.deepcopy(sorted_candidates)
 
             fp_train = train_data.generate_cartesian(train_data.images)
             N = fp_train.shape[0]
 
             while not accepted:
-                best_candidate = sorted_candidates.pop(0)
+                best_candidate = sorted_candidates_tmp.pop(0)
                 fp_candidate = train_data.generate_cartesian_per_data(best_candidate).flatten()
 
-                for i in range(N):
-                    xi = fp_train[i].flatten()
-                    dist = torch.linalg.norm(xi - fp_candidate)
+                try:
+                    for i in range(N):
+                        xi = fp_train[i].flatten()
+                        dist = torch.linalg.norm(xi - fp_candidate)
 
-                    if dist < self.rmin:
-                        print(f"Candidate rejected: too close to train data {i} (dist={dist:.4f} < r_min={self.rmin:.2f})")
-                        break
-                else:
-                    accepted = True
-                    # print("Candidate accepted")
+                        if dist < self.rmin:
+                            print(f"Candidate rejected: too close to train data {i} (dist={dist:.4f} < r_min={self.rmin:.2f})")
+                            break
+                    else:
+                        accepted = True
+
+                except Exception as e:
+                    print(f"{e} Decrease r_min to {0.05} and retry.")
+                    self.rmin = 0.05
+
+                    sorted_candidates_tmp = copy.deepcopy(sorted_candidates)
+                    best_candidate = sorted_candidates_tmp.pop(0)
+                    fp_candidate = train_data.generate_cartesian_per_data(best_candidate).flatten()
+
+                    for i in range(N):
+                        xi = fp_train[i].flatten()
+                        dist = torch.linalg.norm(xi - fp_candidate)
+
+                        if dist < self.rmin:
+                            print(
+                                f"Candidate rejected: too close to train data {i} (dist={dist:.4f} < r_min={self.rmin:.2f})")
+                            break
+                    else:
+                        accepted = True
+
 
             # Save the other candidates for multi-task optimization.
             if sorted_candidates:
