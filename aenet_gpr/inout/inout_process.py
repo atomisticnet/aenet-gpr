@@ -96,7 +96,7 @@ class Train(object):
 
             except Exception as e:
                 print(f"{e} Increasing threshold and retrying.")
-                threshold += 0.2
+                threshold += 0.05
 
         io_train_finalize(t=start,
                           mem_CPU=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2,
