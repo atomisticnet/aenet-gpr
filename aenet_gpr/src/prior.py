@@ -16,7 +16,7 @@ class ConstantPrior:
         self.atoms_mask = atoms_mask
 
     def set_constant(self, constant):
-        self.constant = torch.tensor(constant, dtype=self.data_type, device=self.device)
+        self.constant = constant
 
     def potential_per_data(self, image=None, get_forces=True):
         if get_forces:
@@ -62,7 +62,7 @@ class ConstantPrior:
         Y: training targets
         L: Cholesky factor of the kernel """
 
-        self.set_constant(1.)
+        self.set_constant(torch.tensor(1.0, dtype=self.data_type, device=self.device))
         if use_forces:
             u = self.potential_batch(images)
         else:
