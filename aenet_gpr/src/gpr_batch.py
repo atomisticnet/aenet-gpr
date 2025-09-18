@@ -375,8 +375,8 @@ class GaussianProcess(nn.Module):
             if self.use_forces:
                 # E_hat = pred[0:x.shape[0]]
                 # F_hat = pred[x.shape[0]:].reshape(x.shape[0], self.Natom, -1)
-                E_hat = torch.empty((Ntest,), dtype=self.torch_data_type)
-                F_hat = torch.zeros((Ntest, self.Natom * 3), dtype=self.torch_data_type)
+                E_hat = torch.empty((Ntest,), dtype=self.torch_data_type, device=self.device)
+                F_hat = torch.zeros((Ntest, self.Natom * 3), dtype=self.torch_data_type, device=self.device)
 
                 for i in range(0, eval_x_N_batch):
                     pred, kernel = self.eval_data_batch(eval_images=eval_images[eval_x_indexes[i][0]:eval_x_indexes[i][1]])
@@ -398,9 +398,9 @@ class GaussianProcess(nn.Module):
 
         else:
             if self.use_forces:
-                E_hat = torch.empty((Ntest,), dtype=self.torch_data_type)
-                F_hat = torch.zeros((Ntest, self.Natom * 3), dtype=self.torch_data_type)
-                uncertainty = torch.empty((Ntest,), dtype=self.torch_data_type)
+                E_hat = torch.empty((Ntest,), dtype=self.torch_data_type, device=self.device)
+                F_hat = torch.zeros((Ntest, self.Natom * 3), dtype=self.torch_data_type, device=self.device)
+                uncertainty = torch.empty((Ntest,), dtype=self.torch_data_type, device=self.device)
 
                 for i in range(0, eval_x_N_batch):
                     pred, kernel = self.eval_data_batch(eval_images=eval_images[eval_x_indexes[i][0]:eval_x_indexes[i][1]])
