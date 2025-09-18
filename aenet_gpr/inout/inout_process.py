@@ -95,8 +95,9 @@ class Train(object):
                     raise ValueError(f"Weight parameter too high ({self.train_data.calculator.weight}).")
 
             except Exception as e:
-                print(f"{e} Increasing threshold and retrying.")
-                threshold += 0.05
+                print(f"{e} Fix the weight and scale parameters.")
+                self.input_param.fit_weight = False
+                self.input_param.fit_scale = True
 
         io_train_finalize(t=start,
                           mem_CPU=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2,
