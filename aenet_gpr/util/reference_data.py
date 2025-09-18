@@ -35,10 +35,7 @@ class ReferenceData(object):
             self.numpy_data_type = np.float64
             self.torch_data_type = torch.float64
 
-        if device == 'cpu':
-            self.device = device
-        else:
-            self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = device
 
         self.images = []
         self.lattice = np.array([], dtype=self.numpy_data_type)  # [Ndata, 3, 3] if pbc
@@ -265,9 +262,6 @@ class ReferenceData(object):
                           train_batch_size=25, eval_batch_size=25,
                           fit_weight=True, fit_scale=True):
 
-        # X_train_tensor = torch.as_tensor(self.fp, dtype=self.torch_data_type).to(self.device)
-        # dX_train_tensor = torch.as_tensor(self.dfp_dr, dtype=self.torch_data_type).to(self.device)
-
         if self.standardization:
             Y_train_tensor = torch.as_tensor(self.energy_scale, dtype=self.torch_data_type).to(self.device)
             dY_train_tensor = torch.as_tensor(self.force_scale, dtype=self.torch_data_type).to(self.device)
@@ -292,7 +286,7 @@ class ReferenceData(object):
                                                             device=self.device,
                                                             soap_param=self.soap_param,
                                                             descriptor=self.descriptor,
-                                                            atoms_mask=self.atoms_mask)
+                                                            atoms_mask=self.atoms_mask).to(self.device)
         elif self.data_process == 'batch':
             self.calculator = gpr_batch.GaussianProcess(kerneltype=kerneltype,
                                                         scale=scale,
@@ -312,7 +306,7 @@ class ReferenceData(object):
                                                         device=self.device,
                                                         soap_param=self.soap_param,
                                                         descriptor=self.descriptor,
-                                                        atoms_mask=self.atoms_mask)
+                                                        atoms_mask=self.atoms_mask).to(self.device)
 
         self.calculator.train_model()
         if fit_scale:
@@ -617,7 +611,7 @@ class ReferenceData(object):
                                                             data_type=self.data_type,
                                                             device=self.device,
                                                             soap_param=self.soap_param,
-                                                            descriptor=self.descriptor)
+                                                            descriptor=self.descriptor).to(self.device)
             self.calculator.load_data()
 
         elif self.data_process == 'batch':
@@ -625,5 +619,5 @@ class ReferenceData(object):
                                                         data_type=self.data_type,
                                                         device=self.device,
                                                         soap_param=self.soap_param,
-                                                        descriptor=self.descriptor)
+                                                        descriptor=self.descriptor).to(self.device)
             self.calculator.load_data()
