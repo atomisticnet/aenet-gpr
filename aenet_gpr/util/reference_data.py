@@ -362,7 +362,7 @@ class ReferenceData(object):
         best_logp = -torch.inf
 
         # Generate candidate scales logarithmically spaced around current scale
-        candidate_scales = current_scale * factor ** torch.linspace(-1, 1, candidates)
+        candidate_scales = current_scale * factor ** torch.linspace(-1, 1, candidates, device=self.device)
 
         print('Candidate scales:', candidate_scales)
         for candidate_scale in candidate_scales:
