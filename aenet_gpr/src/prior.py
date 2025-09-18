@@ -12,11 +12,11 @@ class ConstantPrior:
     def __init__(self, constant, data_type=torch.float64, device='cpu', atoms_mask=None, **kwargs):
         self.data_type = data_type
         self.device = device
-        self.constant = constant  # torch.tensor(constant, dtype=self.data_type, device=self.device)
+        self.constant = torch.tensor(constant, dtype=self.data_type, device=self.device)
         self.atoms_mask = atoms_mask
 
     def set_constant(self, constant):
-        self.constant = constant  # torch.tensor(constant, dtype=self.data_type, device=self.device)
+        self.constant = torch.tensor(constant, dtype=self.data_type, device=self.device)
 
     def potential_per_data(self, image=None, get_forces=True):
         if get_forces:

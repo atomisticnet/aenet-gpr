@@ -71,7 +71,7 @@ class GaussianProcess(nn.Module):
         if prior is None:
             self.prior = ConstantPrior(0.0, dtype=self.torch_data_type, device=self.device, atoms_mask=self.atoms_mask)
         else:
-            self.prior = prior
+            self.prior = torch.tensor(prior, dtype=self.torch_data_type, device=self.device)
         self.prior_update = prior_update
 
         self.sparse = sparse
@@ -154,10 +154,10 @@ class GaussianProcess(nn.Module):
                 K_XX = self.kernel.kernel_matrix_batch(images=self.images, batch_size=self.train_batch_size)
 
                 # reg = [Ntrain * (1 + 3 * Natom), Ntrain * (1 + 3 * Natom)]
-                a = torch.tensor(self.Ntrain * [self.hyper_params['noise'] * self.hyper_params['noisefactor']], dtype=self.torch_data_type).reshape(
+                a = torch.tensor(self.Ntrain * [self.hyper_params['noise'] * self.hyper_params['noisefactor']], dtype=self.torch_data_type, device=self.device).reshape(
                     self.Ntrain, 1)
                 b = torch.tensor(self.Ntrain * self.Nmask * [self.hyper_params['noise']],
-                                 dtype=self.torch_data_type).reshape(self.Ntrain, -1)
+                                 dtype=self.torch_data_type, device=self.device).reshape(self.Ntrain, -1)
                 reg = torch.diag(torch.cat((a, b), 1).flatten() ** 2)
                 self.inv_reg = torch.linalg.inv(reg)
 
@@ -221,7 +221,7 @@ class GaussianProcess(nn.Module):
                 # covariance matrix between the training points X
                 K_XX = self.kernel.kernel_without_deriv(X1=self.X, X2=self.X)
 
-                a = torch.tensor(self.Ntrain * [self.hyper_params['noise']], dtype=self.torch_data_type)
+                a = torch.tensor(self.Ntrain * [self.hyper_params['noise']], dtype=self.torch_data_type, device=self.device)
                 reg = torch.diag(a ** 2)
                 self.inv_reg = torch.linalg.inv(reg)
 
