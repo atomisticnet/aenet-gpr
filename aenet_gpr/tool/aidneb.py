@@ -364,7 +364,7 @@ class AIDNEB:
         weight_update = self.input_param.weight
         scale_update = self.input_param.scale
 
-        self.rmin = 0.1
+        self.rmin = 0.05
         self.max_unc_hist = []
         self.max_unc_hist_after = []
 
@@ -437,8 +437,8 @@ class AIDNEB:
                             raise ValueError(f"Weight parameter too high ({train_data.calculator.weight}).")
 
                     except Exception as e:
-                        print(f"{e} Increase r_min to {self.rmin + 0.1} and retry.")
-                        self.rmin += 0.1
+                        print(f"{e} Increase r_min to {self.rmin + 0.05} and retry.")
+                        self.rmin += 0.05
 
                         train_data = ReferenceData(structure_files=train_images,
                                                    file_format='ase',
