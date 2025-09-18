@@ -97,7 +97,7 @@ class Train(object):
             except Exception as e:
                 print(f"{e} Fix the weight and scale parameters.")
                 self.input_param.fit_weight = False
-                self.input_param.fit_scale = True
+                self.input_param.fit_scale = False
 
         io_train_finalize(t=start,
                           mem_CPU=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2,
