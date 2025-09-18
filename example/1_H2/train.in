@@ -12,4 +12,4 @@ Descriptor cart
 Filter False
 
 fit_weight True
-fit_scale True
+fit_scale False
