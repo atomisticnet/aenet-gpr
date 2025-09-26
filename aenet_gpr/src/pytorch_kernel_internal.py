@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import os
 
-import chemcoord as cc
+# import chemcoord as cc
 import ase.io
 
 from aenet_gpr.src.pytorch_kerneltypes import SquaredExp
