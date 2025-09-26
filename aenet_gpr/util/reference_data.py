@@ -351,6 +351,8 @@ class ReferenceData(object):
             print(f"{e}")
             print("Fix the weight parameter")
             self.calculator.weight = prev_weight
+            self.calculator.hyper_params.update(dict(weight=self.calculator.weight))
+            self.calculator.kernel.set_params(self.calculator.hyper_params)
 
         print('Updated weight:', self.calculator.weight.item())
 
