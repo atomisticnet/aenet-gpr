@@ -392,7 +392,7 @@ class ReferenceData(object):
 
             # Keep track of best scale
             if logP_total > best_logp:
-                best_logp = logP
+                best_logp = logP_total
                 best_scale = candidate_scale
 
         # Update to best scale found
