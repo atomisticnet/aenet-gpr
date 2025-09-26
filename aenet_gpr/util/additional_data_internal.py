@@ -3,7 +3,7 @@ import copy
 import glob
 import numpy as np
 
-import chemcoord as cc
+# import chemcoord as cc
 import ase.io
 import torch
 

@@ -5,7 +5,7 @@ import copy
 import numpy as np
 import torch
 
-import chemcoord as cc
+# import chemcoord as cc
 import ase.io
 from ase import Atoms
 from ase.calculators.singlepoint import SinglePointCalculator
