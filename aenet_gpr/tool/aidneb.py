@@ -9,9 +9,9 @@ from ase.optimize import FIRE, MDMin, LBFGS, BFGS
 from ase.parallel import parprint, parallel_function
 
 try:
-    from ase.mep import NEB
+    from ase.mep import NEB, DyNEB
 except ModuleNotFoundError:
-    from ase.neb import NEB
+    from ase.neb import NEB, DyNEB
 
 from aenet_gpr.src import GPRCalculator
 from aenet_gpr.util import ReferenceData
@@ -221,8 +221,8 @@ class AIDNEB:
             for i in range(10000):
                 mic_images += [mic_initial.copy()]
             mic_images += [mic_final]
-            neb_mic = NEB(mic_images, climb=False, method=self.neb_method,
-                          remove_rotation_and_translation=self.rrt)
+            neb_mic = DyNEB(mic_images, climb=False, method=self.neb_method,
+                            remove_rotation_and_translation=self.rrt)
             neb_mic.interpolate(method='linear', mic=self.mic)
             self.i_endpoint.positions = mic_images[1].positions[:]
             self.e_endpoint.positions = mic_images[-2].positions[:]
@@ -251,12 +251,12 @@ class AIDNEB:
             raw_spring = 1. * np.sqrt(self.n_images - 1) / d_start_end  # 1 or 2?
             self.spring = 2. * np.sqrt(self.n_images - 1) / d_start_end ** 2  # np.clip(raw_spring, 0.05, 0.1)
 
-            neb_interpolation = NEB(self.images, climb=False, k=self.spring,
-                                    method=self.neb_method,
-                                    remove_rotation_and_translation=self.rrt)
+            neb_interpolation = DyNEB(self.images, climb=False, k=self.spring,
+                                      method=self.neb_method,
+                                      remove_rotation_and_translation=self.rrt)
             neb_interpolation.interpolate(method='linear', mic=self.mic)
             if interpolation == 'idpp':
-                neb_interpolation = NEB(
+                neb_interpolation = DyNEB(
                     self.images, climb=True,
                     k=self.spring, method=self.neb_method,
                     remove_rotation_and_translation=self.rrt)
@@ -368,7 +368,6 @@ class AIDNEB:
         self.max_unc_hist = []
         self.max_unc_hist_after = []
 
-        max_weight = 5.0
         violated_index = 0
         set_update_step = False
         update_step = 10
@@ -411,50 +410,29 @@ class AIDNEB:
                 self.input_param.fit_weight = True
                 self.input_param.fit_scale = True
 
-                while True:
-                    if self.input_param.filter:
-                        train_data.filter_similar_data(threshold=self.rmin)
-                        print('Actual training data size (after removing similar data): ', len(train_data.images))
+                if self.input_param.filter:
+                    train_data.filter_similar_data(threshold=self.rmin)
+                    print('Actual training data size (after removing similar data): ', len(train_data.images))
 
-                    try:
-                        train_data.config_calculator(kerneltype='sqexp',
-                                                     scale=scale_update,
-                                                     weight=weight_update,
-                                                     noise=self.input_param.noise,
-                                                     noisefactor=self.input_param.noisefactor,
-                                                     use_forces=self.input_param.use_forces,
-                                                     sparse=self.input_param.sparse,
-                                                     sparse_derivative=self.input_param.sparse_derivative,
-                                                     autograd=self.input_param.autograd,
-                                                     train_batch_size=self.input_param.train_batch_size,
-                                                     eval_batch_size=self.input_param.eval_batch_size,
-                                                     fit_weight=self.input_param.fit_weight,
-                                                     fit_scale=self.input_param.fit_scale)
+                train_data.config_calculator(kerneltype='sqexp',
+                                             scale=scale_update,
+                                             weight=weight_update,
+                                             noise=self.input_param.noise,
+                                             noisefactor=self.input_param.noisefactor,
+                                             use_forces=self.input_param.use_forces,
+                                             sparse=self.input_param.sparse,
+                                             sparse_derivative=self.input_param.sparse_derivative,
+                                             autograd=self.input_param.autograd,
+                                             train_batch_size=self.input_param.train_batch_size,
+                                             eval_batch_size=self.input_param.eval_batch_size,
+                                             fit_weight=self.input_param.fit_weight,
+                                             fit_scale=self.input_param.fit_scale)
 
-                        if train_data.calculator.weight < max_weight:
-                            break
-                        else:
-                            raise ValueError(f"Weight parameter too high ({train_data.calculator.weight}).")
-
-                    except Exception as e:
-                        print(f"{e} Increase r_min to {self.rmin + 0.05} and retry.")
-                        self.rmin += 0.05
-
-                        train_data = ReferenceData(structure_files=train_images,
-                                                   file_format='ase',
-                                                   device=self.input_param.device,
-                                                   descriptor=self.input_param.descriptor,
-                                                   data_type=self.input_param.data_type,
-                                                   data_process=self.input_param.data_process,
-                                                   soap_param=self.input_param.soap_param,
-                                                   standardization=False,
-                                                   mask_constraints=self.input_param.mask_constraints)
-
-                if self.rmin >= self.rmax:
-                    half_rmax = self.rmax / 2.0
-                    new_rmin = (int(half_rmax * 10) / 10.0)
-                    self.rmin = max(new_rmin, 0.05)
-                    print(f"r_min exceeded r_max → reset to {self.rmin:.2f} (≈ half of r_max)")
+                # if self.rmin >= self.rmax:
+                #     half_rmax = self.rmax / 2.0
+                #     new_rmin = (int(half_rmax * 10) / 10.0)
+                #     self.rmin = max(new_rmin, 0.05)
+                #     print(f"r_min exceeded r_max → reset to {self.rmin:.2f} (≈ half of r_max)")
 
             else:
                 self.input_param.fit_weight = False
@@ -520,7 +498,7 @@ class AIDNEB:
                 parprint('Climbing image is now activated.')
                 climbing_neb = True
 
-            ml_neb = NEB(self.images, climb=climbing_neb, method=self.neb_method, k=self.spring)
+            ml_neb = DyNEB(self.images, climb=climbing_neb, method=self.neb_method, k=self.spring)
             # FIRE, MDMin, LBFGS, BFGS
             if optimizer.lower() == 'mdmin':
                 neb_opt = MDMin(ml_neb, dt=dt, trajectory=self.trajectory)
@@ -670,14 +648,15 @@ class AIDNEB:
                         dist = torch.linalg.norm(xi - fp_candidate)
 
                         if dist < self.rmin:
-                            print(f"Candidate rejected: too close to train data {i} (dist={dist:.4f} < r_min={self.rmin:.2f})")
+                            print(f"Candidate rejected: too close to train data {i} (dist={dist:.4f} < r_min={self.rmin:.3f})")
                             break
                     else:
                         accepted = True
 
                 except Exception as e:
-                    print(f"{e} Decrease r_min to {0.05} and retry.")
-                    self.rmin = 0.05
+                    print(f"{e}")
+                    self.rmin -= 0.005
+                    print(f"Decrease r_min to {self.rmin:.3f} and retry")
 
                     sorted_candidates_tmp = copy.deepcopy(sorted_candidates)
                     best_candidate = sorted_candidates_tmp.pop(0)
@@ -688,8 +667,7 @@ class AIDNEB:
                         dist = torch.linalg.norm(xi - fp_candidate)
 
                         if dist < self.rmin:
-                            print(
-                                f"Candidate rejected: too close to train data {i} (dist={dist:.4f} < r_min={self.rmin:.2f})")
+                            print(f"Candidate rejected: too close to train data {i} (dist={dist:.4f} < r_min={self.rmin:.3f})")
                             break
                     else:
                         accepted = True
