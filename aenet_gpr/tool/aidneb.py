@@ -511,15 +511,14 @@ class AIDNEB:
             if np.max(neb_pred_uncertainty) <= max_unc_trheshold:
                 # neb_opt.run(fmax=(fmax * 0.8), steps=ml_steps)
 
-                # 직전 스텝의 전체 밴드 좌표 스냅샷(롤백용)
+                # previous position snapshot (for rollback)
                 ok_forces = False
                 prev_positions = [im.get_positions().copy() for im in self.images]
 
                 for step in range(ml_steps):
-                    # 한 스텝만 진행
                     neb_opt.run(fmax=fmax * 0.8, steps=1)
 
-                    # 신뢰반경 검사(엔드포인트 제외: 1..len(images)-2)
+                    #
                     violated_index = None
                     for i in range(1, len(self.images) - 1):
                         d2 = min_cartesian_dist(self.images[i], train_images)
@@ -530,15 +529,13 @@ class AIDNEB:
 
                     if violated_index is not None:
                         for im, pos in zip(self.images, prev_positions):
-                            im.set_positions(pos)  # 마지막 GPR 스텝 취소
+                            im.set_positions(pos)
 
                         break
                     else:
-                        # 스텝 확정: 다음 롤백 기준 업데이트
                         prev_positions = [im.get_positions().copy() for im in self.images]
 
-                    # (선택) 수렴하면 조기 종료
-                    if neb_opt.converged():
+                    if neb_opt.converged(ml_neb.get_forces().ravel()):
                         ok_forces = True
                         break
 
