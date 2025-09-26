@@ -321,22 +321,36 @@ class ReferenceData(object):
         k = weight**2 * sqexp(x,x',other hyperparameters)
         """
 
-        if use_forces:
-            _prior_array = self.calculator.prior.potential_batch(self.images, get_forces=True)
-            _factor = torch.sqrt(torch.matmul(self.calculator.YdY.flatten() - _prior_array,
-                                              self.calculator.model_vector) / _prior_array.shape[0])
-            self.calculator.weight *= _factor.squeeze()
-            self.calculator.hyper_params.update(dict(weight=self.calculator.weight))
-            self.calculator.kernel.set_params(self.calculator.hyper_params)
+        max_weight = 100.0
+        prev_weight = copy.deepcopy(self.calculator.weight)
 
-        else:
-            _prior_array = self.calculator.prior.potential_batch(self.images, get_forces=False)
-            _n_train = len(self.images)
-            _factor = torch.sqrt(torch.matmul(self.calculator.YdY.flatten()[:_n_train] - _prior_array,
-                                              self.calculator.model_vector[:_n_train]) / _prior_array.shape[0])
-            self.calculator.weight *= _factor.squeeze()
-            self.calculator.hyper_params.update(dict(weight=self.calculator.weight))
-            self.calculator.kernel.set_params(self.calculator.hyper_params)
+        try:
+            if use_forces:
+                _prior_array = self.calculator.prior.potential_batch(self.images, get_forces=True)
+                _factor = torch.sqrt(torch.matmul(self.calculator.YdY.flatten() - _prior_array,
+                                                  self.calculator.model_vector) / _prior_array.shape[0])
+                self.calculator.weight *= _factor.squeeze()
+                self.calculator.hyper_params.update(dict(weight=self.calculator.weight))
+                self.calculator.kernel.set_params(self.calculator.hyper_params)
+
+            else:
+                _prior_array = self.calculator.prior.potential_batch(self.images, get_forces=False)
+                _n_train = len(self.images)
+                _factor = torch.sqrt(torch.matmul(self.calculator.YdY.flatten()[:_n_train] - _prior_array,
+                                                  self.calculator.model_vector[:_n_train]) / _prior_array.shape[0])
+                self.calculator.weight *= _factor.squeeze()
+                self.calculator.hyper_params.update(dict(weight=self.calculator.weight))
+                self.calculator.kernel.set_params(self.calculator.hyper_params)
+
+            if self.calculator.weight < max_weight:
+                pass
+            else:
+                raise ValueError(f"Weight parameter is too high ({self.calculator.weight}).")
+
+        except Exception as e:
+            print(f"{e}")
+            print("Fix the weight parameter")
+            self.calculator.weight = prev_weight
 
         print('Updated weight:', self.calculator.weight.item())
 
@@ -372,7 +386,11 @@ class ReferenceData(object):
             self.calculator.kernel.set_params(self.calculator.hyper_params)
 
             # Train GP with current candidate scale
-            self.calculator.train_model()
+            try:
+                self.calculator.train_model()
+            except Exception as e:
+                print(f"{e}")
+                continue
 
             # Evaluate marginal likelihood
             y_flat = self.calculator.YdY.flatten()
