@@ -221,8 +221,7 @@ class AIDNEB:
             for i in range(10000):
                 mic_images += [mic_initial.copy()]
             mic_images += [mic_final]
-            neb_mic = DyNEB(mic_images, climb=False, method=self.neb_method,
-                            remove_rotation_and_translation=self.rrt)
+            neb_mic = NEB(mic_images, climb=False, method=self.neb_method, remove_rotation_and_translation=self.rrt)
             neb_mic.interpolate(method='linear', mic=self.mic)
             self.i_endpoint.positions = mic_images[1].positions[:]
             self.e_endpoint.positions = mic_images[-2].positions[:]
@@ -251,15 +250,12 @@ class AIDNEB:
             raw_spring = 1. * np.sqrt(self.n_images - 1) / d_start_end  # 1 or 2?
             self.spring = 2. * np.sqrt(self.n_images - 1) / d_start_end ** 2  # np.clip(raw_spring, 0.05, 0.1)
 
-            neb_interpolation = DyNEB(self.images, climb=False, k=self.spring,
-                                      method=self.neb_method,
-                                      remove_rotation_and_translation=self.rrt)
+            neb_interpolation = NEB(self.images, climb=False, k=self.spring, method=self.neb_method,
+                                    remove_rotation_and_translation=self.rrt)
             neb_interpolation.interpolate(method='linear', mic=self.mic)
             if interpolation == 'idpp':
-                neb_interpolation = DyNEB(
-                    self.images, climb=True,
-                    k=self.spring, method=self.neb_method,
-                    remove_rotation_and_translation=self.rrt)
+                neb_interpolation = NEB(self.images, climb=True, k=self.spring, method=self.neb_method,
+                                        remove_rotation_and_translation=self.rrt)
                 neb_interpolation.interpolate(method='idpp', mic=self.mic)
                 # neb_interpolation.idpp_interpolate(optimizer=FIRE, mic=self.mic)
 
@@ -498,7 +494,7 @@ class AIDNEB:
                 parprint('Climbing image is now activated.')
                 climbing_neb = True
 
-            ml_neb = DyNEB(self.images, climb=climbing_neb, method=self.neb_method, k=self.spring)
+            ml_neb = NEB(self.images, climb=climbing_neb, method=self.neb_method, k=self.spring)
             # FIRE, MDMin, LBFGS, BFGS
             if optimizer.lower() == 'mdmin':
                 neb_opt = MDMin(ml_neb, dt=dt, trajectory=self.trajectory)
