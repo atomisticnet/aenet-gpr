@@ -238,7 +238,7 @@ class AIDNEB:
         d_start_end = np.sum((self.i_endpoint.positions.flatten() -
                               self.e_endpoint.positions.flatten()) ** 2) ** 0.5
 
-        self.rmax = 0.2 * d_start_end
+        self.rmax = 0.4 * d_start_end
 
         # A) Create images using interpolation if user does define a path.
         if interp_path is None:
@@ -424,12 +424,6 @@ class AIDNEB:
                                              fit_weight=self.input_param.fit_weight,
                                              fit_scale=self.input_param.fit_scale)
 
-                # if self.rmin >= self.rmax:
-                #     half_rmax = self.rmax / 2.0
-                #     new_rmin = (int(half_rmax * 10) / 10.0)
-                #     self.rmin = max(new_rmin, 0.05)
-                #     print(f"r_min exceeded r_max → reset to {self.rmin:.2f} (≈ half of r_max)")
-
             else:
                 self.input_param.fit_weight = False
                 self.input_param.fit_scale = False
@@ -535,7 +529,7 @@ class AIDNEB:
                     else:
                         prev_positions = [im.get_positions().copy() for im in self.images]
 
-                    if neb_opt.converged(ml_neb.get_forces()):
+                    if neb_opt.converged():
                         ok_forces = True
                         break
 
