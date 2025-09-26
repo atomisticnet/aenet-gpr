@@ -283,8 +283,9 @@ class AIDNEB:
         # Save initial interpolation.
         self.initial_interpolation = self.images[:]
 
+        print()
         print('d_start_end: ', d_start_end)
-        print(f"r_max (threshold to prevent over-relaxation when training data is sparse): {self.rmax:.4f}")
+        # print(f"r_max (threshold to prevent over-relaxation when training data is sparse): {self.rmax:.4f}")
         print('spring_constant: ', self.spring)
 
     def run(self, fmax=0.05, unc_convergence=0.05, dt=0.1, ml_steps=150, optimizer="FIRE", max_unc_trheshold=1.0):
@@ -503,35 +504,35 @@ class AIDNEB:
             nim = len(self.images) - 2
             nat = len(self.images[0])
             if np.max(neb_pred_uncertainty) <= max_unc_trheshold:
-                # neb_opt.run(fmax=(fmax * 0.8), steps=ml_steps)
+                neb_opt.run(fmax=fmax * 0.8, steps=ml_steps)
 
                 # previous position snapshot (for rollback)
-                ok_forces = False
-                prev_positions = [im.get_positions().copy() for im in self.images]
-
-                for step in range(ml_steps):
-                    neb_opt.run(fmax=fmax * 0.8, steps=1)
-
-                    #
-                    violated_index = None
-                    for i in range(1, len(self.images) - 1):
-                        d2 = min_cartesian_dist(self.images[i], train_images)
-                        if d2 > (self.rmax ** 2):
-                            violated_index = i
-                            print(f"Relaxation stopped early: image {violated_index} lies farther than r_max from all training data")
-                            break
-
-                    if violated_index is not None:
-                        for im, pos in zip(self.images, prev_positions):
-                            im.set_positions(pos)
-
-                        break
-                    else:
-                        prev_positions = [im.get_positions().copy() for im in self.images]
-
-                    if neb_opt.converged():
-                        ok_forces = True
-                        break
+                # ok_forces = False
+                # prev_positions = [im.get_positions().copy() for im in self.images]
+                #
+                # for step in range(ml_steps):
+                #     neb_opt.run(fmax=fmax * 0.8, steps=1)
+                #
+                #     #
+                #     violated_index = None
+                #     for i in range(1, len(self.images) - 1):
+                #         d2 = min_cartesian_dist(self.images[i], train_images)
+                #         if d2 > (self.rmax ** 2):
+                #             violated_index = i
+                #             print(f"Relaxation stopped early: image {violated_index} lies farther than r_max from all training data")
+                #             break
+                #
+                #     if violated_index is not None:
+                #         for im, pos in zip(self.images, prev_positions):
+                #             im.set_positions(pos)
+                #
+                #         break
+                #     else:
+                #         prev_positions = [im.get_positions().copy() for im in self.images]
+                #
+                #     if neb_opt.converged(ml_neb.get_forces().ravel()):
+                #         ok_forces = True
+                #         break
 
                 F = ml_neb.get_forces()  # (n_mobile*nat*3) flat
                 F = F.reshape(nim, nat, 3)
