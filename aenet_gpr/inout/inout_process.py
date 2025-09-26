@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from aenet_gpr.inout.input_parameter import InputParameters
-from aenet_gpr.util import ReferenceData, ReferenceDataInternal, AdditionalData, AdditionalDataInternal
+from aenet_gpr.util import ReferenceData, AdditionalData  # , ReferenceDataInternal, AdditionalDataInternal
 from aenet_gpr.inout.io_print import *
 from aenet_gpr.util.prepare_data import standard_output, inverse_standard_output
 
@@ -19,15 +19,16 @@ class Train(object):
     def read_reference_train_data(self):
         start = time.time()
         if self.input_param.descriptor == "internal":
-            self.train_data = ReferenceDataInternal(structure_files=self.input_param.train_file,
-                                                    file_format=self.input_param.file_format,
-                                                    device=self.input_param.device,
-                                                    descriptor=self.input_param.descriptor,
-                                                    standardization=self.input_param.standardization,
-                                                    data_type=self.input_param.data_type,
-                                                    data_process=self.input_param.data_process,
-                                                    soap_param=self.input_param.soap_param,
-                                                    mask_constraints=self.input_param.mask_constraints)
+            pass
+            # self.train_data = ReferenceDataInternal(structure_files=self.input_param.train_file,
+            #                                         file_format=self.input_param.file_format,
+            #                                         device=self.input_param.device,
+            #                                         descriptor=self.input_param.descriptor,
+            #                                         standardization=self.input_param.standardization,
+            #                                         data_type=self.input_param.data_type,
+            #                                         data_process=self.input_param.data_process,
+            #                                         soap_param=self.input_param.soap_param,
+            #                                         mask_constraints=self.input_param.mask_constraints)
 
         else:
             self.train_data = ReferenceData(structure_files=self.input_param.train_file,
@@ -51,7 +52,7 @@ class Train(object):
         start = time.time()
 
         threshold = self.input_param.filter_threshold
-        max_weight = 4.0
+        max_weight = 100.0
         while True:
             if self.input_param.filter:
                 self.train_data.filter_similar_data(threshold=threshold)
@@ -59,45 +60,46 @@ class Train(object):
             if self.train_data.standardization:
                 self.train_data.standardize_energy_force(self.train_data.energy)
 
-            try:
-                if self.input_param.descriptor == "internal":
-                    self.train_data.config_calculator(kerneltype=self.input_param.kerneltype,
-                                                      weight=self.input_param.weight,
-                                                      noise=self.input_param.noise,
-                                                      noisefactor=self.input_param.noisefactor,
-                                                      use_forces=self.input_param.use_forces,
-                                                      sparse=self.input_param.sparse,
-                                                      sparse_derivative=self.input_param.sparse_derivative,
-                                                      autograd=self.input_param.autograd,
-                                                      train_batch_size=self.input_param.train_batch_size,
-                                                      eval_batch_size=self.input_param.eval_batch_size,
-                                                      fit_weight=self.input_param.fit_weight,
-                                                      fit_scale=self.input_param.fit_scale)
+            # try:
+            if self.input_param.descriptor == "internal":
+                pass
+                # self.train_data.config_calculator(kerneltype=self.input_param.kerneltype,
+                #                                   weight=self.input_param.weight,
+                #                                   noise=self.input_param.noise,
+                #                                   noisefactor=self.input_param.noisefactor,
+                #                                   use_forces=self.input_param.use_forces,
+                #                                   sparse=self.input_param.sparse,
+                #                                   sparse_derivative=self.input_param.sparse_derivative,
+                #                                   autograd=self.input_param.autograd,
+                #                                   train_batch_size=self.input_param.train_batch_size,
+                #                                   eval_batch_size=self.input_param.eval_batch_size,
+                #                                   fit_weight=self.input_param.fit_weight,
+                #                                   fit_scale=self.input_param.fit_scale)
 
-                else:
-                    self.train_data.config_calculator(kerneltype=self.input_param.kerneltype,
-                                                      scale=self.input_param.scale,
-                                                      weight=self.input_param.weight,
-                                                      noise=self.input_param.noise,
-                                                      noisefactor=self.input_param.noisefactor,
-                                                      use_forces=self.input_param.use_forces,
-                                                      sparse=self.input_param.sparse,
-                                                      sparse_derivative=self.input_param.sparse_derivative,
-                                                      autograd=self.input_param.autograd,
-                                                      train_batch_size=self.input_param.train_batch_size,
-                                                      eval_batch_size=self.input_param.eval_batch_size,
-                                                      fit_weight=self.input_param.fit_weight,
-                                                      fit_scale=self.input_param.fit_scale)
+            else:
+                self.train_data.config_calculator(kerneltype=self.input_param.kerneltype,
+                                                  scale=self.input_param.scale,
+                                                  weight=self.input_param.weight,
+                                                  noise=self.input_param.noise,
+                                                  noisefactor=self.input_param.noisefactor,
+                                                  use_forces=self.input_param.use_forces,
+                                                  sparse=self.input_param.sparse,
+                                                  sparse_derivative=self.input_param.sparse_derivative,
+                                                  autograd=self.input_param.autograd,
+                                                  train_batch_size=self.input_param.train_batch_size,
+                                                  eval_batch_size=self.input_param.eval_batch_size,
+                                                  fit_weight=self.input_param.fit_weight,
+                                                  fit_scale=self.input_param.fit_scale)
 
-                if self.train_data.calculator.weight < max_weight:
-                    break
-                else:
-                    raise ValueError(f"Weight parameter too high ({self.train_data.calculator.weight}).")
-
-            except Exception as e:
-                print(f"{e} Fix the weight and scale parameters.")
-                self.input_param.fit_weight = False
-                self.input_param.fit_scale = False
+            # if self.train_data.calculator.weight < max_weight:
+            #     break
+            # else:
+            #     raise ValueError(f"Weight parameter too high ({self.train_data.calculator.weight}).")
+            #
+            # except Exception as e:
+            #     print(f"{e} Fix the weight and scale parameters.")
+            #     self.input_param.fit_weight = False
+            #     self.input_param.fit_scale = False
 
         io_train_finalize(t=start,
                           mem_CPU=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2,
@@ -142,16 +144,17 @@ class Test(object):
     def read_reference_test_data(self):
         start = time.time()
         if self.input_param.descriptor == "internal":
-            self.test_data = ReferenceDataInternal(structure_files=self.input_param.test_file,
-                                                   file_format=self.input_param.file_format,
-                                                   device=self.input_param.device,
-                                                   descriptor=self.input_param.descriptor,
-                                                   standardization=self.input_param.standardization,
-                                                   data_type=self.input_param.data_type,
-                                                   data_process=self.input_param.data_process,
-                                                   soap_param=self.input_param.soap_param,
-                                                   mask_constraints=self.input_param.mask_constraints,
-                                                   c_table=self.train_data.c_table)
+            pass
+            # self.test_data = ReferenceDataInternal(structure_files=self.input_param.test_file,
+            #                                        file_format=self.input_param.file_format,
+            #                                        device=self.input_param.device,
+            #                                        descriptor=self.input_param.descriptor,
+            #                                        standardization=self.input_param.standardization,
+            #                                        data_type=self.input_param.data_type,
+            #                                        data_process=self.input_param.data_process,
+            #                                        soap_param=self.input_param.soap_param,
+            #                                        mask_constraints=self.input_param.mask_constraints,
+            #                                        c_table=self.train_data.c_table)
 
         else:
             self.test_data = ReferenceData(structure_files=self.input_param.test_file,
@@ -258,9 +261,10 @@ class Augmentation(object):
     def generate_additional_structures(self):
         start = time.time()
         if self.input_param.descriptor == "internal":
-            self.additional_data = AdditionalDataInternal(reference_training_data=self.train_data,
-                                                          disp_length=self.input_param.disp_length,
-                                                          num_copy=self.input_param.num_copy)
+            pass
+            # self.additional_data = AdditionalDataInternal(reference_training_data=self.train_data,
+            #                                               disp_length=self.input_param.disp_length,
+            #                                               num_copy=self.input_param.num_copy)
 
         else:
             self.additional_data = AdditionalData(reference_training_data=self.train_data,
