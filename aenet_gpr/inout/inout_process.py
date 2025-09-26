@@ -52,54 +52,53 @@ class Train(object):
         start = time.time()
 
         threshold = self.input_param.filter_threshold
-        max_weight = 100.0
-        while True:
-            if self.input_param.filter:
-                self.train_data.filter_similar_data(threshold=threshold)
 
-            if self.train_data.standardization:
-                self.train_data.standardize_energy_force(self.train_data.energy)
+        if self.input_param.filter:
+            self.train_data.filter_similar_data(threshold=threshold)
 
-            # try:
-            if self.input_param.descriptor == "internal":
-                pass
-                # self.train_data.config_calculator(kerneltype=self.input_param.kerneltype,
-                #                                   weight=self.input_param.weight,
-                #                                   noise=self.input_param.noise,
-                #                                   noisefactor=self.input_param.noisefactor,
-                #                                   use_forces=self.input_param.use_forces,
-                #                                   sparse=self.input_param.sparse,
-                #                                   sparse_derivative=self.input_param.sparse_derivative,
-                #                                   autograd=self.input_param.autograd,
-                #                                   train_batch_size=self.input_param.train_batch_size,
-                #                                   eval_batch_size=self.input_param.eval_batch_size,
-                #                                   fit_weight=self.input_param.fit_weight,
-                #                                   fit_scale=self.input_param.fit_scale)
+        if self.train_data.standardization:
+            self.train_data.standardize_energy_force(self.train_data.energy)
 
-            else:
-                self.train_data.config_calculator(kerneltype=self.input_param.kerneltype,
-                                                  scale=self.input_param.scale,
-                                                  weight=self.input_param.weight,
-                                                  noise=self.input_param.noise,
-                                                  noisefactor=self.input_param.noisefactor,
-                                                  use_forces=self.input_param.use_forces,
-                                                  sparse=self.input_param.sparse,
-                                                  sparse_derivative=self.input_param.sparse_derivative,
-                                                  autograd=self.input_param.autograd,
-                                                  train_batch_size=self.input_param.train_batch_size,
-                                                  eval_batch_size=self.input_param.eval_batch_size,
-                                                  fit_weight=self.input_param.fit_weight,
-                                                  fit_scale=self.input_param.fit_scale)
+        # try:
+        if self.input_param.descriptor == "internal":
+            pass
+            # self.train_data.config_calculator(kerneltype=self.input_param.kerneltype,
+            #                                   weight=self.input_param.weight,
+            #                                   noise=self.input_param.noise,
+            #                                   noisefactor=self.input_param.noisefactor,
+            #                                   use_forces=self.input_param.use_forces,
+            #                                   sparse=self.input_param.sparse,
+            #                                   sparse_derivative=self.input_param.sparse_derivative,
+            #                                   autograd=self.input_param.autograd,
+            #                                   train_batch_size=self.input_param.train_batch_size,
+            #                                   eval_batch_size=self.input_param.eval_batch_size,
+            #                                   fit_weight=self.input_param.fit_weight,
+            #                                   fit_scale=self.input_param.fit_scale)
 
-            # if self.train_data.calculator.weight < max_weight:
-            #     break
-            # else:
-            #     raise ValueError(f"Weight parameter too high ({self.train_data.calculator.weight}).")
-            #
-            # except Exception as e:
-            #     print(f"{e} Fix the weight and scale parameters.")
-            #     self.input_param.fit_weight = False
-            #     self.input_param.fit_scale = False
+        else:
+            self.train_data.config_calculator(kerneltype=self.input_param.kerneltype,
+                                              scale=self.input_param.scale,
+                                              weight=self.input_param.weight,
+                                              noise=self.input_param.noise,
+                                              noisefactor=self.input_param.noisefactor,
+                                              use_forces=self.input_param.use_forces,
+                                              sparse=self.input_param.sparse,
+                                              sparse_derivative=self.input_param.sparse_derivative,
+                                              autograd=self.input_param.autograd,
+                                              train_batch_size=self.input_param.train_batch_size,
+                                              eval_batch_size=self.input_param.eval_batch_size,
+                                              fit_weight=self.input_param.fit_weight,
+                                              fit_scale=self.input_param.fit_scale)
+
+        # if self.train_data.calculator.weight < max_weight:
+        #     break
+        # else:
+        #     raise ValueError(f"Weight parameter too high ({self.train_data.calculator.weight}).")
+        #
+        # except Exception as e:
+        #     print(f"{e} Fix the weight and scale parameters.")
+        #     self.input_param.fit_weight = False
+        #     self.input_param.fit_scale = False
 
         io_train_finalize(t=start,
                           mem_CPU=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2,
