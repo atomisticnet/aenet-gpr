@@ -585,7 +585,7 @@ class AIDNEB:
                 ok_stall_unc = np.all(np.abs(dec_unc) <= 0.02)
 
             # Max.forces and NEB images uncertainty must be below *fmax* and *unc_convergence* thresholds.
-            if len(train_images) > 2 and fmax_all <= fmax and (ok_unc or ok_stall_unc) and max_unc < unc_convergence * 5 and climbing_neb and ok_forces:
+            if len(train_images) > 2 and fmax_all <= fmax and (ok_unc or ok_stall_unc) and max_unc < unc_convergence * 5 and climbing_neb:
                 parprint('A saddle point was found.')
 
                 # if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
