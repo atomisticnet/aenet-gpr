@@ -535,7 +535,7 @@ class AIDNEB:
                     else:
                         prev_positions = [im.get_positions().copy() for im in self.images]
 
-                    if neb_opt.converged(ml_neb.get_forces().ravel()):
+                    if neb_opt.converged(ml_neb.get_forces()):
                         ok_forces = True
                         break
 
