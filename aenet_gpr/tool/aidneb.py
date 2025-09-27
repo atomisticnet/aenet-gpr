@@ -552,9 +552,10 @@ class AIDNEB:
             max_e_ind = np.argsort(neb_pred_energy)[-1]
             max_unc = np.max(neb_pred_uncertainty)
 
-            # train_images 의 calc 는 reference,
-            # self.images 의 calc 는 GP
-            max_f = get_fmax(self.images[max_e_ind]).item()  # get_fmax(train_images[-1])
+            # Calculator of train_images is reference,
+            # Calculator of self.images is GP
+            # get_fmax(self.images[max_e_ind]).item()
+            max_last_train_f = get_fmax(train_images[-1])
 
             pbf = max_e - self.i_endpoint.get_potential_energy(force_consistent=self.force_consistent)
             pbb = max_e - self.e_endpoint.get_potential_energy(force_consistent=self.force_consistent)
@@ -567,7 +568,7 @@ class AIDNEB:
             parprint('Predicted barrier (<--):', pbb)
             parprint('Number of images:', len(self.images))
             parprint('Max. uncertainty:', max_unc)
-            parprint("Max. force:", fmax_all)
+            parprint("Max. force:", max_last_train_f)
             msg = "--------------------------------------------------------\n"
             parprint(msg)
 
@@ -584,7 +585,7 @@ class AIDNEB:
                 ok_stall_unc = np.all(np.abs(dec_unc) <= 0.02)
 
             # Max.forces and NEB images uncertainty must be below *fmax* and *unc_convergence* thresholds.
-            if len(train_images) > 2 and fmax_all <= fmax and (ok_unc or ok_stall_unc) and max_unc < unc_convergence * 5 and climbing_neb:
+            if len(train_images) > 2 and max_last_train_f <= fmax and (ok_unc or ok_stall_unc) and max_unc < unc_convergence * 5 and climbing_neb:
                 parprint('A saddle point was found.')
 
                 # if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
