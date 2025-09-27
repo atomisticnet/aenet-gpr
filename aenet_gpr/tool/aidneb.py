@@ -247,8 +247,9 @@ class AIDNEB:
             if self.n_images <= 3:
                 self.n_images = 3
             self.images = make_neb(self)
-            raw_spring = 1. * np.sqrt(self.n_images - 1) / d_start_end  # 1 or 2?
-            self.spring = 2. * np.sqrt(self.n_images - 1) / d_start_end ** 2  # np.clip(raw_spring, 0.05, 0.1)
+            if self.spring is None:
+                # self.spring = 1. * np.sqrt(self.n_images - 1) / d_start_end
+                self.spring = 2. * np.sqrt(self.n_images - 1) / d_start_end ** 2  # np.clip(raw_spring, 0.05, 0.1)
 
             neb_interpolation = DyNEB(self.images, climb=False, k=self.spring, method=self.neb_method, remove_rotation_and_translation=self.rrt)
             neb_interpolation.interpolate(method='linear', mic=self.mic)
@@ -276,7 +277,7 @@ class AIDNEB:
 
         # Guess spring constant (k) if not defined by the user.
         if self.spring is None:
-            raw_spring = 1. * np.sqrt(self.n_images - 1) / d_start_end  # 1 or 2?
+            # self.spring = 1. * np.sqrt(self.n_images - 1) / d_start_end
             self.spring = 2. * np.sqrt(self.n_images - 1) / d_start_end ** 2  # np.clip(raw_spring, 0.05, 0.10)
         # Save initial interpolation.
         self.initial_interpolation = self.images[:]
@@ -619,32 +620,14 @@ class AIDNEB:
 
             # Select the best candidate.
             accepted = False
-            sorted_candidates_tmp = copy.deepcopy(sorted_candidates)
-
             fp_train = train_data.generate_cartesian(train_data.images)
             N = fp_train.shape[0]
 
             while not accepted:
-                best_candidate = sorted_candidates_tmp.pop(0)
-                fp_candidate = train_data.generate_cartesian_per_data(best_candidate).flatten()
+                sorted_candidates_tmp = copy.deepcopy(sorted_candidates)
+                found_candidate = False
 
-                try:
-                    for i in range(N):
-                        xi = fp_train[i].flatten()
-                        dist = torch.linalg.norm(xi - fp_candidate)
-
-                        if dist < self.rmin:
-                            print(f"Candidate rejected: too close to train data {i} (dist={dist:.4f} < r_min={self.rmin:.3f})")
-                            break
-                    else:
-                        accepted = True
-
-                except Exception as e:
-                    print(f"{e}")
-                    self.rmin -= 0.005
-                    print(f"Decrease r_min to {self.rmin:.3f} and retry")
-
-                    sorted_candidates_tmp = copy.deepcopy(sorted_candidates)
+                while sorted_candidates_tmp:
                     best_candidate = sorted_candidates_tmp.pop(0)
                     fp_candidate = train_data.generate_cartesian_per_data(best_candidate).flatten()
 
@@ -657,14 +640,20 @@ class AIDNEB:
                             break
                     else:
                         accepted = True
+                        found_candidate = True
+                        chosen_candidate = best_candidate
+                        break  # 내부 while 탈출
 
+                if not found_candidate and not accepted:
+                    self.rmin -= 0.005
+                    print(f"No candidate accepted. Decrease r_min to {self.rmin:.3f} and retry...")
 
             # Save the other candidates for multi-task optimization.
             if sorted_candidates:
                 io.write(trajectory_candidates, sorted_candidates)
 
             # 8. Evaluate the target function and save it in *observations*.
-            self.atoms.positions = best_candidate.get_positions()
+            self.atoms.positions = chosen_candidate.get_positions()
             self.atoms.calc = self.ase_calc
             self.atoms.get_potential_energy(force_consistent=self.force_consistent)
             self.atoms.get_forces()
