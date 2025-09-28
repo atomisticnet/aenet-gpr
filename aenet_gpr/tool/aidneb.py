@@ -288,7 +288,7 @@ class AIDNEB:
         # print(f"r_max (threshold to prevent over-relaxation when training data is sparse): {self.rmax:.4f}")
         print('spring_constant: ', self.spring)
 
-    def run(self, fmax=0.05, unc_convergence=0.05, dt=0.1, ml_steps=150, optimizer="FIRE", max_unc_trheshold=1.0):
+    def run(self, fmax=0.05, unc_convergence=0.1, dt=0.1, ml_steps=150, optimizer="FIRE", max_unc_trheshold=1.0):
 
         """
         Executing run will start the NEB optimization process.
