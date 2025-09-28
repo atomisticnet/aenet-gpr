@@ -480,17 +480,20 @@ class AIDNEB:
             # 3. Optimize the NEB in the predicted PES.
             # Get path uncertainty for deciding whether NEB or CI-NEB.
             predictions = get_neb_predictions(self.images)
+            neb_pred_energy = predictions['energy']
+            neb_pred_forces = predictions['forces']
             neb_pred_uncertainty = predictions['uncertainty']
 
-            # Climbing image NEB mode is risky when the model is trained
-            # with a few data points. Switch on climbing image (CI-NEB) only
-            # when the uncertainty of the NEB is low.
+            # Climbing image NEB mode is risky when the model is trained with a few data points.
+            # Switch on climbing image only when the uncertainty of the NEB the force of the climbing image are low.
             climbing_neb = False
             max_unc = np.max(neb_pred_uncertainty)
-            if max_unc <= unc_convergence:
-                ok_unc = True
-            else:
-                ok_unc = False
+            ok_unc = max_unc <= unc_convergence
+
+            ci_idx = np.argmax(neb_pred_energy)  # default climbing candidate
+            ci_unc = neb_pred_uncertainty[ci_idx]
+            ci_force = np.linalg.norm(neb_pred_forces[ci_idx])
+            ci_ok = (ci_unc <= 0.1) and (ci_force <= 1.0)
 
             self.max_unc_hist.append(max_unc)
             W = 7
@@ -499,8 +502,8 @@ class AIDNEB:
                 dec_unc = np.diff(np.array(self.max_unc_hist[-W:]))
                 ok_stall_unc = np.all(np.abs(dec_unc) <= 0.02)
 
-            if ok_unc or ok_stall_unc:
-                parprint('Climbing image is now activated.')
+            if (ok_unc or ok_stall_unc) and ci_ok:
+                parprint(f"Climbing image is now activated at image {ci_idx}.")
                 climbing_neb = True
 
             ml_neb = DyNEB(self.images, climb=climbing_neb, method=self.neb_method, k=self.spring)
@@ -701,16 +704,18 @@ def make_neb(self, images_interpolation=None):
 @parallel_function
 def get_neb_predictions(images):
     neb_pred_energy = []
-    # neb_pred_forces = []
+    neb_pred_forces = []
     neb_pred_unc = []
+
     for i in images:
         neb_pred_energy.append(i.get_potential_energy())
-        # neb_pred_forces.append(i.get_forces())
+        neb_pred_forces.append(i.get_forces())
         unc = i.calc.results['uncertainty']
         neb_pred_unc.append(unc)
+
     neb_pred_unc[0] = 0.0
     neb_pred_unc[-1] = 0.0
-    predictions = {'energy': neb_pred_energy, 'uncertainty': neb_pred_unc}
+    predictions = {'energy': neb_pred_energy, 'forces': neb_pred_forces, 'uncertainty': neb_pred_unc}
 
     return predictions
 
