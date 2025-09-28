@@ -33,7 +33,7 @@ def min_cartesian_dist(img, train_images):
 class AIDNEB:
 
     def __init__(self, start, end, input_param: InputParameters, model_calculator=None, calculator=None,
-                 interpolation='idpp', n_images=15, n_train_images=3, k=None, mic=False,
+                 interpolation='idpp', n_images=15, n_train_images=3, k=None, climbing=True, mic=False,
                  neb_method='improvedtangent',  # 'improvedtangent', 'aseneb'
                  remove_rotation_and_translation=False,
                  max_train_data=25, force_consistent=None,
@@ -196,6 +196,7 @@ class AIDNEB:
         self.rrt = remove_rotation_and_translation
         self.neb_method = neb_method
         self.spring = k
+        self.climbing = climbing
         self.i_endpoint = io.read(self.start, '-1')
         self.e_endpoint = io.read(self.end, '-1')
 
@@ -249,8 +250,8 @@ class AIDNEB:
                 self.n_images = 3
             self.images = make_neb(self)
             if self.spring is None:
-                # self.spring = 1. * np.sqrt(self.n_images - 1) / self.d_start_end
-                self.spring = 2. * np.sqrt(self.n_images - 1) / self.d_start_end ** 2  # np.clip(raw_spring, 0.05, 0.1)
+                self.spring = 0.1 * (self.n_images - 1) / self.d_start_end
+                # self.spring = 2. * np.sqrt(self.n_images - 1) / self.d_start_end ** 2
 
             neb_interpolation = DyNEB(self.images, climb=False, k=self.spring, method=self.neb_method, remove_rotation_and_translation=self.rrt)
             neb_interpolation.interpolate(method='linear', mic=self.mic)
@@ -278,8 +279,8 @@ class AIDNEB:
 
         # Guess spring constant (k) if not defined by the user.
         if self.spring is None:
-            # self.spring = 1. * np.sqrt(self.n_images - 1) / self.d_start_end
-            self.spring = 2. * np.sqrt(self.n_images - 1) / self.d_start_end ** 2  # np.clip(raw_spring, 0.05, 0.10)
+            self.spring = 0.1 * (self.n_images - 1) / self.d_start_end
+            # self.spring = 2. * np.sqrt(self.n_images - 1) / self.d_start_end ** 2
         # Save initial interpolation.
         self.initial_interpolation = self.images[:]
 
@@ -288,7 +289,7 @@ class AIDNEB:
         # print(f"r_max (threshold to prevent over-relaxation when training data is sparse): {self.rmax:.4f}")
         print('spring_constant: ', self.spring)
 
-    def run(self, fmax=0.05, unc_convergence=0.1, dt=0.1, ml_steps=150, optimizer="FIRE", max_unc_trheshold=1.0):
+    def run(self, fmax=0.05, unc_convergence=0.1, dt=0.05, ml_steps=150, optimizer="FIRE", max_unc_trheshold=1.0):
 
         """
         Executing run will start the NEB optimization process.
@@ -386,13 +387,12 @@ class AIDNEB:
         while True:
 
             # 0. Start from initial interpolation every 50 steps.
-            if self.step % 50 == 0:
-                parprint('Starting from initial interpolation...')
-                self.images = copy.deepcopy(self.initial_interpolation)
+            # if self.step % 50 == 0:
+            #     parprint('Starting from initial interpolation...')
+            #     self.images = copy.deepcopy(self.initial_interpolation)
 
             # 1. Collect observations.
-            # This serves to use_previous_observations from a previous
-            # (and/or parallel) runs.
+            # This serves to use_previous_observations from a previous (and/or parallel) runs.
             train_images = io.read(trajectory_observations, ':')
 
             train_data = ReferenceData(structure_files=train_images,
@@ -481,54 +481,57 @@ class AIDNEB:
             # Get path uncertainty for deciding whether NEB or CI-NEB.
             predictions = get_neb_predictions(self.images)
             neb_pred_energy = predictions['energy']
-            neb_pred_forces = predictions['forces']
+            # neb_pred_forces = predictions['forces']
             neb_pred_uncertainty = predictions['uncertainty']
 
             # Climbing image NEB mode is risky when the model is trained with a few data points.
             # Switch on climbing image only when the uncertainty of the NEB the force of the climbing image are low.
             climbing_neb = False
-            max_unc = np.max(neb_pred_uncertainty)
-            ok_unc = max_unc <= unc_convergence
+            if self.climbing:
+                max_unc = np.max(neb_pred_uncertainty)
+                ok_unc = max_unc <= unc_convergence
 
-            ci_idx = np.argmax(neb_pred_energy)  # default climbing candidate
-            ci_unc = neb_pred_uncertainty[ci_idx]
-            ci_force = np.linalg.norm(neb_pred_forces[ci_idx])
-            ci_ok = (ci_unc <= 0.1)  # and (ci_force <= 1.0)
+                ci_idx = np.argmax(neb_pred_energy)  # default climbing candidate
+                ci_unc = neb_pred_uncertainty[ci_idx]
+                # ci_force = np.linalg.norm(neb_pred_forces[ci_idx])
+                ci_ok = (ci_unc <= 0.1)  # and (ci_force <= 1.0)
 
-            self.max_unc_hist.append(max_unc)
-            W = 7
-            ok_stall_unc = False
-            if len(self.max_unc_hist) > W:
-                dec_unc = np.diff(np.array(self.max_unc_hist[-W:]))
-                ok_stall_unc = np.all(np.abs(dec_unc) <= 0.02)
+                self.max_unc_hist.append(max_unc)
+                W = 7
+                ok_stall_unc = False
+                if len(self.max_unc_hist) > W:
+                    dec_unc = np.diff(np.array(self.max_unc_hist[-W:]))
+                    ok_stall_unc = np.all(np.abs(dec_unc) <= 0.02)
 
-            if (ok_unc or ok_stall_unc) and ci_ok:
-                parprint(f"Climbing image is now activated at image {ci_idx}.")
-                climbing_neb = True
+                if (ok_unc or ok_stall_unc) and ci_ok:
+                    parprint(f"Climbing image is now activated at image {ci_idx}.")
+                    climbing_neb = True
+            else:
+                pass
 
             ml_neb = DyNEB(self.images, climb=climbing_neb, method=self.neb_method, k=self.spring)
             # FIRE, MDMin, LBFGS, BFGS
             if optimizer.lower() == 'mdmin':
-                neb_opt = MDMin(ml_neb, dt=dt, trajectory=self.trajectory)
+                neb_opt = MDMin(ml_neb, dt=dt, trajectory="gpr_neb.traj")
             elif optimizer.lower() == 'lbfgs':
-                neb_opt = LBFGS(ml_neb, trajectory=self.trajectory)
+                neb_opt = LBFGS(ml_neb, trajectory="gpr_neb.traj")
             elif optimizer.lower() == 'bfgs':
-                neb_opt = BFGS(ml_neb, trajectory=self.trajectory)
+                neb_opt = BFGS(ml_neb, trajectory="gpr_neb.traj")
             else:
-                neb_opt = FIRE(ml_neb, dt=dt, trajectory=self.trajectory)
+                neb_opt = FIRE(ml_neb, dt=dt, trajectory="gpr_neb.traj")
 
             # Safe check to optimize the images.
             nim = len(self.images) - 2
             nat = len(self.images[0])
             if np.max(neb_pred_uncertainty) <= max_unc_trheshold:
-                neb_opt.run(fmax=fmax * 0.8, steps=ml_steps)
+                neb_opt.run(fmax=fmax * 1.0, steps=ml_steps)
 
                 # previous position snapshot (for rollback)
                 # ok_forces = False
                 # prev_positions = [im.get_positions().copy() for im in self.images]
                 #
                 # for step in range(ml_steps):
-                #     neb_opt.run(fmax=fmax * 0.8, steps=1)
+                #     neb_opt.run(fmax=fmax * 1.0, steps=1)
                 #
                 #     #
                 #     violated_index = None
@@ -556,13 +559,14 @@ class AIDNEB:
                 max_f_image = np.sqrt((F ** 2).sum(-1)).max().item()
 
             else:
-                print("The uncertainty of the NEB lies above the max_unc threshold (1.0).")
-                print("NEB won't be optimized and the image with maximum uncertainty is just evaluated and added")
+                parprint("The uncertainty of the NEB lies above the max_unc threshold (1.0).")
+                parprint("NEB won't be optimized and the image with maximum uncertainty is just evaluated and added")
                 F = np.array([im.get_forces() for im in self.images[1:-1]])
                 max_f_image = np.sqrt((F ** 2).sum(-1)).max().item()
 
             predictions = get_neb_predictions(self.images)
             neb_pred_energy = predictions['energy']
+            # neb_pred_forces = predictions['forces']
             neb_pred_uncertainty = predictions['uncertainty']
 
             # 5. Print output.
@@ -591,10 +595,7 @@ class AIDNEB:
             parprint(msg)
 
             # 6. Check convergence.
-            if max_unc <= unc_convergence:
-                ok_unc = True
-            else:
-                ok_unc = False
+            ok_unc = max_unc <= unc_convergence
 
             self.max_unc_hist_after.append(max_unc)
             ok_stall_unc = False
@@ -603,7 +604,7 @@ class AIDNEB:
                 ok_stall_unc = np.all(np.abs(dec_unc) <= 0.02)
 
             # Max.forces and NEB images uncertainty must be below *fmax* and *unc_convergence* thresholds.
-            if len(train_images) > 2 and max_f <= fmax and (ok_unc or ok_stall_unc) and max_unc < unc_convergence * 5 and climbing_neb:
+            if len(train_images) > 2 and max_f <= fmax and (ok_unc or ok_stall_unc) and max_unc < unc_convergence * 5 and (climbing_neb or not self.climbing):
                 parprint('A saddle point was found.')
 
                 # if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
@@ -615,6 +616,12 @@ class AIDNEB:
                 msg += self.trajectory
                 parprint(msg)
                 break
+
+            # Set the path to previous iterations if barrier is higher than 10 eV
+            if pbf > 10.0:
+                print(f"[INFO] Current energy barrier (ΔE = {pbf} eV) is too large, meaning largely deviated path")
+                print('Reset the images to the previous path...')
+                self.images = copy.deepcopy(io.read("gpr_neb.traj", f":{self.n_images}"))
 
             # 7. Select next point to train (acquisition function):
             # Candidates are the optimized NEB images in the predicted PES.
