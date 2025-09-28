@@ -33,7 +33,7 @@ def min_cartesian_dist(img, train_images):
 class AIDNEB:
 
     def __init__(self, start, end, input_param: InputParameters, model_calculator=None, calculator=None,
-                 interpolation='idpp', n_images=15, k=None, mic=False,
+                 interpolation='idpp', n_images=15, n_train_images=3, k=None, mic=False,
                  neb_method='improvedtangent',  # 'improvedtangent', 'aseneb'
                  remove_rotation_and_translation=False,
                  max_train_data=25, force_consistent=None,
@@ -191,6 +191,7 @@ class AIDNEB:
         self.start = start
         self.end = end
         self.n_images = n_images
+        self.n_train_images = n_train_images
         self.mic = mic
         self.rrt = remove_rotation_and_translation
         self.neb_method = neb_method
@@ -235,21 +236,21 @@ class AIDNEB:
         self.e_endpoint.get_forces()
 
         # Calculate the distance between the initial and final endpoints.
-        d_start_end = np.sum((self.i_endpoint.positions.flatten() -
-                              self.e_endpoint.positions.flatten()) ** 2) ** 0.5
+        self.d_start_end = np.sum((self.i_endpoint.positions.flatten() -
+                                   self.e_endpoint.positions.flatten()) ** 2) ** 0.5
 
-        self.rmax = 0.4 * d_start_end
+        self.rmax = 0.4 * self.d_start_end
 
         # A) Create images using interpolation if user does define a path.
         if interp_path is None:
             if isinstance(self.n_images, float):
-                self.n_images = int(d_start_end / self.n_images)
+                self.n_images = int(self.d_start_end / self.n_images)
             if self.n_images <= 3:
                 self.n_images = 3
             self.images = make_neb(self)
             if self.spring is None:
-                # self.spring = 1. * np.sqrt(self.n_images - 1) / d_start_end
-                self.spring = 2. * np.sqrt(self.n_images - 1) / d_start_end ** 2  # np.clip(raw_spring, 0.05, 0.1)
+                # self.spring = 1. * np.sqrt(self.n_images - 1) / self.d_start_end
+                self.spring = 2. * np.sqrt(self.n_images - 1) / self.d_start_end ** 2  # np.clip(raw_spring, 0.05, 0.1)
 
             neb_interpolation = DyNEB(self.images, climb=False, k=self.spring, method=self.neb_method, remove_rotation_and_translation=self.rrt)
             neb_interpolation.interpolate(method='linear', mic=self.mic)
@@ -277,13 +278,13 @@ class AIDNEB:
 
         # Guess spring constant (k) if not defined by the user.
         if self.spring is None:
-            # self.spring = 1. * np.sqrt(self.n_images - 1) / d_start_end
-            self.spring = 2. * np.sqrt(self.n_images - 1) / d_start_end ** 2  # np.clip(raw_spring, 0.05, 0.10)
+            # self.spring = 1. * np.sqrt(self.n_images - 1) / self.d_start_end
+            self.spring = 2. * np.sqrt(self.n_images - 1) / self.d_start_end ** 2  # np.clip(raw_spring, 0.05, 0.10)
         # Save initial interpolation.
         self.initial_interpolation = self.images[:]
 
         print()
-        print('d_start_end: ', d_start_end)
+        print('Distance between initial and final: ', self.d_start_end)
         # print(f"r_max (threshold to prevent over-relaxation when training data is sparse): {self.rmax:.4f}")
         print('spring_constant: ', self.spring)
 
@@ -337,25 +338,39 @@ class AIDNEB:
                          filename=trajectory_observations,
                          restart=self.use_previous_observations)
 
+        print(f"[INFO] Number of initial training data: {self.n_train_images} including initial and final")
+        n_to_add = min(self.n_images - 2, max(1, int(self.d_start_end / 4.0)))
+        if (n_to_add + 2) > self.n_train_images:
+            print(f"[INFO] Distance between initial and final (ΔR = {self.d_start_end} Å) is too large")
+            print(f"[INFO] Use {n_to_add + 2} initial training data instead of {self.n_train_images}")
+            self.n_train_images = n_to_add + 2
+
         train_images = io.read(trajectory_observations, ':')
         if len(train_images) == 2:
-            middle = int(self.n_images * (2. / 3.))
-            e_is = self.i_endpoint.get_potential_energy()
-            e_fs = self.e_endpoint.get_potential_energy()
+            # middle = int(self.n_images * (2. / 3.))
+            # e_is = self.i_endpoint.get_potential_energy()
+            # e_fs = self.e_endpoint.get_potential_energy()
+            #
+            # if e_is > e_fs:
+            #     middle = int(self.n_images * (1. / 3.))
+            n_to_add = self.n_train_images - 2
+            middle_indices = [int(round(i * (self.n_images - 1) / (n_to_add + 1))) for i in range(1, n_to_add + 1)]
 
-            if e_is > e_fs:
-                middle = int(self.n_images * (1. / 3.))
+            for middle_idx in middle_indices:
+                print(f"[INFO] Adding training image at NEB index {middle_idx}")
 
-            self.atoms.positions = self.images[middle].get_positions()
-            self.atoms.calc = self.ase_calc
-            self.atoms.get_potential_energy(force_consistent=self.force_consistent)
-            self.atoms.get_forces()
-            dump_observation(atoms=self.atoms, method='neb',
-                             filename=trajectory_observations,
-                             restart=self.use_previous_observations)
-            self.function_calls += 1
-            self.force_calls += 1
-            self.step += 1
+                self.atoms.positions = self.images[middle_idx].get_positions()
+                self.atoms.calc = self.ase_calc
+
+                # Reference calculation
+                self.atoms.get_potential_energy(force_consistent=self.force_consistent)
+                self.atoms.get_forces()
+                dump_observation(atoms=self.atoms, method='neb',
+                                 filename=trajectory_observations,
+                                 restart=self.use_previous_observations)
+                self.function_calls += 1
+                self.force_calls += 1
+                self.step += 1
 
         weight_update = self.input_param.weight
         scale_update = self.input_param.scale
