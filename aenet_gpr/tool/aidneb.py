@@ -550,13 +550,13 @@ class AIDNEB:
 
                 F = ml_neb.get_forces()  # (n_mobile*nat*3) flat
                 F = F.reshape(nim, nat, 3)
-                fmax_all = np.sqrt((F ** 2).sum(-1)).max().item()
+                max_f_image = np.sqrt((F ** 2).sum(-1)).max().item()
 
             else:
                 print("The uncertainty of the NEB lies above the max_unc threshold (1.0).")
                 print("NEB won't be optimized and the image with maximum uncertainty is just evaluated and added")
                 F = np.array([im.get_forces() for im in self.images[1:-1]])
-                fmax_all = np.sqrt((F ** 2).sum(-1)).max().item()
+                max_f_image = np.sqrt((F ** 2).sum(-1)).max().item()
 
             predictions = get_neb_predictions(self.images)
             neb_pred_energy = predictions['energy']
@@ -564,13 +564,13 @@ class AIDNEB:
 
             # 5. Print output.
             max_e = np.max(neb_pred_energy)
-            max_e_ind = np.argsort(neb_pred_energy)[-1]
             max_unc = np.max(neb_pred_uncertainty)
+            # max_e_ind = np.argsort(neb_pred_energy)[-1]
 
-            # Calculator of train_images is reference,
-            # Calculator of self.images is GP
-            # get_fmax(self.images[max_e_ind]).item()
-            max_last_train_f = get_fmax(train_images[-1])
+            # Calculator of train_images is reference, while Calculator of self.images is GP
+            # max_f_max_e = get_fmax(self.images[max_e_ind]).item()
+            # max_f_last_train = get_fmax(train_images[-1])
+            max_f = max_f_image
 
             pbf = max_e - self.i_endpoint.get_potential_energy(force_consistent=self.force_consistent)
             pbb = max_e - self.e_endpoint.get_potential_energy(force_consistent=self.force_consistent)
@@ -583,7 +583,7 @@ class AIDNEB:
             parprint('Predicted barrier (<--):', pbb)
             parprint('Number of images:', len(self.images))
             parprint('Max. uncertainty:', max_unc)
-            parprint("Max. force:", max_last_train_f)
+            parprint("Max. force:", max_f)
             msg = "--------------------------------------------------------\n"
             parprint(msg)
 
@@ -600,7 +600,7 @@ class AIDNEB:
                 ok_stall_unc = np.all(np.abs(dec_unc) <= 0.02)
 
             # Max.forces and NEB images uncertainty must be below *fmax* and *unc_convergence* thresholds.
-            if len(train_images) > 2 and max_last_train_f <= fmax and (ok_unc or ok_stall_unc) and max_unc < unc_convergence * 5 and climbing_neb:
+            if len(train_images) > 2 and max_f <= fmax and (ok_unc or ok_stall_unc) and max_unc < unc_convergence * 5 and climbing_neb:
                 parprint('A saddle point was found.')
 
                 # if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
