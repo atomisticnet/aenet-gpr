@@ -375,7 +375,7 @@ class AIDNEB:
         weight_update = self.input_param.weight
         scale_update = self.input_param.scale
 
-        self.rmin = 0.05
+        self.rmin = 0.1
         self.max_unc_hist = []
         self.max_unc_hist_after = []
 
@@ -493,7 +493,7 @@ class AIDNEB:
             ci_idx = np.argmax(neb_pred_energy)  # default climbing candidate
             ci_unc = neb_pred_uncertainty[ci_idx]
             ci_force = np.linalg.norm(neb_pred_forces[ci_idx])
-            ci_ok = (ci_unc <= 0.1) and (ci_force <= 1.0)
+            ci_ok = (ci_unc <= 0.1)  # and (ci_force <= 1.0)
 
             self.max_unc_hist.append(max_unc)
             W = 7
@@ -521,7 +521,7 @@ class AIDNEB:
             nim = len(self.images) - 2
             nat = len(self.images[0])
             if np.max(neb_pred_uncertainty) <= max_unc_trheshold:
-                neb_opt.run(fmax=fmax * 1.0, steps=ml_steps)
+                neb_opt.run(fmax=fmax * 0.8, steps=ml_steps)
 
                 # previous position snapshot (for rollback)
                 # ok_forces = False
@@ -661,10 +661,10 @@ class AIDNEB:
                         accepted = True
                         found_candidate = True
                         chosen_candidate = best_candidate
-                        break  # 내부 while 탈출
+                        break
 
                 if not found_candidate and not accepted:
-                    self.rmin -= 0.005
+                    self.rmin -= 0.01
                     print(f"No candidate accepted. Decrease r_min to {self.rmin:.3f} and retry...")
 
             # Save the other candidates for multi-task optimization.
