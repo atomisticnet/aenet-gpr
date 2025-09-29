@@ -229,12 +229,19 @@ class AIDNEB:
             self.e_endpoint.positions = mic_images[-2].positions[:]
 
         # Calculate the initial and final end-points (if necessary).
-        self.i_endpoint.calc = copy.deepcopy(self.ase_calc)
-        self.e_endpoint.calc = copy.deepcopy(self.ase_calc)
+        if self.i_endpoint.calc is None:
+            self.i_endpoint.calc = copy.deepcopy(self.ase_calc)
+        if self.e_endpoint.calc is None:
+            self.e_endpoint.calc = copy.deepcopy(self.ase_calc)
         self.i_endpoint.get_potential_energy(force_consistent=force_consistent)
         self.i_endpoint.get_forces()
         self.e_endpoint.get_potential_energy(force_consistent=force_consistent)
         self.e_endpoint.get_forces()
+
+        if isinstance(self.i_endpoint, Atoms):
+            io.write('initial.traj', self.i_endpoint)
+        if isinstance(self.e_endpoint, Atoms):
+            io.write('final.traj', self.e_endpoint)
 
         # Calculate the distance between the initial and final endpoints.
         self.d_start_end = np.sum((self.i_endpoint.positions.flatten() -
@@ -289,7 +296,7 @@ class AIDNEB:
         # print(f"r_max (threshold to prevent over-relaxation when training data is sparse): {self.rmax:.4f}")
         print('spring_constant: ', self.spring)
 
-    def run(self, fmax=0.05, unc_convergence=0.1, dt=0.05, ml_steps=150, optimizer="FIRE", max_unc_trheshold=1.0):
+    def run(self, fmax=0.05, unc_convergence=0.1, dt=0.1, ml_steps=150, optimizer="FIRE", max_unc_trheshold=1.0):
 
         """
         Executing run will start the NEB optimization process.
@@ -618,13 +625,13 @@ class AIDNEB:
                 break
 
             # Set the path to previous iterations if barrier is higher than 10 eV
-            if pbf > 10.0:
-                print(f"[INFO] Current energy barrier (ΔE = {pbf} eV) is too large, meaning largely deviated path")
-                print('Reset the images to the previous path...')
-                self.images = copy.deepcopy(io.read("gpr_neb.traj", f":{self.n_images}"))
-
-                for i in self.images:
-                    i.calc = copy.deepcopy(self.model_calculator)
+            # if pbf > 10.0:
+            #     print(f"[INFO] Current energy barrier (ΔE = {pbf} eV) is too large, meaning largely deviated path")
+            #     print('Reset the images to the previous path...')
+            #     self.images = copy.deepcopy(io.read("gpr_neb.traj", f":{self.n_images}"))
+            #
+            #     for i in self.images:
+            #         i.calc = copy.deepcopy(self.model_calculator)
 
             # 7. Select next point to train (acquisition function):
             # Candidates are the optimized NEB images in the predicted PES.
