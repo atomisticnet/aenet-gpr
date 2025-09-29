@@ -347,7 +347,7 @@ class AIDNEB:
                          restart=self.use_previous_observations)
 
         print(f"[INFO] Number of initial training data: {self.n_train_images} including initial and final")
-        n_to_add = min(self.n_images - 2, max(1, int(self.d_start_end / 4.0)))
+        n_to_add = min(self.n_images - 2, max(1, int(self.d_start_end / 3.0)))
         if (n_to_add + 2) > self.n_train_images:
             print(f"[INFO] Distance between initial and final (ΔR = {self.d_start_end} Å) is too large")
             print(f"[INFO] Use {n_to_add + 2} initial training data instead of {self.n_train_images}")
