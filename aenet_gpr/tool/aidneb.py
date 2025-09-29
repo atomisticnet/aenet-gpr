@@ -623,6 +623,9 @@ class AIDNEB:
                 print('Reset the images to the previous path...')
                 self.images = copy.deepcopy(io.read("gpr_neb.traj", f":{self.n_images}"))
 
+                for i in self.images:
+                    i.calc = copy.deepcopy(self.model_calculator)
+
             # 7. Select next point to train (acquisition function):
             # Candidates are the optimized NEB images in the predicted PES.
             candidates = copy.deepcopy(self.images)[1:-1]
