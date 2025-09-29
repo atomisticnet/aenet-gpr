@@ -296,7 +296,8 @@ class AIDNEB:
         # print(f"r_max (threshold to prevent over-relaxation when training data is sparse): {self.rmax:.4f}")
         print('spring_constant: ', self.spring)
 
-    def run(self, fmax=0.05, unc_convergence=0.1, dt=0.1, ml_steps=150, optimizer="FIRE", max_unc_trheshold=1.0):
+    def run(self, fmax=0.05, unc_convergence=0.1, dt=0.1, ml_steps=150, optimizer="MDMin",
+            max_unc_trheshold=1.0, check_ref_force=False):
 
         """
         Executing run will start the NEB optimization process.
@@ -582,9 +583,10 @@ class AIDNEB:
             # max_e_ind = np.argsort(neb_pred_energy)[-1]
 
             # Calculator of train_images is reference, while Calculator of self.images is GP
-            # max_f_max_e = get_fmax(self.images[max_e_ind]).item()
-            # max_f_last_train = get_fmax(train_images[-1])
-            max_f = max_f_image
+            if check_ref_force:
+                max_f = get_fmax(train_images[-1])
+            else:
+                max_f = max_f_image
 
             pbf = max_e - self.i_endpoint.get_potential_energy(force_consistent=self.force_consistent)
             pbb = max_e - self.e_endpoint.get_potential_energy(force_consistent=self.force_consistent)
@@ -629,7 +631,6 @@ class AIDNEB:
             #     print(f"[INFO] Current energy barrier (ΔE = {pbf} eV) is too large, meaning largely deviated path")
             #     print('Reset the images to the previous path...')
             #     self.images = copy.deepcopy(io.read("gpr_neb.traj", f":{self.n_images}"))
-            #
             #     for i in self.images:
             #         i.calc = copy.deepcopy(self.model_calculator)
 
