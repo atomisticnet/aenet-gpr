@@ -653,34 +653,37 @@ class AIDNEB:
                                                     objective='max')
 
             # Select the best candidate.
-            accepted = False
-            fp_train = train_data.generate_cartesian(train_data.images)
-            N = fp_train.shape[0]
+            if check_ref_force:
+                chosen_candidate = sorted_candidates.pop(0)
+            else:
+                accepted = False
+                fp_train = train_data.generate_cartesian(train_data.images)
+                N = fp_train.shape[0]
 
-            while not accepted:
-                sorted_candidates_tmp = copy.deepcopy(sorted_candidates)
-                found_candidate = False
+                while not accepted:
+                    sorted_candidates_tmp = copy.deepcopy(sorted_candidates)
+                    found_candidate = False
+    
+                    while sorted_candidates_tmp:
+                        best_candidate = sorted_candidates_tmp.pop(0)
+                        fp_candidate = train_data.generate_cartesian_per_data(best_candidate).flatten()
 
-                while sorted_candidates_tmp:
-                    best_candidate = sorted_candidates_tmp.pop(0)
-                    fp_candidate = train_data.generate_cartesian_per_data(best_candidate).flatten()
+                        for i in range(N):
+                            xi = fp_train[i].flatten()
+                            dist = torch.linalg.norm(xi - fp_candidate)
 
-                    for i in range(N):
-                        xi = fp_train[i].flatten()
-                        dist = torch.linalg.norm(xi - fp_candidate)
-
-                        if dist < self.rmin:
-                            print(f"Candidate rejected: too close to train data {i} (dist={dist:.4f} < r_min={self.rmin:.3f})")
+                            if dist < self.rmin:
+                                print(f"Candidate rejected: too close to train data {i} (dist={dist:.4f} < r_min={self.rmin:.3f})")
+                                break
+                        else:
+                            accepted = True
+                            found_candidate = True
+                            chosen_candidate = best_candidate
                             break
-                    else:
-                        accepted = True
-                        found_candidate = True
-                        chosen_candidate = best_candidate
-                        break
 
-                if not found_candidate and not accepted:
-                    self.rmin -= 0.01
-                    print(f"No candidate accepted. Decrease r_min to {self.rmin:.3f} and retry...")
+                    if not found_candidate and not accepted:
+                        self.rmin -= 0.01
+                        print(f"No candidate accepted. Decrease r_min to {self.rmin:.3f} and retry...")
 
             # Save the other candidates for multi-task optimization.
             if sorted_candidates:
