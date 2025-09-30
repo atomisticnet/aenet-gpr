@@ -296,7 +296,7 @@ class AIDNEB:
         # print(f"r_max (threshold to prevent over-relaxation when training data is sparse): {self.rmax:.4f}")
         print('spring_constant: ', self.spring)
 
-    def run(self, fmax=0.05, unc_convergence=0.1, dt=0.1, ml_steps=150, optimizer="MDMin",
+    def run(self, fmax=0.05, unc_convergence=0.1, dt=0.1, ml_steps=150, optimizer="MDMin", update_step=10,
             max_unc_trheshold=1.0, check_ref_force=False):
 
         """
@@ -379,18 +379,20 @@ class AIDNEB:
                                  restart=self.use_previous_observations)
                 self.function_calls += 1
                 self.force_calls += 1
-                self.step += 1
+
+        else:
+            self.function_calls = len(train_images)
+            self.force_calls = len(train_images)
+
+        self.step += 1
 
         weight_update = self.input_param.weight
         scale_update = self.input_param.scale
 
         self.rmin = 0.1
+        self.W = 7
         self.max_unc_hist = []
         self.max_unc_hist_after = []
-
-        violated_index = 0
-        set_update_step = False
-        update_step = 10
 
         while True:
 
@@ -420,11 +422,7 @@ class AIDNEB:
             print('Training data size: ', len(train_images))
             print('Descriptor: ', self.input_param.descriptor)
 
-            if violated_index is None and not set_update_step:
-                update_step = self.step
-                set_update_step = True
-
-            if self.step >= update_step:
+            if update_step is not None and self.step >= update_step:
                 update_step *= 2
                 self.input_param.fit_weight = True
                 self.input_param.fit_scale = True
@@ -505,10 +503,9 @@ class AIDNEB:
                 ci_ok = (ci_unc <= 0.1)  # and (ci_force <= 1.0)
 
                 self.max_unc_hist.append(max_unc)
-                W = 7
                 ok_stall_unc = False
-                if len(self.max_unc_hist) > W:
-                    dec_unc = np.diff(np.array(self.max_unc_hist[-W:]))
+                if len(self.max_unc_hist) > self.W:
+                    dec_unc = np.diff(np.array(self.max_unc_hist[-self.W:]))
                     ok_stall_unc = np.all(np.abs(dec_unc) <= 0.02)
 
                 if (ok_unc or ok_stall_unc) and ci_ok:
@@ -608,8 +605,8 @@ class AIDNEB:
 
             self.max_unc_hist_after.append(max_unc)
             ok_stall_unc = False
-            if len(self.max_unc_hist_after) > W:
-                dec_unc = np.diff(np.array(self.max_unc_hist_after[-W:]))
+            if len(self.max_unc_hist_after) > self.W:
+                dec_unc = np.diff(np.array(self.max_unc_hist_after[-self.W:]))
                 ok_stall_unc = np.all(np.abs(dec_unc) <= 0.02)
 
             # Max.forces and NEB images uncertainty must be below *fmax* and *unc_convergence* thresholds.
