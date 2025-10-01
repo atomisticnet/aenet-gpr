@@ -257,7 +257,7 @@ class ReferenceData(object):
             self.read_structure_files(structure_files=keep_images, file_format='ase')
             self.set_data()
 
-    def config_calculator(self, kerneltype='sqexp', scale=0.4, weight=1.0, noise=1e-6, noisefactor=0.5,
+    def config_calculator(self, prior=None, prior_update=True, kerneltype='sqexp', scale=0.4, weight=1.0, noise=1e-6, noisefactor=0.5,
                           use_forces=True, sparse=None, sparse_derivative=None, autograd=False,
                           train_batch_size=25, eval_batch_size=25,
                           fit_weight=True, fit_scale=True):
@@ -270,7 +270,9 @@ class ReferenceData(object):
             dY_train_tensor = torch.as_tensor(self.force, dtype=self.torch_data_type).to(self.device)
 
         if self.data_process == 'iterative':
-            self.calculator = gpr_iterative.GaussianProcess(kerneltype=kerneltype,
+            self.calculator = gpr_iterative.GaussianProcess(prior=prior,
+                                                            prior_update=prior_update,
+                                                            kerneltype=kerneltype,
                                                             scale=scale,
                                                             weight=weight,
                                                             noise=noise,
@@ -288,7 +290,9 @@ class ReferenceData(object):
                                                             descriptor=self.descriptor,
                                                             atoms_mask=self.atoms_mask).to(self.device)
         elif self.data_process == 'batch':
-            self.calculator = gpr_batch.GaussianProcess(kerneltype=kerneltype,
+            self.calculator = gpr_batch.GaussianProcess(prior=prior,
+                                                        prior_update=prior_update,
+                                                        kerneltype=kerneltype,
                                                         scale=scale,
                                                         weight=weight,
                                                         noise=noise,
