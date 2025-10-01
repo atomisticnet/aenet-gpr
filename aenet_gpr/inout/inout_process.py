@@ -76,7 +76,9 @@ class Train(object):
             #                                   fit_scale=self.input_param.fit_scale)
 
         else:
-            self.train_data.config_calculator(kerneltype=self.input_param.kerneltype,
+            self.train_data.config_calculator(prior=self.input_param.prior,
+                                              prior_update=self.input_param.prior_update,
+                                              kerneltype=self.input_param.kerneltype,
                                               scale=self.input_param.scale,
                                               weight=self.input_param.weight,
                                               noise=self.input_param.noise,

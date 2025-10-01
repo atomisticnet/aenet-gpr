@@ -14,12 +14,14 @@ class InputParameters(object):
         self.data_type = 'float64'
         self.data_process = 'batch'
         self.descriptor        = 'cartesian coordinates'
-        self.standardization   = False
-        self.mask_constraints  = False
 
+        self.prior             = None
+        self.prior_update      = True
+        self.standardization   = False
         self.fit_weight        = True
         self.fit_scale         = True
 
+        self.mask_constraints = False
         self.filter            = True
         self.filter_threshold  = 0.1
 
