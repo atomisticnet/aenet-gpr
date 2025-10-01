@@ -48,6 +48,13 @@ def read_train_in(infile):
 			lines.pop(i)
 
 		# Logical parameters:
+		prior_update, found = read_keyword_argument_same_line("prior_update", lines)
+		if found:
+			if "F" in prior_update.upper():
+				input_param.prior_update = False
+			else:
+				input_param.prior_update = True
+
 		standardization, found = read_keyword_argument_same_line("standardization", lines)
 		if found:
 			if "F" in standardization.upper():
