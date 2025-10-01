@@ -33,7 +33,7 @@ def min_cartesian_dist(img, train_images):
 class AIDNEB:
 
     def __init__(self, start, end, input_param: InputParameters, model_calculator=None, calculator=None,
-                 interpolation='idpp', n_images=15, n_train_images=3, k=None, climbing=True, mic=False,
+                 interpolation='idpp', n_images=15, n_train_images=3, k=None, climbing=False, mic=False,
                  neb_method='improvedtangent',  # 'improvedtangent', 'aseneb'
                  remove_rotation_and_translation=False,
                  max_train_data=25, force_consistent=None,
@@ -409,10 +409,10 @@ class AIDNEB:
                                        file_format='ase',
                                        device=self.input_param.device,
                                        descriptor=self.input_param.descriptor,
+                                       standardization=self.input_param.standardization,
                                        data_type=self.input_param.data_type,
                                        data_process=self.input_param.data_process,
                                        soap_param=self.input_param.soap_param,
-                                       standardization=False,
                                        mask_constraints=self.input_param.mask_constraints)
 
             if train_data.standardization:
@@ -431,7 +431,9 @@ class AIDNEB:
                     train_data.filter_similar_data(threshold=self.rmin)
                     print('Actual training data size (after removing similar data): ', len(train_data.images))
 
-                train_data.config_calculator(kerneltype='sqexp',
+                train_data.config_calculator(prior=self.input_param.prior,
+                                             prior_update=self.input_param.prior_update,
+                                             kerneltype='sqexp',
                                              scale=scale_update,
                                              weight=weight_update,
                                              noise=self.input_param.noise,
@@ -453,7 +455,9 @@ class AIDNEB:
                     train_data.filter_similar_data(threshold=self.rmin)
                     print('Actual training data size (after removing similar data): ', len(train_data.images))
 
-                train_data.config_calculator(kerneltype='sqexp',
+                train_data.config_calculator(prior=self.input_param.prior,
+                                             prior_update=self.input_param.prior_update,
+                                             kerneltype='sqexp',
                                              scale=scale_update,
                                              weight=weight_update,
                                              noise=self.input_param.noise,
