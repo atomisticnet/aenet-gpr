@@ -33,7 +33,7 @@ def min_cartesian_dist(img, train_images):
 class AIDNEB:
 
     def __init__(self, start, end, input_param: InputParameters, model_calculator=None, calculator=None,
-                 interpolation='idpp', n_images=15, n_train_images=3, k=None, climbing=False, mic=False,
+                 interpolation='idpp', n_images=15, n_train_images=3, k=None, mic=False,
                  neb_method='improvedtangent',  # 'improvedtangent', 'aseneb'
                  remove_rotation_and_translation=False,
                  max_train_data=25, force_consistent=None,
@@ -196,7 +196,6 @@ class AIDNEB:
         self.rrt = remove_rotation_and_translation
         self.neb_method = neb_method
         self.spring = k
-        self.climbing = climbing
         self.i_endpoint = io.read(self.start, '-1')
         self.e_endpoint = io.read(self.end, '-1')
 
@@ -247,8 +246,7 @@ class AIDNEB:
         self.d_start_end = np.sum((self.i_endpoint.positions.flatten() -
                                    self.e_endpoint.positions.flatten()) ** 2) ** 0.5
 
-        self.rmax = 0.4 * self.d_start_end
-
+        # self.rmax = 0.4 * self.d_start_end
         # A) Create images using interpolation if user does define a path.
         if interp_path is None:
             if isinstance(self.n_images, float):
@@ -296,8 +294,9 @@ class AIDNEB:
         # print(f"r_max (threshold to prevent over-relaxation when training data is sparse): {self.rmax:.4f}")
         print('spring_constant: ', self.spring)
 
-    def run(self, fmax=0.05, unc_convergence=0.1, dt=0.1, ml_steps=150, optimizer="MDMin", update_step=10,
-            max_unc_trheshold=1.0, check_ref_force=False):
+    def run(self, fmax=0.05, unc_convergence=0.02, dt=0.1, ml_steps=150,
+            optimizer="MDMin", update_step=10, max_unc_trheshold=1.0,
+            check_ref_force=False, climbing=True):
 
         """
         Executing run will start the NEB optimization process.
@@ -418,6 +417,9 @@ class AIDNEB:
             if train_data.standardization:
                 train_data.standardize_energy_force(train_data.energy)
 
+            if check_ref_force:
+                self.input_param.filter = False
+
             # 2. Prepare a calculator.
             print('Training data size: ', len(train_images))
             print('Descriptor: ', self.input_param.descriptor)
@@ -497,7 +499,7 @@ class AIDNEB:
             # Climbing image NEB mode is risky when the model is trained with a few data points.
             # Switch on climbing image only when the uncertainty of the NEB the force of the climbing image are low.
             climbing_neb = False
-            if self.climbing:
+            if climbing:
                 max_unc = np.max(neb_pred_uncertainty)
                 ok_unc = max_unc <= unc_convergence
 
@@ -614,18 +616,18 @@ class AIDNEB:
                 ok_stall_unc = np.all(np.abs(dec_unc) <= 0.02)
 
             # Max.forces and NEB images uncertainty must be below *fmax* and *unc_convergence* thresholds.
-            if len(train_images) > 2 and max_f <= fmax and (ok_unc or ok_stall_unc) and max_unc < unc_convergence * 5 and (climbing_neb or not self.climbing):
+            if len(train_images) > 2 and max_f <= fmax:
                 parprint('A saddle point was found.')
 
-                # if np.max(neb_pred_uncertainty[1:-1]) < unc_convergence:
-                io.write(self.trajectory, self.images)
-                parprint('Uncertainty of the images below threshold.')
-                parprint('NEB converged.')
-                parprint('The NEB path can be found in:', self.trajectory)
-                msg = "Visualize the last path using 'ase gui "
-                msg += self.trajectory
-                parprint(msg)
-                break
+                if (ok_unc or ok_stall_unc) and max_unc < unc_convergence * 5 and (climbing_neb or not climbing):
+                    io.write(self.trajectory, self.images)
+                    parprint('Uncertainty of the images below threshold.')
+                    parprint('NEB converged.')
+                    parprint('The NEB path can be found in:', self.trajectory)
+                    msg = "Visualize the last path using 'ase gui "
+                    msg += self.trajectory
+                    parprint(msg)
+                    break
 
             # Set the path to previous iterations if barrier is higher than 10 eV
             # if pbf > 10.0:
