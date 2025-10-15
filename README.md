@@ -51,7 +51,7 @@ It automates data augmentation to:
 **Requirements:**
 
 - Python with PyTorch (to be installed separately, see below)
-- Other dependencies (`numpy`, `ASE`, `DScribe`) are automatically installed when installing `aenet-gpr`
+- Other dependencies (`numpy`, `ASE`) are automatically installed when installing `aenet-gpr`
 
 ### 1. Install PyTorch
 
