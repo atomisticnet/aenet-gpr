@@ -11,8 +11,8 @@ class InputParameters(object):
         self.train_file        = []
         self.test_file         = []
 
-        self.data_type = 'float64'
-        self.data_process = 'batch'
+        self.data_type         = 'float64'
+        self.data_process      = 'batch'
         self.descriptor        = 'cartesian coordinates'
 
         self.prior             = None
@@ -43,6 +43,11 @@ class InputParameters(object):
                            'centers': self.soap_centers,
                            'method': self.soap_method,
                            'n_jobs': self.soap_n_jobs}
+
+        self.mace_system = "materials"
+        self.mace_model = "small"
+        self.mace_param = {'system': self.mace_system,
+                           'model': self.mace_model}
 
         self.kerneltype        = 'sqexp'
         self.scale             = 0.4

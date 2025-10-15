@@ -167,6 +167,8 @@ def read_train_in(infile):
 		if found:
 			if "soap" in descriptor.lower():
 				input_param.descriptor = 'soap'
+			elif "mace" in descriptor.lower():
+				input_param.descriptor = 'mace'
 			elif "internal" in descriptor.lower():
 				input_param.descriptor = 'internal'
 			else:
@@ -202,6 +204,14 @@ def read_train_in(infile):
 		soap_n_jobs, found = read_keyword_argument_same_line("soap_n_jobs", lines)
 		if found:
 			input_param.soap_n_jobs = int(soap_n_jobs)
+
+		mace_system, found = read_keyword_list_same_line("mace_system", lines)
+		if found:
+			input_param.mace_system = mace_system
+
+		mace_model, found = read_keyword_argument_same_line("mace_model", lines)
+		if found:
+			input_param.mace_model = int(mace_model)
 
 		scale, found = read_keyword_argument_same_line("scale", lines)
 		if found:

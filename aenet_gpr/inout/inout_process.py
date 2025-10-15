@@ -1,5 +1,4 @@
 import os
-import time
 import resource
 
 import numpy as np
@@ -8,7 +7,7 @@ import torch
 from aenet_gpr.inout.input_parameter import InputParameters
 from aenet_gpr.util import ReferenceData, AdditionalData  # , ReferenceDataInternal, AdditionalDataInternal
 from aenet_gpr.inout.io_print import *
-from aenet_gpr.util.prepare_data import standard_output, inverse_standard_output
+from aenet_gpr.util.prepare_data import inverse_standard_output
 
 
 class Train(object):
@@ -39,6 +38,7 @@ class Train(object):
                                             data_type=self.input_param.data_type,
                                             data_process=self.input_param.data_process,
                                             soap_param=self.input_param.soap_param,
+                                            mace_param=self.input_param.mace_param,
                                             mask_constraints=self.input_param.mask_constraints)
 
         io_data_read_finalize(t=start,
@@ -166,6 +166,7 @@ class Test(object):
                                            data_type=self.input_param.data_type,
                                            data_process=self.input_param.data_process,
                                            soap_param=self.input_param.soap_param,
+                                           mace_param=self.input_param.mace_param,
                                            mask_constraints=self.input_param.mask_constraints)
 
         if self.test_data.energy is not None:
