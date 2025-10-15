@@ -23,6 +23,7 @@ class ReferenceData(object):
                  data_type='float64',
                  data_process='batch',
                  soap_param=None,
+                 mace_param=None,
                  mask_constraints=False):
 
         self.data_process = data_process
@@ -71,6 +72,12 @@ class ReferenceData(object):
                                'n_jobs': 1}
         else:
             self.soap_param = soap_param
+
+        if mace_param is None:
+            self.mace_param = {'system': "materials",
+                               'model': "small"}
+        else:
+            self.mace_param = mace_param
 
         self.mask_constraints = mask_constraints
         if self.mask_constraints:
@@ -287,6 +294,7 @@ class ReferenceData(object):
                                                             data_type=self.data_type,
                                                             device=self.device,
                                                             soap_param=self.soap_param,
+                                                            mace_param=self.mace_param,
                                                             descriptor=self.descriptor,
                                                             atoms_mask=self.atoms_mask).to(self.device)
         elif self.data_process == 'batch':
@@ -309,6 +317,7 @@ class ReferenceData(object):
                                                         data_type=self.data_type,
                                                         device=self.device,
                                                         soap_param=self.soap_param,
+                                                        mace_param=self.mace_param,
                                                         descriptor=self.descriptor,
                                                         atoms_mask=self.atoms_mask).to(self.device)
 
@@ -586,6 +595,7 @@ class ReferenceData(object):
             'species': self.species,
             'num_atom': self.num_atom,
             'soap_param': self.soap_param,
+            'mace_param': self.mace_param,
         }
         torch.save(state, file)
         self.calculator.save_data()
@@ -614,6 +624,7 @@ class ReferenceData(object):
         self.num_atom = state.get('num_atom')
 
         self.soap_param = state.get('soap_param')
+        self.mace_param = state.get('mace_param')
 
         if self.pbc:
             atom = Atoms(self.species)
@@ -635,6 +646,7 @@ class ReferenceData(object):
                                                             data_type=self.data_type,
                                                             device=self.device,
                                                             soap_param=self.soap_param,
+                                                            mace_param=self.mace_param,
                                                             descriptor=self.descriptor).to(self.device)
             self.calculator.load_data()
 
@@ -643,5 +655,6 @@ class ReferenceData(object):
                                                         data_type=self.data_type,
                                                         device=self.device,
                                                         soap_param=self.soap_param,
+                                                        mace_param=self.mace_param,
                                                         descriptor=self.descriptor).to(self.device)
             self.calculator.load_data()
