@@ -20,7 +20,8 @@ class GaussianProcess(nn.Module):
                  scale=0.4, weight=1.0, noise=1e-6, noisefactor=0.5,
                  use_forces=True, images=None, function=None, derivative=None,
                  sparse=None, sparse_derivative=None, autograd=False,
-                 data_type='float64', device='cpu', soap_param=None, descriptor='cartesian coordinates',
+                 data_type='float64', device='cpu',
+                 soap_param=None, mace_param=None, descriptor='cartesian coordinates',
                  atoms_mask=None):
         super().__init__()
 
@@ -33,6 +34,7 @@ class GaussianProcess(nn.Module):
 
         self.device = device
         self.soap_param = soap_param
+        self.mace_param = mace_param
         self.descriptor = descriptor
         self.kerneltype = kerneltype
 
@@ -92,6 +94,7 @@ class GaussianProcess(nn.Module):
                                    kerneltype=self.kerneltype,
                                    data_type=self.data_type,
                                    soap_param=self.soap_param,
+                                   mace_param=self.mace_param,
                                    descriptor=self.descriptor,
                                    device=self.device,
                                    atoms_mask=self.atoms_mask)
@@ -102,6 +105,7 @@ class GaussianProcess(nn.Module):
                                            kerneltype=self.kerneltype,
                                            data_type=self.data_type,
                                            soap_param=self.soap_param,
+                                           mace_param=self.mace_param,
                                            descriptor=self.descriptor,
                                            device=self.device,
                                            atoms_mask=self.atoms_mask)

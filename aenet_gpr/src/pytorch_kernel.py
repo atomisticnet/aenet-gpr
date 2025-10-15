@@ -2,8 +2,6 @@ import torch
 import numpy as np
 import gc
 
-from dscribe.descriptors import SOAP
-
 from aenet_gpr.src.pytorch_kerneltypes import SquaredExp
 from aenet_gpr.util.prepare_data import get_N_batch, get_batch_indexes_N_batch
 
@@ -44,6 +42,7 @@ class FPKernel(BaseKernelType):
                  params=None,
                  data_type='float64',
                  soap_param=None,
+                 mace_param=None,
                  descriptor='cartesian coordinates',
                  device='cpu',
                  atoms_mask=None):
@@ -81,16 +80,87 @@ class FPKernel(BaseKernelType):
         self.kerneltype = kerneltype(**params)
 
         self.soap_param = soap_param
+        self.mace_param = mace_param
         self.descriptor = descriptor
         self.soap = None
 
         if self.descriptor == 'soap':
-            self.set_soap(r_cut=self.soap_param.get('r_cut'),
-                          n_max=self.soap_param.get('n_max'),
-                          l_max=self.soap_param.get('l_max'),
-                          sigma=self.soap_param.get('sigma'),
-                          rbf=self.soap_param.get('rbf'),
-                          sparse=self.soap_param.get('sparse'))
+            try:
+                from dscribe.descriptors import SOAP
+            except ImportError:
+                raise ImportError(
+                    "The 'dscribe' package is required for using SOAP descriptors.\n"
+                    "Please install it by running:\n\n"
+                    "    pip install dscribe\n")
+
+            self.soap = SOAP(species=set(self.species),
+                             periodic=self.pbc,
+                             r_cut=self.soap_param.get('r_cut'),
+                             n_max=self.soap_param.get('n_max'),
+                             l_max=self.soap_param.get('l_max'),
+                             sigma=self.soap_param.get('sigma'),
+                             rbf=self.soap_param.get('rbf'),
+                             dtype=self.data_type,
+                             sparse=self.soap_param.get('sparse'))
+
+        elif self.descriptor == 'mace':
+            if self.mace_param.get('system') == "materials":
+                try:
+                    from mace.calculators import mace_mp
+                except ImportError:
+                    raise ImportError(
+                        "The 'MACE' package is required for using pre-trained MACE descriptors.\n"
+                        "Please install it by running:\n\n"
+                        "    pip install mace-torch\n")
+
+                self.mace = mace_mp(model=self.mace_param.get('model'), device=self.device)
+
+            else:
+                try:
+                    from mace.calculators import mace_off
+                except ImportError:
+                    raise ImportError(
+                        "The 'MACE' package is required for using pre-trained MACE descriptors.\n"
+                        "Please install it by running:\n\n"
+                        "    pip install mace-torch\n")
+
+                self.mace = mace_off(model=self.mace_param.get('model'), device=self.device)
+
+    def numerical_descriptor_gradient(self, atoms, model, delta=1e-4):
+        """
+        atoms: ASE Atoms object
+        model: MACE calculator (mace_mp)
+        delta: displacement for numerical differentiation
+
+        Returns:
+            gradient: shape (N_atoms, N_atoms, 3, descriptor_dim)
+        """
+        atoms = atoms.copy()
+        n_atoms = len(atoms)
+
+        desc_0 = model.get_descriptors(atoms)  # shape: (n_atoms, D)
+        D = desc_0.shape[1]
+
+        grad = np.empty((n_atoms, n_atoms, 3, D), dtype=self.data_type)
+
+        for i in range(n_atoms):
+            for j in range(3):  # x, y, z
+                # forward step
+                atoms_f = atoms.copy()
+                atoms_f.positions[i, j] += delta
+                desc_f = model.get_descriptors(atoms_f)
+
+                # backward step
+                atoms_b = atoms.copy()
+                atoms_b.positions[i, j] -= delta
+                desc_b = model.get_descriptors(atoms_b)
+
+                # central difference
+                grad[:, i, j, :] = (desc_f - desc_b) / (2 * delta)
+
+        grad = torch.tensor(grad, dtype=self.torch_data_type, device=self.device)
+
+        return grad
 
     def pairwise_distances(self, fingerprints, sin_transform=False):
         # fingerprints: (Ndata, Ncenter, Nfeature)
@@ -113,18 +183,6 @@ class FPKernel(BaseKernelType):
 
         return mean_distance, std_distance, max_distance, min_distance
 
-    def set_soap(self, r_cut=5.0, n_max=6, l_max=4, sigma=0.5, rbf='gto', sparse=False):
-        self.soap = SOAP(
-            species=set(self.species),
-            periodic=self.pbc,
-            r_cut=r_cut,
-            n_max=n_max,
-            l_max=l_max,
-            sigma=sigma,
-            rbf=rbf,
-            dtype=self.data_type,
-            sparse=sparse)
-
     def generate_descriptor(self, images):
 
         if self.descriptor == 'soap':
@@ -141,6 +199,16 @@ class FPKernel(BaseKernelType):
             else:
                 dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type).to(self.device)  # (Ndata, Ncenters, Natom, 3, Natom*3)
                 fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Ndata, Ncenters, Natom*3)
+
+        elif self.descriptor == 'mace':
+            fp = []
+            dfp_dr = []
+            for image in images:
+                fp.append(torch.as_tensor(self.mace.get_descriptors(image), dtype=self.torch_data_type).to(self.device))
+                dfp_dr.append(self.numerical_descriptor_gradient(image, self.mace))
+
+            fp = torch.stack(fp).to(self.device)  # (Ndata, Natom, Ndescriptor)
+            dfp_dr = torch.stack(dfp_dr).to(self.device)  # (Ndata, Natom, Natom, 3, Ndescriptor)
 
         else:
             fp = []
@@ -180,6 +248,12 @@ class FPKernel(BaseKernelType):
             else:
                 dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type).to(self.device)  # (Ncenters, Natom, 3, Natom*3)
                 fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Ncenters, Natom*3)
+
+        elif self.descriptor == 'mace':
+            fp = self.mace.get_descriptors(image)
+            fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Natom, Ndescriptor)
+
+            dfp_dr = self.numerical_descriptor_gradient(image, self.mace)  # (Natom, Natom, 3, Ndescriptor)
 
         else:
             fp = torch.as_tensor(image.get_positions(wrap=False).reshape(-1), dtype=self.torch_data_type).to(self.device)
@@ -631,16 +705,6 @@ class FPKernel(BaseKernelType):
 
             K_xX_i[:, selected_cols] = self.kernel_with_deriv(X1=fp_i, dX1=dfp_dr_i, X2=fp_j, dX2=dfp_dr_j)
 
-        # for j in range(0, Ntrain):
-        #     fp_j, dfp_dr_j = self.generate_descriptor_per_data(image=train_images[j])
-        #
-        #     col_index = torch.tensor([j])
-        #     col_deriv_index = torch.arange(Ntrain + j * self.Nmask, Ntrain + (j + 1) * self.Nmask)
-        #     selected_cols = torch.cat([col_index, col_deriv_index])
-        #
-        #     K_xX_i[:, selected_cols] = self.kernel_per_data(X1=fp_i, dX1=dfp_dr_i,
-        #                                                     X2=fp_j, dX2=dfp_dr_j, iter=j)
-
         return K_xX_i
 
     def set_params(self, params):
@@ -659,8 +723,10 @@ class FPKernelNoforces(BaseKernelType):
                  params=None,
                  data_type='float64',
                  soap_param=None,
+                 mace_param=None,
                  descriptor='cartesian coordinates',
-                 device='cpu'):
+                 device='cpu',
+                 atoms_mask=None):
         super().__init__()
         '''
         params: dict
@@ -668,6 +734,7 @@ class FPKernelNoforces(BaseKernelType):
         '''
         kerneltypes = {'sqexp': SquaredExp}
         self.device = device
+        self.atoms_mask = atoms_mask
 
         if data_type == 'float32':
             self.data_type = 'float32'
@@ -687,28 +754,51 @@ class FPKernelNoforces(BaseKernelType):
         self.kerneltype = kerneltype(**params)
 
         self.soap_param = soap_param
+        self.mace_param = mace_param
         self.descriptor = descriptor
         self.soap = None
 
         if self.descriptor == 'soap':
-            self.set_soap(r_cut=self.soap_param.get('r_cut'),
-                          n_max=self.soap_param.get('n_max'),
-                          l_max=self.soap_param.get('l_max'),
-                          sigma=self.soap_param.get('sigma'),
-                          rbf=self.soap_param.get('rbf'),
-                          sparse=self.soap_param.get('sparse'))
+            try:
+                from dscribe.descriptors import SOAP
+            except ImportError:
+                raise ImportError(
+                    "The 'dscribe' package is required for using SOAP descriptors.\n"
+                    "Please install it by running:\n\n"
+                    "    pip install dscribe\n")
 
-    def set_soap(self, r_cut=5.0, n_max=6, l_max=4, sigma=0.5, rbf='gto', sparse=False):
-        self.soap = SOAP(
-            species=set(self.species),
-            periodic=self.pbc,
-            r_cut=r_cut,
-            n_max=n_max,
-            l_max=l_max,
-            sigma=sigma,
-            rbf=rbf,
-            dtype=self.data_type,
-            sparse=sparse)
+            self.soap = SOAP(species=set(self.species),
+                             periodic=self.pbc,
+                             r_cut=self.soap_param.get('r_cut'),
+                             n_max=self.soap_param.get('n_max'),
+                             l_max=self.soap_param.get('l_max'),
+                             sigma=self.soap_param.get('sigma'),
+                             rbf=self.soap_param.get('rbf'),
+                             dtype=self.data_type,
+                             sparse=self.soap_param.get('sparse'))
+
+        elif self.descriptor == 'mace':
+            if self.mace_param.get('system') == "materials":
+                try:
+                    from mace.calculators import mace_mp
+                except ImportError:
+                    raise ImportError(
+                        "The 'MACE' package is required for using pre-trained MACE descriptors.\n"
+                        "Please install it by running:\n\n"
+                        "    pip install mace-torch\n")
+
+                self.mace = mace_mp(model=self.mace_param.get('model'), device=self.device)
+
+            else:
+                try:
+                    from mace.calculators import mace_off
+                except ImportError:
+                    raise ImportError(
+                        "The 'MACE' package is required for using pre-trained MACE descriptors.\n"
+                        "Please install it by running:\n\n"
+                        "    pip install mace-torch\n")
+
+                self.mace = mace_off(model=self.mace_param.get('model'), device=self.device)
 
     def kernel_without_deriv(self, X1=None, X2=None):
         '''
