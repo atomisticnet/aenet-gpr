@@ -616,18 +616,17 @@ class AIDNEB:
                 ok_stall_unc = np.all(np.abs(dec_unc) <= 0.02)
 
             # Max.forces and NEB images uncertainty must be below *fmax* and *unc_convergence* thresholds.
-            if len(train_images) > 2 and max_f <= fmax:
+            if len(train_images) > 2 and max_f <= fmax and (ok_unc or ok_stall_unc) and max_unc < unc_convergence * 5 and (climbing_neb or not climbing):
                 parprint('A saddle point was found.')
 
-                if (ok_unc or ok_stall_unc) and max_unc < unc_convergence * 5 and (climbing_neb or not climbing):
-                    io.write(self.trajectory, self.images)
-                    parprint('Uncertainty of the images below threshold.')
-                    parprint('NEB converged.')
-                    parprint('The NEB path can be found in:', self.trajectory)
-                    msg = "Visualize the last path using 'ase gui "
-                    msg += self.trajectory
-                    parprint(msg)
-                    break
+                io.write(self.trajectory, self.images)
+                parprint('Uncertainty of the images below threshold.')
+                parprint('NEB converged.')
+                parprint('The NEB path can be found in:', self.trajectory)
+                msg = "Visualize the last path using 'ase gui "
+                msg += self.trajectory
+                parprint(msg)
+                break
 
             # Set the path to previous iterations if barrier is higher than 10 eV
             # if pbf > 10.0:
