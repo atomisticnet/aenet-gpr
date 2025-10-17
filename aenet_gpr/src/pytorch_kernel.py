@@ -116,7 +116,7 @@ class FPKernel(BaseKernelType):
                         "designed exclusively for descriptor extraction."
                     )
 
-                self.mace = mace_mp(model=self.mace_param.get('model'), device=self.device)
+                self.mace = mace_mp(model=self.mace_param.get('model'), default_dtype=self.data_type, device=self.device)
 
             else:
                 try:
@@ -130,7 +130,7 @@ class FPKernel(BaseKernelType):
                         "designed exclusively for descriptor extraction."
                     )
 
-                self.mace = mace_off(model=self.mace_param.get('model'), device=self.device)
+                self.mace = mace_off(model=self.mace_param.get('model'), default_dtype=self.data_type, device=self.device)
 
     def pairwise_distances(self, fingerprints, sin_transform=False):
         # fingerprints: (Ndata, Ncenter, Nfeature)
@@ -174,8 +174,8 @@ class FPKernel(BaseKernelType):
             fp = []
             dfp_dr = []
             for image in images:
-                fp.append(torch.as_tensor(self.mace.get_descriptors(image), dtype=self.torch_data_type).to(self.device))
-                dfp_dr.append(self.mace.numerical_descriptor_gradient(image))
+                fp.append(self.mace.get_descriptors(image).to(self.device))
+                dfp_dr.append(self.mace.numerical_descriptor_gradient(image).to(self.device))
 
             fp = torch.stack(fp).to(self.device)  # (Ndata, Natom, Ndescriptor)
             dfp_dr = torch.stack(dfp_dr).to(self.device)  # (Ndata, Natom, Natom, 3, Ndescriptor)
@@ -220,10 +220,8 @@ class FPKernel(BaseKernelType):
                 fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Ncenters, Natom*3)
 
         elif self.descriptor == 'mace':
-            fp = self.mace.get_descriptors(image)
-            fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Natom, Ndescriptor)
-
-            dfp_dr = self.mace.numerical_descriptor_gradient(image)  # (Natom, Natom, 3, Ndescriptor)
+            fp = self.mace.get_descriptors(image).to(self.device)  # (Natom, Ndescriptor)
+            dfp_dr = self.mace.numerical_descriptor_gradient(image).to(self.device)  # (Natom, Natom, 3, Ndescriptor)
 
         else:
             fp = torch.as_tensor(image.get_positions(wrap=False).reshape(-1), dtype=self.torch_data_type).to(self.device)
