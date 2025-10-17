@@ -106,61 +106,33 @@ class FPKernel(BaseKernelType):
         elif self.descriptor == 'mace':
             if self.mace_param.get('system') == "materials":
                 try:
-                    from mace.calculators import mace_mp
+                    from mace_descriptor.calculators import mace_mp
+                    from mace_descriptor.tools import numerical_descriptor_gradient
                 except ImportError:
                     raise ImportError(
-                        "The 'MACE' package is required for using pre-trained MACE descriptors.\n"
+                        "The 'mace-descriptor' package is required for using pre-trained MACE descriptors.\n"
                         "Please install it by running:\n\n"
-                        "    pip install mace-torch\n")
+                        "    pip install mace-descriptor\n\n"
+                        "Note: This is a lightweight fork of the original MACE (mace-torch) package, "
+                        "designed exclusively for descriptor extraction."
+                    )
 
                 self.mace = mace_mp(model=self.mace_param.get('model'), device=self.device)
 
             else:
                 try:
-                    from mace.calculators import mace_off
+                    from mace_descriptor.calculators import mace_off
+                    from mace_descriptor.tools import numerical_descriptor_gradient
                 except ImportError:
                     raise ImportError(
-                        "The 'MACE' package is required for using pre-trained MACE descriptors.\n"
+                        "The 'mace-descriptor' package is required for using pre-trained MACE descriptors.\n"
                         "Please install it by running:\n\n"
-                        "    pip install mace-torch\n")
+                        "    pip install mace-descriptor\n\n"
+                        "Note: This is a lightweight fork of the original MACE (mace-torch) package, "
+                        "designed exclusively for descriptor extraction."
+                    )
 
                 self.mace = mace_off(model=self.mace_param.get('model'), device=self.device)
-
-    def numerical_descriptor_gradient(self, atoms, model, delta=1e-4):
-        """
-        atoms: ASE Atoms object
-        model: MACE calculator (mace_mp)
-        delta: displacement for numerical differentiation
-
-        Returns:
-            gradient: shape (N_atoms, N_atoms, 3, descriptor_dim)
-        """
-        atoms = atoms.copy()
-        n_atoms = len(atoms)
-
-        desc_0 = model.get_descriptors(atoms)  # shape: (n_atoms, D)
-        D = desc_0.shape[1]
-
-        grad = np.empty((n_atoms, n_atoms, 3, D), dtype=self.data_type)
-
-        for i in range(n_atoms):
-            for j in range(3):  # x, y, z
-                # forward step
-                atoms_f = atoms.copy()
-                atoms_f.positions[i, j] += delta
-                desc_f = model.get_descriptors(atoms_f)
-
-                # backward step
-                atoms_b = atoms.copy()
-                atoms_b.positions[i, j] -= delta
-                desc_b = model.get_descriptors(atoms_b)
-
-                # central difference
-                grad[:, i, j, :] = (desc_f - desc_b) / (2 * delta)
-
-        grad = torch.tensor(grad, dtype=self.torch_data_type, device=self.device)
-
-        return grad
 
     def pairwise_distances(self, fingerprints, sin_transform=False):
         # fingerprints: (Ndata, Ncenter, Nfeature)
@@ -205,7 +177,7 @@ class FPKernel(BaseKernelType):
             dfp_dr = []
             for image in images:
                 fp.append(torch.as_tensor(self.mace.get_descriptors(image), dtype=self.torch_data_type).to(self.device))
-                dfp_dr.append(self.numerical_descriptor_gradient(image, self.mace))
+                dfp_dr.append(numerical_descriptor_gradient(image, self.mace))
 
             fp = torch.stack(fp).to(self.device)  # (Ndata, Natom, Ndescriptor)
             dfp_dr = torch.stack(dfp_dr).to(self.device)  # (Ndata, Natom, Natom, 3, Ndescriptor)
@@ -253,7 +225,7 @@ class FPKernel(BaseKernelType):
             fp = self.mace.get_descriptors(image)
             fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Natom, Ndescriptor)
 
-            dfp_dr = self.numerical_descriptor_gradient(image, self.mace)  # (Natom, Natom, 3, Ndescriptor)
+            dfp_dr = numerical_descriptor_gradient(image, self.mace)  # (Natom, Natom, 3, Ndescriptor)
 
         else:
             fp = torch.as_tensor(image.get_positions(wrap=False).reshape(-1), dtype=self.torch_data_type).to(self.device)
