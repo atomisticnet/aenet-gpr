@@ -107,7 +107,6 @@ class FPKernel(BaseKernelType):
             if self.mace_param.get('system') == "materials":
                 try:
                     from mace_descriptor.calculators import mace_mp
-                    from mace_descriptor.tools import numerical_descriptor_gradient
                 except ImportError:
                     raise ImportError(
                         "The 'mace-descriptor' package is required for using pre-trained MACE descriptors.\n"
@@ -122,7 +121,6 @@ class FPKernel(BaseKernelType):
             else:
                 try:
                     from mace_descriptor.calculators import mace_off
-                    from mace_descriptor.tools import numerical_descriptor_gradient
                 except ImportError:
                     raise ImportError(
                         "The 'mace-descriptor' package is required for using pre-trained MACE descriptors.\n"
@@ -177,7 +175,7 @@ class FPKernel(BaseKernelType):
             dfp_dr = []
             for image in images:
                 fp.append(torch.as_tensor(self.mace.get_descriptors(image), dtype=self.torch_data_type).to(self.device))
-                dfp_dr.append(numerical_descriptor_gradient(image, self.mace))
+                dfp_dr.append(self.mace.numerical_descriptor_gradient(image))
 
             fp = torch.stack(fp).to(self.device)  # (Ndata, Natom, Ndescriptor)
             dfp_dr = torch.stack(dfp_dr).to(self.device)  # (Ndata, Natom, Natom, 3, Ndescriptor)
@@ -225,7 +223,7 @@ class FPKernel(BaseKernelType):
             fp = self.mace.get_descriptors(image)
             fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Natom, Ndescriptor)
 
-            dfp_dr = numerical_descriptor_gradient(image, self.mace)  # (Natom, Natom, 3, Ndescriptor)
+            dfp_dr = self.mace.numerical_descriptor_gradient(image)  # (Natom, Natom, 3, Ndescriptor)
 
         else:
             fp = torch.as_tensor(image.get_positions(wrap=False).reshape(-1), dtype=self.torch_data_type).to(self.device)
