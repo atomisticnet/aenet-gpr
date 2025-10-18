@@ -431,18 +431,17 @@ class ReferenceData(object):
 
     def evaluation(self, get_variance=False):
 
-        with torch.no_grad():
-            if get_variance:
-                energy_gpr_scale, force_gpr_scale, uncertainty_gpr = self.calculator.eval_batch(eval_images=self.images,
-                                                                                                get_variance=get_variance)
+        if get_variance:
+            energy_gpr_scale, force_gpr_scale, uncertainty_gpr = self.calculator.eval_batch(eval_images=self.images,
+                                                                                            get_variance=get_variance)
 
-                return energy_gpr_scale.cpu().detach().numpy(), force_gpr_scale.cpu().detach().numpy(), uncertainty_gpr.cpu().detach().numpy()
+            return energy_gpr_scale.cpu().detach().numpy(), force_gpr_scale.cpu().detach().numpy(), uncertainty_gpr.cpu().detach().numpy()
 
-            else:
-                energy_gpr_scale, force_gpr_scale, _ = self.calculator.eval_batch(eval_images=self.images,
-                                                                                  get_variance=get_variance)
+        else:
+            energy_gpr_scale, force_gpr_scale, _ = self.calculator.eval_batch(eval_images=self.images,
+                                                                              get_variance=get_variance)
 
-                return energy_gpr_scale.cpu().detach().numpy(), force_gpr_scale.cpu().detach().numpy(), None
+            return energy_gpr_scale.cpu().detach().numpy(), force_gpr_scale.cpu().detach().numpy(), None
 
     def standardize_energy_force(self, reference_training_energy):
         """
