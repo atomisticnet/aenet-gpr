@@ -3,6 +3,7 @@ import numpy as np
 
 from aenet_gpr.src.prior import ConstantPrior
 from aenet_gpr.src.pytorch_kernel import FPKernel
+from aenet_gpr.util.prepare_data import get_N_batch, get_batch_indexes_N_batch
 
 
 def numerical_descriptor_gradient(atoms, model, delta=1e-4, num_layers=-1):
@@ -345,24 +346,42 @@ class GaussianProcess(object):
 
     def eval_batch(self, eval_images, get_variance=False):
         eval_fp, eval_dfp_dr = self.generate_descriptor(eval_images)
-        Ntest = len(eval_images)
 
-        pred, kernel = self.eval_data_batch(eval_fp, eval_dfp_dr)
-        E_hat = pred[0:Ntest]
-        # F_hat = torch.zeros((Ntest, self.Natom * 3), dtype=self.torch_data_type, device=self.device)
-        F_hat = apply_force_mask(F=pred[Ntest:].view(Ntest, -1),
-                                 atoms_mask=self.atoms_mask)
+        Ntest = len(eval_images)
+        eval_x_N_batch = get_N_batch(Ntest, self.eval_batch_size)
+        eval_x_indexes = get_batch_indexes_N_batch(Ntest, eval_x_N_batch)
+
+        E_hat = torch.empty((Ntest,), dtype=self.torch_data_type, device=self.device)
+        F_hat = torch.zeros((Ntest, self.Natom * 3), dtype=self.torch_data_type, device=self.device)
+
+        for i in range(0, eval_x_N_batch):
+
+            pred, kernel = self.eval_data_batch(eval_fp[eval_x_indexes[i][0]:eval_x_indexes[i][1]],
+                                                eval_dfp_dr[eval_x_indexes[i][0]:eval_x_indexes[i][1]])
+
+            data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
+            E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
+            F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(F=pred[data_per_batch:].view(data_per_batch, -1),
+                                                                                   atoms_mask=self.atoms_mask)
 
         if not get_variance:
 
             return E_hat, F_hat.view((Ntest, self.Natom, 3)), None
 
         else:
-            var = self.eval_variance_batch(get_variance=get_variance,
-                                           eval_fp=eval_fp,
-                                           eval_dfp_dr=eval_dfp_dr,
-                                           k=kernel)
-            uncertainty = torch.sqrt(torch.diagonal(var)[0:Ntest]) / self.weight
+            uncertainty = torch.empty((Ntest,), dtype=self.torch_data_type, device=self.device)
+            for i in range(0, eval_x_N_batch):
+                pred, kernel = self.eval_data_batch(eval_fp[eval_x_indexes[i][0]:eval_x_indexes[i][1]],
+                                                    eval_dfp_dr[eval_x_indexes[i][0]:eval_x_indexes[i][1]])
+
+                var = self.eval_variance_batch(get_variance=get_variance,
+                                               eval_fp=eval_fp[eval_x_indexes[i][0]:eval_x_indexes[i][1]],
+                                               eval_dfp_dr=eval_dfp_dr[eval_x_indexes[i][0]:eval_x_indexes[i][1]],
+                                               k=kernel)
+
+                data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
+
+                uncertainty[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = torch.sqrt(torch.diagonal(var)[0:data_per_batch]) / self.weight
 
             return E_hat, F_hat.view((Ntest, self.Natom, 3)), uncertainty
 
