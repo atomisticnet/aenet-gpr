@@ -244,8 +244,8 @@ class GaussianProcess(object):
                 fp.append(self.mace.get_descriptors(image))
                 dfp_dr.append(numerical_descriptor_gradient(image, self.mace))
 
-            fp = torch.stack(fp, dtype=self.torch_data_type).to(self.device)  # (Ndata, Natom, Ndescriptor)
-            dfp_dr = torch.stack(dfp_dr, dtype=self.torch_data_type).to(self.device)  # (Ndata, Natom, Natom, 3, Ndescriptor)
+            fp = torch.stack(fp).to(dtype=self.torch_data_type, device=self.device)  # (Ndata, Natom, Ndescriptor)
+            dfp_dr = torch.stack(dfp_dr).to(dtype=self.torch_data_type, device=self.device)  # (Ndata, Natom, Natom, 3, Ndescriptor)
 
         else:
             fp = []
@@ -279,8 +279,8 @@ class GaussianProcess(object):
             fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Ncenters, Natom*3)
 
         elif self.descriptor == 'mace':
-            fp = self.mace.get_descriptors(image).to(self.device)  # (Natom, Ndescriptor)
-            dfp_dr = numerical_descriptor_gradient(image, self.mace).to(self.device)  # (Natom, Natom, 3, Ndescriptor)
+            fp = self.mace.get_descriptors(image).to(dtype=self.torch_data_type, device=self.device)  # (Natom, Ndescriptor)
+            dfp_dr = numerical_descriptor_gradient(image, self.mace).to(dtype=self.torch_data_type, device=self.device)  # (Natom, Natom, 3, Ndescriptor)
 
         else:
             fp = torch.as_tensor(image.get_positions(wrap=False).reshape(-1), dtype=self.torch_data_type).to(
