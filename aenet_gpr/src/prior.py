@@ -9,43 +9,30 @@ class ConstantPrior:
     constant: energy value for the constant.
     '''
 
-    def __init__(self, constant, data_type=torch.float64, device='cpu', atoms_mask=None, **kwargs):
+    def __init__(self,
+                 constant,
+                 data_type=torch.float64,
+                 device='cpu',
+                 **kwargs):
         self.data_type = data_type
         self.device = device
+
         self.constant = torch.tensor(constant, dtype=self.data_type, device=self.device)
-        self.atoms_mask = atoms_mask
 
     def set_constant(self, constant):
         self.constant = constant
 
-    def potential_per_data(self, image=None, get_forces=True):
-        if get_forces:
-            if self.atoms_mask is not None:
-                Nmask = self.atoms_mask.shape[0]
-            else:
-                Nmask = len(image.get_chemical_symbols()) * 3
-            output = torch.zeros((1 + Nmask,), dtype=self.data_type, device=self.device)
+    def potential_per_data(self, Natom):
+        output = torch.zeros((1 + 3 * Natom,), dtype=self.data_type, device=self.device)
+        output[0] = self.constant
+        return output
 
-            output[0] = self.constant
-            return output
-        else:
-            return self.constant
+    def potential_batch(self, Ndata, Natom):
+        output_array = torch.zeros(((1 + 3 * Natom) * Ndata,), dtype=self.data_type, device=self.device)
+        output_array[:Ndata] = self.constant
+        return output_array
 
-    def potential_batch(self, images=None, get_forces=True):
-        if get_forces:
-            if self.atoms_mask is not None:
-                Nmask = self.atoms_mask.shape[0]
-            else:
-                Nmask = len(images[0].get_chemical_symbols()) * 3
-
-            output_array = torch.zeros(((1 + Nmask) * len(images),), dtype=self.data_type, device=self.device)
-            output_array[:len(images)] = self.constant
-            return output_array
-        else:
-            output_array = torch.tensor([self.constant for i in range(len(images))], dtype=self.data_type, device=self.device)
-            return output_array
-
-    def update(self, images, Y, L, use_forces):
+    def update(self, Ndata, Natom, Y, L):
         """Update the constant to maximize the marginal likelihood.
 
         The optimization problem:
@@ -63,10 +50,7 @@ class ConstantPrior:
         L: Cholesky factor of the kernel """
 
         self.set_constant(torch.tensor(1.0, dtype=self.data_type, device=self.device))
-        if use_forces:
-            u = self.potential_batch(images)
-        else:
-            u = self.potential_batch(images, get_forces=False)
+        u = self.potential_batch(Ndata, Natom)
 
         # Solve the system L * L^T * v = Y (Cholesky solve)
         w = torch.cholesky_solve(u.view(-1, 1), L, upper=False)

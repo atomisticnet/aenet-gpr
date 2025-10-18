@@ -25,17 +25,9 @@ class GPRCalculator(Calculator):
 
         Calculator.calculate(self, atoms, properties, system_changes)
 
-        pred, kernel = self.calculator.eval_data_per_data(eval_image=atoms)
-        energy_gpr = pred[0].cpu().detach().numpy()
-        if self.train_data.mask_constraints:
-            force_gpr = torch.zeros((len(atoms) * 3), dtype=pred.dtype)
-            force_gpr[self.train_data.atoms_mask] = pred[1:]
-            force_gpr = force_gpr.view(len(atoms), 3).cpu().detach().numpy()
-        else:
-            force_gpr = pred[1:].view(len(atoms), 3).cpu().detach().numpy()
-
-        var = self.calculator.eval_variance_per_data(get_variance=True, eval_image=atoms, k=kernel)
-        uncertainty_gpr = torch.sqrt(var[0, 0]) / self.calculator.weight
+        energy_gpr, force_gpr, uncertainty_gpr = self.calculator.eval_per_data(eval_image=atoms, get_variance=True)
+        energy_gpr = energy_gpr.cpu().detach().numpy()
+        force_gpr = force_gpr.cpu().detach().numpy()
         uncertainty_gpr = uncertainty_gpr.cpu().detach().numpy()
 
         if self.train_data.standardization:
