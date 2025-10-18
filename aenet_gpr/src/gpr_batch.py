@@ -140,7 +140,7 @@ class GaussianProcess(object):
                         "designed exclusively for descriptor extraction."
                     )
 
-                self.mace = mace_mp(model=self.mace_param.get('model'), default_dtype=self.data_type,
+                self.mace = mace_mp(model=self.mace_param.get('model'),
                                     device=self.device)
 
             else:
@@ -155,7 +155,7 @@ class GaussianProcess(object):
                         "designed exclusively for descriptor extraction."
                     )
 
-                self.mace = mace_off(model=self.mace_param.get('model'), default_dtype=self.data_type,
+                self.mace = mace_off(model=self.mace_param.get('model'),
                                      device=self.device)
 
         self.train_fp, self.train_dfp_dr = self.generate_descriptor(self.images)
@@ -244,8 +244,8 @@ class GaussianProcess(object):
                 fp.append(self.mace.get_descriptors(image))
                 dfp_dr.append(numerical_descriptor_gradient(image, self.mace))
 
-            fp = torch.stack(fp).to(self.device)  # (Ndata, Natom, Ndescriptor)
-            dfp_dr = torch.stack(dfp_dr).to(self.device)  # (Ndata, Natom, Natom, 3, Ndescriptor)
+            fp = torch.stack(fp, dtype=self.torch_data_type).to(self.device)  # (Ndata, Natom, Ndescriptor)
+            dfp_dr = torch.stack(dfp_dr, dtype=self.torch_data_type).to(self.device)  # (Ndata, Natom, Natom, 3, Ndescriptor)
 
         else:
             fp = []
@@ -314,24 +314,23 @@ class GaussianProcess(object):
             self.K_XX_L = torch.linalg.cholesky(self.K_XX_L, upper=False)
 
         except torch.linalg.LinAlgError:
-            with torch.no_grad():
-                # Diagonal sum (trace)
-                diag_sum = torch.sum(torch.diag(self.K_XX_L))
+            # Diagonal sum (trace)
+            diag_sum = torch.sum(torch.diag(self.K_XX_L))
 
-                # epsilon value
-                eps = torch.finfo(self.torch_data_type).eps
+            # epsilon value
+            eps = torch.finfo(self.torch_data_type).eps
 
-                # scaling factor
-                scaling_factor = 1 / (1 / (4.0 * eps) - 1)
+            # scaling factor
+            scaling_factor = 1 / (1 / (4.0 * eps) - 1)
 
-                # adjust K_XX
-                adjustment = diag_sum * scaling_factor * torch.ones(self.K_XX_L.shape[0],
-                                                                    dtype=self.torch_data_type,
-                                                                    device=self.device)
-                self.K_XX_L.diagonal().add_(adjustment)
+            # adjust K_XX
+            adjustment = diag_sum * scaling_factor * torch.ones(self.K_XX_L.shape[0],
+                                                                dtype=self.torch_data_type,
+                                                                device=self.device)
+            self.K_XX_L.diagonal().add_(adjustment)
 
-                # Step 1: Cholesky decomposition for K_XX after adjusting
-                self.K_XX_L = torch.linalg.cholesky(self.K_XX_L, upper=False)
+            # Step 1: Cholesky decomposition for K_XX after adjusting
+            self.K_XX_L = torch.linalg.cholesky(self.K_XX_L, upper=False)
 
         if self.prior_update:
             self.prior.update(len(self.images), len(self.images[0]), self.YdY, self.K_XX_L)
