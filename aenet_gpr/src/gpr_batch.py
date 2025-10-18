@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 import numpy as np
 
 from aenet_gpr.src.prior import ConstantPrior
@@ -62,7 +61,7 @@ def apply_force_mask(F, atoms_mask):
         return F_masked
 
 
-class GaussianProcess(nn.Module):
+class GaussianProcess(object):
     '''
     Gaussian Process Regression
     Parameters:
@@ -71,7 +70,6 @@ class GaussianProcess(nn.Module):
 
     kernel: Defaults to the Squared Exponential kernel with derivatives
     '''
-
     def __init__(self, hp=None, prior=None, prior_update=True, kerneltype='sqexp',
                  scale=0.4, weight=1.0, noise=1e-6, noisefactor=0.5,
                  use_forces=True, images=None, function=None, derivative=None,
@@ -80,7 +78,6 @@ class GaussianProcess(nn.Module):
                  data_type='float64', device='cpu',
                  soap_param=None, mace_param=None, descriptor='cartesian coordinates',
                  atoms_mask=None):
-        super().__init__()
 
         if data_type == 'float32':
             self.data_type = 'float32'
@@ -95,14 +92,8 @@ class GaussianProcess(nn.Module):
         self.descriptor = descriptor
         self.kerneltype = kerneltype
 
-        if autograd:
-            self.scale = nn.Parameter(torch.tensor(scale, dtype=self.torch_data_type), requires_grad=True).to(
-                self.device)
-            self.weight = nn.Parameter(torch.tensor(weight, dtype=self.torch_data_type), requires_grad=True).to(
-                self.device)
-        else:
-            self.scale = torch.tensor(scale, dtype=self.torch_data_type, device=self.device)
-            self.weight = torch.tensor(weight, dtype=self.torch_data_type, device=self.device)
+        self.scale = torch.tensor(scale, dtype=self.torch_data_type, device=self.device)
+        self.weight = torch.tensor(weight, dtype=self.torch_data_type, device=self.device)
 
         self.noise = torch.tensor(noise, dtype=self.torch_data_type, device=self.device)
         self.noisefactor = torch.tensor(noisefactor, dtype=self.torch_data_type, device=self.device)
@@ -353,7 +344,7 @@ class GaussianProcess(nn.Module):
 
         return
 
-    def forward(self, eval_images, get_variance=False):
+    def eval_batch(self, eval_images, get_variance=False):
         eval_fp, eval_dfp_dr = self.generate_descriptor(eval_images)
         Ntest = len(eval_images)
 
