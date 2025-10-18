@@ -296,7 +296,7 @@ class ReferenceData(object):
                                                             soap_param=self.soap_param,
                                                             mace_param=self.mace_param,
                                                             descriptor=self.descriptor,
-                                                            atoms_mask=self.atoms_mask).to(self.device)
+                                                            atoms_mask=self.atoms_mask)
         elif self.data_process == 'batch':
             self.calculator = gpr_batch.GaussianProcess(prior=prior,
                                                         prior_update=prior_update,
@@ -319,7 +319,7 @@ class ReferenceData(object):
                                                         soap_param=self.soap_param,
                                                         mace_param=self.mace_param,
                                                         descriptor=self.descriptor,
-                                                        atoms_mask=self.atoms_mask).to(self.device)
+                                                        atoms_mask=self.atoms_mask)
 
         self.calculator.train_model()
         if fit_scale:
@@ -637,7 +637,7 @@ class ReferenceData(object):
                                                             device=self.device,
                                                             soap_param=self.soap_param,
                                                             mace_param=self.mace_param,
-                                                            descriptor=self.descriptor).to(self.device)
+                                                            descriptor=self.descriptor)
             self.calculator.load_data()
 
         elif self.data_process == 'batch':
@@ -646,5 +646,5 @@ class ReferenceData(object):
                                                         device=self.device,
                                                         soap_param=self.soap_param,
                                                         mace_param=self.mace_param,
-                                                        descriptor=self.descriptor).to(self.device)
+                                                        descriptor=self.descriptor)
             self.calculator.load_data()
