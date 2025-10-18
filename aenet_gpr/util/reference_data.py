@@ -431,7 +431,6 @@ class ReferenceData(object):
 
     def evaluation(self, get_variance=False):
 
-        self.calculator.eval()
         with torch.no_grad():
             if get_variance:
                 energy_gpr_scale, force_gpr_scale, uncertainty_gpr = self.calculator.eval_batch(eval_images=self.images,
