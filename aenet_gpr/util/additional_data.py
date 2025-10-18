@@ -75,7 +75,7 @@ class AdditionalData(object):
         with torch.no_grad():
             if get_variance:
                 if self.reference_training_data.standardization:
-                    energy_scale_additional, force_scale_additional, uncertainty_additional = self.reference_training_data.calculator(
+                    energy_scale_additional, force_scale_additional, uncertainty_additional = self.reference_training_data.calculator.eval_batch(
                         eval_images=self.additional_images,
                         get_variance=get_variance)
 
@@ -86,7 +86,7 @@ class AdditionalData(object):
                     self.inverse_standardize_energy_force(reference_training_energy=self.reference_training_data.energy)
 
                 else:
-                    energy_additional, force_additional, uncertainty_additional = self.reference_training_data.calculator(
+                    energy_additional, force_additional, uncertainty_additional = self.reference_training_data.calculator.eval_batch(
                         eval_images=self.additional_images,
                         get_variance=get_variance)
 
@@ -96,7 +96,7 @@ class AdditionalData(object):
 
             else:
                 if self.reference_training_data.standardization:
-                    energy_scale_additional, force_scale_additional, _ = self.reference_training_data.calculator(
+                    energy_scale_additional, force_scale_additional, _ = self.reference_training_data.calculator.eval_batch(
                         eval_images=self.additional_images,
                         get_variance=get_variance)
 
@@ -106,7 +106,7 @@ class AdditionalData(object):
                     self.inverse_standardize_energy_force(reference_training_energy=self.reference_training_data.energy)
 
                 else:
-                    energy_additional, force_additional, _ = self.reference_training_data.calculator(
+                    energy_additional, force_additional, _ = self.reference_training_data.calculator.eval_batch(
                         eval_images=self.additional_images,
                         get_variance=get_variance)
 
