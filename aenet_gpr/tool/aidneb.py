@@ -294,9 +294,15 @@ class AIDNEB:
         # print(f"r_max (threshold to prevent over-relaxation when training data is sparse): {self.rmax:.4f}")
         print('spring_constant: ', self.spring)
 
-    def run(self, fmax=0.05, unc_convergence=0.02, dt=0.1, ml_steps=150,
-            optimizer="MDMin", update_step=10, max_unc_trheshold=1.0,
-            check_ref_force=False, climbing=True):
+    def run(self,
+            fmax=0.05,
+            unc_convergence=0.02,
+            dt=0.1,
+            ml_steps=150,
+            optimizer="MDMin",
+            update_step=10,
+            check_ref_force=False,
+            climbing=True):
 
         """
         Executing run will start the NEB optimization process.
@@ -389,9 +395,7 @@ class AIDNEB:
         scale_update = self.input_param.scale
 
         self.rmin = 0.1
-        self.W = 7
         self.max_unc_hist = []
-        self.max_unc_hist_after = []
 
         while True:
 
@@ -412,6 +416,7 @@ class AIDNEB:
                                        data_type=self.input_param.data_type,
                                        data_process=self.input_param.data_process,
                                        soap_param=self.input_param.soap_param,
+                                       mace_param=self.input_param.mace_param,
                                        mask_constraints=self.input_param.mask_constraints)
 
             if train_data.standardization:
@@ -481,41 +486,22 @@ class AIDNEB:
             scale_update = train_data.calculator.scale.clone().detach().item()
 
             # Detach calculator from the prev. optimized images (speed up).
-            # for i in self.images:
-            #     i.calc = None
-            # # Train only one process.
+            for i in self.images:
+                i.calc = None
+            # Train only one process.
             # calc.update_train_data(train_images, test_images=self.images)
-            # Attach the calculator (already trained) to each image.
+            # Attach the trained calculator to each image.
             for i in self.images:
                 i.calc = copy.deepcopy(self.model_calculator)
 
             # 3. Optimize the NEB in the predicted PES.
-            # Get path uncertainty for deciding whether NEB or CI-NEB.
-            predictions = get_neb_predictions(self.images)
-            neb_pred_energy = predictions['energy']
-            # neb_pred_forces = predictions['forces']
-            neb_pred_uncertainty = predictions['uncertainty']
-
+            # Use previous path uncertainty for deciding whether NEB or CI-NEB.
             # Climbing image NEB mode is risky when the model is trained with a few data points.
             # Switch on climbing image only when the uncertainty of the NEB the force of the climbing image are low.
             climbing_neb = False
             if climbing:
-                max_unc = np.max(neb_pred_uncertainty)
-                ok_unc = max_unc <= unc_convergence
-
-                ci_idx = np.argmax(neb_pred_energy)  # default climbing candidate
-                ci_unc = neb_pred_uncertainty[ci_idx]
-                # ci_force = np.linalg.norm(neb_pred_forces[ci_idx])
-                ci_ok = (ci_unc <= 0.1)  # and (ci_force <= 1.0)
-
-                self.max_unc_hist.append(max_unc)
-                ok_stall_unc = False
-                if len(self.max_unc_hist) > self.W:
-                    dec_unc = np.diff(np.array(self.max_unc_hist[-self.W:]))
-                    ok_stall_unc = np.all(np.abs(dec_unc) <= 0.02)
-
-                if (ok_unc or ok_stall_unc) and ci_ok:
-                    parprint(f"Climbing image is now activated at image {ci_idx}.")
+                if self.step > 1 and self.max_unc_hist[-1] <= unc_convergence:
+                    parprint(f"Climbing image is now activated.")
                     climbing_neb = True
             else:
                 pass
@@ -531,59 +517,24 @@ class AIDNEB:
             else:
                 neb_opt = FIRE(ml_neb, dt=dt, trajectory="gpr_neb.traj")
 
-            # Safe check to optimize the images.
+            # Optimize the images
+            neb_opt.run(fmax=fmax * 1.0, steps=ml_steps)
+
             nim = len(self.images) - 2
             nat = len(self.images[0])
-            if np.max(neb_pred_uncertainty) <= max_unc_trheshold:
-                neb_opt.run(fmax=fmax * 1.0, steps=ml_steps)
 
-                # previous position snapshot (for rollback)
-                # ok_forces = False
-                # prev_positions = [im.get_positions().copy() for im in self.images]
-                #
-                # for step in range(ml_steps):
-                #     neb_opt.run(fmax=fmax * 1.0, steps=1)
-                #
-                #     #
-                #     violated_index = None
-                #     for i in range(1, len(self.images) - 1):
-                #         d2 = min_cartesian_dist(self.images[i], train_images)
-                #         if d2 > (self.rmax ** 2):
-                #             violated_index = i
-                #             print(f"Relaxation stopped early: image {violated_index} lies farther than r_max from all training data")
-                #             break
-                #
-                #     if violated_index is not None:
-                #         for im, pos in zip(self.images, prev_positions):
-                #             im.set_positions(pos)
-                #
-                #         break
-                #     else:
-                #         prev_positions = [im.get_positions().copy() for im in self.images]
-                #
-                #     if neb_opt.converged(ml_neb.get_forces().ravel()):
-                #         ok_forces = True
-                #         break
+            F = ml_neb.get_forces()  # (n_mobile*nat*3) flat
+            F = F.reshape(nim, nat, 3)
+            max_f_image = np.sqrt((F ** 2).sum(-1)).max().item()
 
-                F = ml_neb.get_forces()  # (n_mobile*nat*3) flat
-                F = F.reshape(nim, nat, 3)
-                max_f_image = np.sqrt((F ** 2).sum(-1)).max().item()
-
-            else:
-                parprint("The uncertainty of the NEB lies above the max_unc threshold (1.0).")
-                parprint("NEB won't be optimized and the image with maximum uncertainty is just evaluated and added")
-                F = np.array([im.get_forces() for im in self.images[1:-1]])
-                max_f_image = np.sqrt((F ** 2).sum(-1)).max().item()
-
-            predictions = get_neb_predictions(self.images)
+            predictions = get_neb_predictions(self.images[1:-1])
             neb_pred_energy = predictions['energy']
-            # neb_pred_forces = predictions['forces']
             neb_pred_uncertainty = predictions['uncertainty']
 
             # 5. Print output.
             max_e = np.max(neb_pred_energy)
             max_unc = np.max(neb_pred_uncertainty)
-            # max_e_ind = np.argsort(neb_pred_energy)[-1]
+            self.max_unc_hist.append(max_unc)
 
             # Calculator of train_images is reference, while Calculator of self.images is GP
             if check_ref_force:
@@ -609,14 +560,8 @@ class AIDNEB:
             # 6. Check convergence.
             ok_unc = max_unc <= unc_convergence
 
-            self.max_unc_hist_after.append(max_unc)
-            ok_stall_unc = False
-            if len(self.max_unc_hist_after) > self.W:
-                dec_unc = np.diff(np.array(self.max_unc_hist_after[-self.W:]))
-                ok_stall_unc = np.all(np.abs(dec_unc) <= 0.02)
-
             # Max.forces and NEB images uncertainty must be below *fmax* and *unc_convergence* thresholds.
-            if len(train_images) > 2 and max_f <= fmax and (ok_unc or ok_stall_unc) and max_unc < unc_convergence * 5 and (climbing_neb or not climbing):
+            if len(train_images) > 2 and max_f <= fmax and ok_unc and (climbing_neb or not climbing):
                 parprint('A saddle point was found.')
 
                 io.write(self.trajectory, self.images)
@@ -628,19 +573,11 @@ class AIDNEB:
                 parprint(msg)
                 break
 
-            # Set the path to previous iterations if barrier is higher than 10 eV
-            # if pbf > 10.0:
-            #     print(f"[INFO] Current energy barrier (ΔE = {pbf} eV) is too large, meaning largely deviated path")
-            #     print('Reset the images to the previous path...')
-            #     self.images = copy.deepcopy(io.read("gpr_neb.traj", f":{self.n_images}"))
-            #     for i in self.images:
-            #         i.calc = copy.deepcopy(self.model_calculator)
-
             # 7. Select next point to train (acquisition function):
             # Candidates are the optimized NEB images in the predicted PES.
             candidates = copy.deepcopy(self.images)[1:-1]
 
-            if np.max(neb_pred_uncertainty) > unc_convergence:
+            if max_unc > unc_convergence:
                 sorted_candidates = acquisition(train_images=train_images,
                                                 candidates=candidates,
                                                 mode='uncertainty',
@@ -658,7 +595,7 @@ class AIDNEB:
                                                     objective='max')
 
             # Select the best candidate.
-            if check_ref_force:
+            if check_ref_force or not self.input_param.filter:
                 chosen_candidate = sorted_candidates.pop(0)
             else:
                 accepted = False
@@ -736,8 +673,6 @@ def get_neb_predictions(images):
         unc = i.calc.results['uncertainty']
         neb_pred_unc.append(unc)
 
-    neb_pred_unc[0] = 0.0
-    neb_pred_unc[-1] = 0.0
     predictions = {'energy': neb_pred_energy, 'forces': neb_pred_forces, 'uncertainty': neb_pred_unc}
 
     return predictions
