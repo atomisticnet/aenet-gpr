@@ -8,7 +8,7 @@ from .util import additional_data, prepare_data, reference_data
 from .tool import acquisition, aidneb, ase_tool, trainingset
 
 
-__version__ = "2.4.3"
+__version__ = "2.4.4"
 __all__ = ["inout", "inout_process", "input_parameter", "io_print", "read_input",
            "src", "calculator", "gpr_batch", "gpr_iterative", "prior", "pytorch_kernel", "pytorch_kerneltypes",
            "util", "additional_data", "prepare_data", "reference_data",
