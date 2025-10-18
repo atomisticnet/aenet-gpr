@@ -17,12 +17,12 @@ class InputParameters(object):
 
         self.prior             = None
         self.prior_update      = True
-        self.standardization   = False
         self.fit_weight        = True
         self.fit_scale         = True
+        self.mask_constraints  = True
 
-        self.mask_constraints = False
-        self.filter            = True
+        self.standardization  = False
+        self.filter           = False
         self.filter_threshold  = 0.1
 
         self.soap_r_cut        = 5.0

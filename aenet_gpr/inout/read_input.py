@@ -154,14 +154,14 @@ def read_train_in(infile):
 		if found:
 			input_param.file_format = str(file_format).lower()
 
-		data_process, found = read_keyword_argument_same_line("data_process", lines)
-		if found:
-			if 'bat' in data_process.lower():
-				input_param.data_process = 'batch'
-			elif 'iter' in data_process.lower():
-				input_param.data_process = 'iterative'
-			else:
-				raise Exception("data_process should be either batch or iterative")
+		# data_process, found = read_keyword_argument_same_line("data_process", lines)
+		# if found:
+		# 	if 'bat' in data_process.lower():
+		# 		input_param.data_process = 'batch'
+		# 	elif 'iter' in data_process.lower():
+		# 		input_param.data_process = 'iterative'
+		# 	else:
+		# 		raise Exception("data_process should be either batch or iterative")
 
 		descriptor, found = read_keyword_argument_same_line("descriptor", lines)
 		if found:
