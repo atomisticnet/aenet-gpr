@@ -242,7 +242,8 @@ class GaussianProcess(nn.Module):
                                                return_descriptor=True,
                                                n_jobs=self.soap_param.get('n_jobs'))
 
-            dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type).to(self.device)  # (Ndata, Ncenters, Natom, 3, Natom*3)
+            dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type).to(
+                self.device)  # (Ndata, Ncenters, Natom, 3, Natom*3)
             fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Ndata, Ncenters, Natom*3)
 
         elif self.descriptor == 'mace':
@@ -282,7 +283,8 @@ class GaussianProcess(nn.Module):
                                                return_descriptor=True,
                                                n_jobs=self.soap_param.get('n_jobs'))
 
-            dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type).to(self.device)  # (Ncenters, Natom, 3, Natom*3)
+            dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type).to(
+                self.device)  # (Ncenters, Natom, 3, Natom*3)
             fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Ncenters, Natom*3)
 
         elif self.descriptor == 'mace':
@@ -419,11 +421,11 @@ class GaussianProcess(nn.Module):
             return E_hat, F_hat.view((self.Natom, 3)), None
 
         else:
-            var = self.calculator.eval_variance_per_data(get_variance=True,
-                                                         eval_fp_i=eval_fp_i,
-                                                         eval_dfp_dr_i=eval_dfp_dr_i,
-                                                         k=kernel)
-            uncertainty = torch.sqrt(var[0, 0]) / self.calculator.weight
+            var = self.eval_variance_per_data(get_variance=True,
+                                              eval_fp_i=eval_fp_i,
+                                              eval_dfp_dr_i=eval_dfp_dr_i,
+                                              k=kernel)
+            uncertainty = torch.sqrt(var[0, 0]) / self.weight
 
             return E_hat, F_hat.view((self.Natom, 3)), uncertainty
 
