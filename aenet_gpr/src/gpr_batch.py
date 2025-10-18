@@ -233,8 +233,7 @@ class GaussianProcess(object):
                                                return_descriptor=True,
                                                n_jobs=self.soap_param.get('n_jobs'))
 
-            dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type).to(
-                self.device)  # (Ndata, Ncenters, Natom, 3, Natom*3)
+            dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type).to(self.device)  # (Ndata, Ncenters, Natom, 3, Natom*3)
             fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Ndata, Ncenters, Natom*3)
 
         elif self.descriptor == 'mace':
