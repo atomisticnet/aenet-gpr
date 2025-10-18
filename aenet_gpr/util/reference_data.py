@@ -24,7 +24,7 @@ class ReferenceData(object):
                  data_process='batch',
                  soap_param=None,
                  mace_param=None,
-                 mask_constraints=False):
+                 mask_constraints=True):
 
         self.data_process = data_process
         if data_type == 'float32':
@@ -338,22 +338,12 @@ class ReferenceData(object):
         prev_weight = copy.deepcopy(self.calculator.weight)
 
         try:
-            if use_forces:
-                _prior_array = self.calculator.prior.potential_batch(self.images, get_forces=True)
-                _factor = torch.sqrt(torch.matmul(self.calculator.YdY.flatten() - _prior_array,
-                                                  self.calculator.model_vector) / _prior_array.shape[0])
-                self.calculator.weight *= _factor.squeeze()
-                self.calculator.hyper_params.update(dict(weight=self.calculator.weight))
-                self.calculator.kernel.set_params(self.calculator.hyper_params)
-
-            else:
-                _prior_array = self.calculator.prior.potential_batch(self.images, get_forces=False)
-                _n_train = len(self.images)
-                _factor = torch.sqrt(torch.matmul(self.calculator.YdY.flatten()[:_n_train] - _prior_array,
-                                                  self.calculator.model_vector[:_n_train]) / _prior_array.shape[0])
-                self.calculator.weight *= _factor.squeeze()
-                self.calculator.hyper_params.update(dict(weight=self.calculator.weight))
-                self.calculator.kernel.set_params(self.calculator.hyper_params)
+            _prior_array = self.calculator.prior.potential_batch(len(self.images), len(self.images[0]))
+            _factor = torch.sqrt(torch.matmul(self.calculator.YdY.flatten() - _prior_array,
+                                              self.calculator.model_vector) / _prior_array.shape[0])
+            self.calculator.weight *= _factor.squeeze()
+            self.calculator.hyper_params.update(dict(weight=self.calculator.weight))
+            self.calculator.kernel.set_params(self.calculator.hyper_params)
 
             if self.calculator.weight < max_weight:
                 pass
@@ -409,7 +399,7 @@ class ReferenceData(object):
 
             # Evaluate marginal likelihood
             y_flat = self.calculator.YdY.flatten()
-            m_ = self.calculator.prior.potential_batch(self.images, get_forces=True)
+            m_ = self.calculator.prior.potential_batch(len(self.images), len(self.images[0]))
             a_ = self.calculator.model_vector
 
             logP = -0.5 * torch.matmul(y_flat - m_, a_) - torch.sum(torch.log(torch.diag(self.calculator.K_XX_L))) \
