@@ -71,7 +71,6 @@ class AdditionalData(object):
 
     def evaluation_additional(self, get_variance=False):
 
-        self.reference_training_data.calculator.eval()
         with torch.no_grad():
             if get_variance:
                 if self.reference_training_data.standardization:
