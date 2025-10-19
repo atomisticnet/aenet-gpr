@@ -30,6 +30,13 @@ def min_cartesian_dist(img, train_images):
     return best
 
 
+def is_duplicate(pos_new, existing_positions, atol=1e-4):
+    for pos_old in existing_positions:
+        if np.allclose(pos_new, pos_old, atol=atol):
+            return True
+    return False
+
+
 class AIDNEB:
 
     def __init__(self, start, end, input_param: InputParameters, model_calculator=None, calculator=None,
@@ -397,6 +404,17 @@ class AIDNEB:
         self.rmin = 0.1
         self.max_unc_hist = []
 
+        train_data = ReferenceData(structure_files=train_images,
+                                   file_format='ase',
+                                   device=self.input_param.device,
+                                   descriptor=self.input_param.descriptor,
+                                   standardization=self.input_param.standardization,
+                                   data_type=self.input_param.data_type,
+                                   data_process=self.input_param.data_process,
+                                   soap_param=self.input_param.soap_param,
+                                   mace_param=self.input_param.mace_param,
+                                   mask_constraints=self.input_param.mask_constraints)
+
         while True:
 
             # 0. Start from initial interpolation every 50 steps.
@@ -405,25 +423,23 @@ class AIDNEB:
             #     self.images = copy.deepcopy(self.initial_interpolation)
 
             # 1. Collect observations.
-            # This serves to use_previous_observations from a previous (and/or parallel) runs.
             train_images = io.read(trajectory_observations, ':')
 
-            train_data = ReferenceData(structure_files=train_images,
-                                       file_format='ase',
-                                       device=self.input_param.device,
-                                       descriptor=self.input_param.descriptor,
-                                       standardization=self.input_param.standardization,
-                                       data_type=self.input_param.data_type,
-                                       data_process=self.input_param.data_process,
-                                       soap_param=self.input_param.soap_param,
-                                       mace_param=self.input_param.mace_param,
-                                       mask_constraints=self.input_param.mask_constraints)
+            # (N_candidate, N_atoms, 3)
+            train_positions = np.asarray([img.get_positions() for img in train_images], dtype=train_data.numpy_data_type)
+            # (N_train, N_atoms, 3)
+            original_positions = np.asarray(train_data.structure, dtype=train_data.numpy_data_type)
+
+            new_images = []
+            for img, pos in zip(train_images, train_positions):
+                if not is_duplicate(pos, original_positions):
+                    new_images.append(img)
+
+            if new_images:
+                # train_data.update_train_data(new_images)
 
             if train_data.standardization:
                 train_data.standardize_energy_force(train_data.energy)
-
-            if check_ref_force:
-                self.input_param.filter = False
 
             # 2. Prepare a calculator.
             print('Training data size: ', len(train_images))
