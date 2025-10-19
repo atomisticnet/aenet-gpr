@@ -412,6 +412,8 @@ class GaussianProcess(object):
         Ntest = len(eval_images)
         eval_x_N_batch = get_N_batch(Ntest, self.eval_batch_size)
         eval_x_indexes = get_batch_indexes_N_batch(Ntest, eval_x_N_batch)
+        print(eval_x_N_batch)
+        print(eval_x_indexes)
 
         E_hat = torch.empty((Ntest,), dtype=self.torch_data_type, device=self.device)
         F_hat = torch.zeros((Ntest, self.Natom * 3), dtype=self.torch_data_type, device=self.device)
@@ -432,7 +434,11 @@ class GaussianProcess(object):
             uncertainty = torch.empty((Ntest,), dtype=self.torch_data_type, device=self.device)
             for i in range(0, eval_x_N_batch):
                 data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
+                print(data_per_batch)
                 eval_fp, eval_dfp_dr = self.generate_descriptor(eval_images[eval_x_indexes[i][0]:eval_x_indexes[i][1]])
+                print(eval_fp.shape)
+                print(eval_dfp_dr.shape)
+                print(eval_dfp_dr[1:3,:,:,:,:].shape)
 
                 pred, kernel = self.eval_data_batch(eval_fp, eval_dfp_dr)
                 E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
