@@ -211,8 +211,6 @@ class GaussianProcess(object):
                                      device=self.device)
 
         self.train_fp, self.train_dfp_dr = self.generate_descriptor(self.images)
-        print(self.train_fp.shape)
-        print(self.train_dfp_dr.shape)
         self.Y = function  # Y = [Ntrain]
         self.dY = derivative  # dY = [Ntrain, Natom, 3]
         self.model_vector = torch.empty((self.Ntrain * (1 + 3 * self.Natom),), dtype=self.torch_data_type,
