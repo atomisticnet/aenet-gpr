@@ -1,9 +1,58 @@
 import torch
 import numpy as np
+from joblib import Parallel, delayed
 
 from aenet_gpr.src.prior import ConstantPrior
 from aenet_gpr.src.pytorch_kernel import FPKernel
 from aenet_gpr.util.prepare_data import get_N_batch, get_batch_indexes_N_batch
+
+
+def _central_diff_task(atoms, i, j, delta, model, num_layers):
+    """
+    Desciptor gradient for each atom i, and cartexian coordinate j(x/y/z)
+    """
+    atoms_f = atoms.copy()
+    atoms_f.positions[i, j] += delta
+    desc_f = model.get_descriptors(atoms_f, num_layers=num_layers)
+
+    atoms_b = atoms.copy()
+    atoms_b.positions[i, j] -= delta
+    desc_b = model.get_descriptors(atoms_b, num_layers=num_layers)
+
+    # 중앙차분 결과: shape = (n_atoms, descriptor_dim)
+    grad_ij = (desc_f - desc_b) / (2 * delta)
+    return i, j, grad_ij
+
+
+def numerical_descriptor_gradient_parallel(atoms, model, delta=1e-4, num_layers=-1, n_jobs=-1, dtype=torch.float32):
+    """
+    Args:
+        atoms (ase.Atoms):
+        model: MACE calculator
+        delta (float): displacement (Ang)
+        num_layers (int): MACE interaction layers number
+        n_jobs (int): pararell job number
+        dtype (torch.dtype):
+
+    Returns:
+        desc (torch.Tensor): (n_atoms, descriptor_dim)
+        grad (torch.Tensor): (n_atoms, n_atoms, 3, descriptor_dim)
+    """
+
+    desc = model.get_descriptors(atoms, num_layers=num_layers)
+    n_atoms, D = desc.shape
+
+    # Job list
+    jobs = [(atoms, i, j, delta, model, num_layers) for i in range(n_atoms) for j in range(3)]
+
+    # Pararell execution
+    results = Parallel(n_jobs=n_jobs, backend="loky")(delayed(_central_diff_task)(*job) for job in jobs)
+
+    grad = torch.empty((n_atoms, n_atoms, 3, D), dtype=dtype)
+    for i, j, grad_ij in results:
+        grad[:, i, j, :] = torch.tensor(grad_ij, dtype=dtype)
+
+    return torch.tensor(desc, dtype=dtype), grad
 
 
 def numerical_descriptor_gradient(atoms, model, delta=1e-4, num_layers=-1):
@@ -136,6 +185,7 @@ class GaussianProcess(object):
                         "The 'mace' and 'mace-descriptor' package is required for using pre-trained MACE descriptors.\n"
                         "Please install it by running:\n\n"
                         "    pip install mace-torch\n"
+                        "    pip install mace-torch\n"
                         "    pip install mace-descriptor\n\n"
                         "Note: This is a lightweight fork of the original MACE (mace-torch) package, "
                         "designed exclusively for descriptor extraction."
@@ -242,13 +292,16 @@ class GaussianProcess(object):
             fp = []
             dfp_dr = []
             for image in images:
-                fp__, dfp_dr__ = self.mace.get_descriptors_with_jacobian(image)
-                fp.append(fp__)
-                dfp_dr.append(dfp_dr__)
-
-                # fp__, dfp_dr__ = numerical_descriptor_gradient(image, self.mace)
+                # fp__, dfp_dr__ = self.mace.get_descriptors_with_jacobian(image)
                 # fp.append(fp__)
                 # dfp_dr.append(dfp_dr__)
+
+                if self.device == 'cpu':
+                    fp__, dfp_dr__ = numerical_descriptor_gradient_parallel(image, self.mace)
+                else:
+                    fp__, dfp_dr__ = numerical_descriptor_gradient(image, self.mace)
+                fp.append(fp__)
+                dfp_dr.append(dfp_dr__)
 
             fp = torch.stack(fp).to(dtype=self.torch_data_type, device=self.device)  # (Ndata, Natom, Ndescriptor)
             dfp_dr = torch.stack(dfp_dr).to(dtype=self.torch_data_type, device=self.device)  # (Ndata, Natom, Natom, 3, Ndescriptor)
@@ -285,7 +338,10 @@ class GaussianProcess(object):
             fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Ncenters, Natom*3)
 
         elif self.descriptor == 'mace':
-            fp, dfp_dr = numerical_descriptor_gradient(image, self.mace)
+            if self.device == 'cpu':
+                fp, dfp_dr = numerical_descriptor_gradient_parallel(image, self.mace)
+            else:
+                fp, dfp_dr = numerical_descriptor_gradient(image, self.mace)
             fp = fp.to(dtype=self.torch_data_type, device=self.device)  # (Natom, Ndescriptor)
             dfp_dr = dfp_dr.to(dtype=self.torch_data_type, device=self.device)  # (Natom, Natom, 3, Ndescriptor)
 
