@@ -445,7 +445,6 @@ class GaussianProcess(object):
                                                eval_dfp_dr=eval_dfp_dr,
                                                k=kernel)
 
-                data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
                 uncertainty[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = torch.sqrt(torch.diagonal(var)[0:data_per_batch]) / self.weight
 
                 return E_hat, F_hat.view((Ntest, self.Natom, 3)), uncertainty
