@@ -404,17 +404,6 @@ class AIDNEB:
         self.rmin = 0.1
         self.max_unc_hist = []
 
-        train_data = ReferenceData(structure_files=train_images,
-                                   file_format='ase',
-                                   device=self.input_param.device,
-                                   descriptor=self.input_param.descriptor,
-                                   standardization=self.input_param.standardization,
-                                   data_type=self.input_param.data_type,
-                                   data_process=self.input_param.data_process,
-                                   soap_param=self.input_param.soap_param,
-                                   mace_param=self.input_param.mace_param,
-                                   mask_constraints=self.input_param.mask_constraints)
-
         while True:
 
             # 0. Start from initial interpolation every 50 steps.
@@ -425,6 +414,7 @@ class AIDNEB:
             # 1. Collect observations.
             train_images = io.read(trajectory_observations, ':')
 
+            """
             # (N_candidate, N_atoms, 3)
             train_positions = np.asarray([img.get_positions() for img in train_images], dtype=train_data.numpy_data_type)
             # (N_train, N_atoms, 3)
@@ -438,6 +428,18 @@ class AIDNEB:
             if new_images:
                 pass
                 # train_data.update_train_data(new_images)
+            """
+
+            train_data = ReferenceData(structure_files=train_images,
+                                       file_format='ase',
+                                       device=self.input_param.device,
+                                       descriptor=self.input_param.descriptor,
+                                       standardization=self.input_param.standardization,
+                                       data_type=self.input_param.data_type,
+                                       data_process=self.input_param.data_process,
+                                       soap_param=self.input_param.soap_param,
+                                       mace_param=self.input_param.mace_param,
+                                       mask_constraints=self.input_param.mask_constraints)
 
             if train_data.standardization:
                 train_data.standardize_energy_force(train_data.energy)
