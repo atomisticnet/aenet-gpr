@@ -8,7 +8,7 @@ import ase
 from aenet_gpr.inout.input_parameter import InputParameters
 from aenet_gpr.util import ReferenceData, AdditionalData  # , ReferenceDataInternal, AdditionalDataInternal
 from aenet_gpr.inout.io_print import *
-from aenet_gpr.util.prepare_data import inverse_standard_output
+from aenet_gpr.util.prepare_data import inverse_standard_output, read_xsf_image
 
 
 class Train(object):
@@ -147,7 +147,7 @@ class Test(object):
     def read_reference_test_data(self, structure_files=None, file_format: str = 'xsf'):
         if file_format == 'xsf':
             for structure_file in structure_files:
-                image, structure, energy, force = self.read_xsf_image(structure_file)
+                image, structure, energy, force = read_xsf_image(structure_file)
                 self.images.extend(image)
 
         elif file_format == 'ase':
