@@ -412,8 +412,6 @@ class GaussianProcess(object):
         Ntest = len(eval_images)
         eval_x_N_batch = get_N_batch(Ntest, self.eval_batch_size)
         eval_x_indexes = get_batch_indexes_N_batch(Ntest, eval_x_N_batch)
-        print(eval_x_N_batch)
-        print(eval_x_indexes)
 
         E_hat = torch.empty((Ntest,), dtype=self.torch_data_type, device=self.device)
         F_hat = torch.zeros((Ntest, self.Natom * 3), dtype=self.torch_data_type, device=self.device)
@@ -428,17 +426,13 @@ class GaussianProcess(object):
                 F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(F=pred[data_per_batch:].view(data_per_batch, -1),
                                                                                        atoms_mask=self.atoms_mask)
 
-                return E_hat, F_hat.view((Ntest, self.Natom, 3)), None
+            return E_hat, F_hat.view((Ntest, self.Natom, 3)), None
 
         else:
             uncertainty = torch.empty((Ntest,), dtype=self.torch_data_type, device=self.device)
             for i in range(0, eval_x_N_batch):
                 data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
-                print(data_per_batch)
                 eval_fp, eval_dfp_dr = self.generate_descriptor(eval_images[eval_x_indexes[i][0]:eval_x_indexes[i][1]])
-                print(eval_fp.shape)
-                print(eval_dfp_dr.shape)
-                print(eval_dfp_dr[1:3,:,:,:,:].shape)
 
                 pred, kernel = self.eval_data_batch(eval_fp, eval_dfp_dr)
                 E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
@@ -452,7 +446,7 @@ class GaussianProcess(object):
 
                 uncertainty[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = torch.sqrt(torch.diagonal(var)[0:data_per_batch]) / self.weight
 
-                return E_hat, F_hat.view((Ntest, self.Natom, 3)), uncertainty
+            return E_hat, F_hat.view((Ntest, self.Natom, 3)), uncertainty
 
     def eval_data_batch(self, eval_fp, eval_dfp_dr):
         # kernel between test point x and training points X
