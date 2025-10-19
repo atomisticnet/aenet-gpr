@@ -184,7 +184,7 @@ class GaussianProcess(object):
                     raise ImportError(
                         "The 'mace' and 'mace-descriptor' package is required for using pre-trained MACE descriptors.\n"
                         "Please install it by running:\n\n"
-                        "    pip install mace-torch\n"
+                        "    pip install joblib\n"
                         "    pip install mace-torch\n"
                         "    pip install mace-descriptor\n\n"
                         "Note: This is a lightweight fork of the original MACE (mace-torch) package, "
@@ -417,10 +417,10 @@ class GaussianProcess(object):
 
         if not get_variance:
             for i in range(0, eval_x_N_batch):
-                eval_fp, eval_dfp_dr = self.generate_descriptor(eval_images[eval_x_indexes[i][0]:eval_x_indexes[i][1]])
-                pred, kernel = self.eval_data_batch(eval_fp, eval_dfp_dr)
-
                 data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
+                eval_fp, eval_dfp_dr = self.generate_descriptor(eval_images[eval_x_indexes[i][0]:eval_x_indexes[i][1]])
+
+                pred, kernel = self.eval_data_batch(eval_fp, eval_dfp_dr)
                 E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
                 F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(F=pred[data_per_batch:].view(data_per_batch, -1),
                                                                                        atoms_mask=self.atoms_mask)
@@ -430,8 +430,13 @@ class GaussianProcess(object):
         else:
             uncertainty = torch.empty((Ntest,), dtype=self.torch_data_type, device=self.device)
             for i in range(0, eval_x_N_batch):
+                data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
                 eval_fp, eval_dfp_dr = self.generate_descriptor(eval_images[eval_x_indexes[i][0]:eval_x_indexes[i][1]])
+
                 pred, kernel = self.eval_data_batch(eval_fp, eval_dfp_dr)
+                E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
+                F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(F=pred[data_per_batch:].view(data_per_batch, -1),
+                                                                                       atoms_mask=self.atoms_mask)
 
                 var = self.eval_variance_batch(get_variance=get_variance,
                                                eval_fp=eval_fp,
