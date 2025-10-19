@@ -426,10 +426,12 @@ class GaussianProcess(object):
                 F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(F=pred[data_per_batch:].view(data_per_batch, -1),
                                                                                        atoms_mask=self.atoms_mask)
 
-            return E_hat, F_hat.view((Ntest, self.Natom, 3)), None
+            return E_hat, F_hat.view((Ntest, self.Natom, 3)), None, None
 
         else:
-            uncertainty = torch.empty((Ntest,), dtype=self.torch_data_type, device=self.device)
+            unc_e = torch.empty((Ntest,), dtype=self.torch_data_type, device=self.device)
+            unc_f = torch.zeros((Ntest, self.Natom * 3), dtype=self.torch_data_type, device=self.device)
+
             for i in range(0, eval_x_N_batch):
                 data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
                 eval_fp, eval_dfp_dr = self.generate_descriptor(eval_images[eval_x_indexes[i][0]:eval_x_indexes[i][1]])
@@ -443,10 +445,13 @@ class GaussianProcess(object):
                                                eval_fp=eval_fp,
                                                eval_dfp_dr=eval_dfp_dr,
                                                k=kernel)
+                std = torch.sqrt(torch.diagonal(var))
 
-                uncertainty[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = torch.sqrt(torch.diagonal(var)[0:data_per_batch]) / self.weight
+                unc_e[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = std[0:data_per_batch] / self.weight
+                unc_f[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(F=std[data_per_batch:].view(data_per_batch, -1),
+                                                                                       atoms_mask=self.atoms_mask)
 
-            return E_hat, F_hat.view((Ntest, self.Natom, 3)), uncertainty
+            return E_hat, F_hat.view((Ntest, self.Natom, 3)), unc_e, unc_f
 
     def eval_data_batch(self, eval_fp, eval_dfp_dr):
         # kernel between test point x and training points X
@@ -471,6 +476,7 @@ class GaussianProcess(object):
         """
 
         if get_variance:
+            # Kx=k -> x = K^(-1)k
             covariance = torch.matmul(k, torch.cholesky_solve(k.T.clone(), self.K_XX_L, upper=False))
 
             # Adjust variance by subtracting covariance
@@ -486,8 +492,7 @@ class GaussianProcess(object):
 
         pred, kernel = self.eval_data_per_data(eval_fp_i, eval_dfp_dr_i)
         E_hat = pred[0]
-        F_hat = apply_force_mask(F=pred[1:].view(1, -1),
-                                 atoms_mask=self.atoms_mask)
+        F_hat = apply_force_mask(F=pred[1:].view(1, -1), atoms_mask=self.atoms_mask)
 
         if not get_variance:
             return E_hat, F_hat.view((self.Natom, 3)), None
@@ -497,9 +502,12 @@ class GaussianProcess(object):
                                               eval_fp_i=eval_fp_i,
                                               eval_dfp_dr_i=eval_dfp_dr_i,
                                               k=kernel)
-            uncertainty = torch.sqrt(var[0, 0]) / self.weight
 
-            return E_hat, F_hat.view((self.Natom, 3)), uncertainty
+            std = torch.sqrt(torch.diagonal(var))
+            unc_e = std[0] / self.weight
+            unc_f = apply_force_mask(F=std[1:].view(1, -1), atoms_mask=self.atoms_mask)
+
+            return E_hat, F_hat.view((self.Natom, 3)), unc_e, unc_f
 
     def eval_data_per_data(self, eval_fp_i, eval_dfp_dr_i):
         # kernel between test point x and training points X
