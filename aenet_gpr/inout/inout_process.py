@@ -124,12 +124,14 @@ class Test(object):
 
     def model_test_evaluation(self):
         start = time.time()
-        energy_test_gpr, force_test_gpr, uncertainty_test_gpr = self.train_data.calculator.eval_batch(
+        energy_test_gpr, force_test_gpr, unc_e_test_gpr, unc_f_test_gpr = self.train_data.calculator.eval_batch(
             eval_images=self.images,
             get_variance=self.input_param.get_variance)
+
         energy_test_gpr = energy_test_gpr.cpu().detach().numpy()
         force_test_gpr = force_test_gpr.cpu().detach().numpy()
-        uncertainty_test_gpr = uncertainty_test_gpr.cpu().detach().numpy()
+        unc_e_test_gpr = unc_e_test_gpr.cpu().detach().numpy()
+        unc_f_test_gpr = unc_f_test_gpr.cpu().detach().numpy()
 
         if self.train_data.standardization:
             energy_test_gpr, force_test_gpr = inverse_standard_output(energy_ref=self.train_data.energy,
@@ -145,8 +147,6 @@ class Test(object):
 
         print("GPR energy MAE (eV):", np.absolute(np.subtract(energy_test_gpr, self.energies)).mean())
         print("GPR force MAE (eV/Ang):", np.absolute(np.subtract(abs_F_test_gpr, abs_F_test)).mean())
-        print(
-            "GPR uncertainty mean ± std: {0} ± {1}".format(uncertainty_test_gpr.mean(), uncertainty_test_gpr.std()))
 
         print("")
         print("Saving test target to [energy_test_reference.npy] and [force_test_reference.npy]")
@@ -154,11 +154,12 @@ class Test(object):
         np.save("./force_test_reference.npy", self.forces)
 
         if self.input_param.get_variance:
-            print(
-                "Saving GPR prediction to [energy_test_gpr.npy], [force_test_gpr.npy], and [uncertainty_test_gpr.npy]")
+            print("Saving GPR prediction to [energy_test_gpr.npy], [force_test_gpr.npy], [unc_e_test_gpr.npy], and [unc_f_test_gpr.npy]")
             np.save("./energy_test_gpr.npy", energy_test_gpr)
             np.save("./force_test_gpr.npy", force_test_gpr)
-            np.save("./uncertainty_test_gpr.npy", uncertainty_test_gpr)
+            np.save("./unc_e_test_gpr.npy", unc_e_test_gpr)
+            np.save("./unc_f_test_gpr.npy", unc_f_test_gpr)
+
         else:
             print("Saving GPR prediction to [energy_test_gpr.npy] and [force_test_gpr.npy]")
             np.save("./energy_test_gpr.npy", energy_test_gpr)
@@ -209,11 +210,12 @@ class Augmentation(object):
 
         print("")
         if self.input_param.get_variance:
-            print(
-                "Saving GPR prediction to [energy_additional_gpr.npy], [force_additional_gpr.npy], and [uncertainty_additional_gpr.npy]")
+            print("Saving GPR prediction to [energy_additional_gpr.npy], [force_additional_gpr.npy], [unc_e_additional_gpr.npy], and [unc_f_additional_gpr.npy]")
             np.save("./energy_additional_gpr.npy", self.additional_data.energy_additional)
             np.save("./force_additional_gpr.npy", self.additional_data.force_additional)
-            np.save("./uncertainty_additional_gpr.npy", self.additional_data.uncertainty_additional)
+            np.save("./unc_e_additional_gpr.npy", self.additional_data.unc_e_additional)
+            np.save("./unc_f_additional_gpr.npy", self.additional_data.unc_f_additional)
+
         else:
             print("Saving GPR prediction to [energy_additional_gpr.npy] and [force_additional_gpr.npy]")
             np.save("./energy_additional_gpr.npy", self.additional_data.energy_additional)
