@@ -3,6 +3,7 @@ import resource
 
 import numpy as np
 import torch
+import ase
 
 from aenet_gpr.inout.input_parameter import InputParameters
 from aenet_gpr.util import ReferenceData, AdditionalData  # , ReferenceDataInternal, AdditionalDataInternal
@@ -130,6 +131,7 @@ class Test(object):
         self.input_param = input_param
         self.train_data = None
         self.test_data = None
+        self.images = []
 
     def load_train_model(self, train_data: ReferenceData = None):
         start = time.time()
@@ -142,54 +144,23 @@ class Test(object):
                                 mem_CPU=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2,
                                 mem_GPU=torch.cuda.max_memory_allocated() / 1024 ** 3)
 
-    def read_reference_test_data(self):
-        start = time.time()
-        if self.input_param.descriptor == "internal":
-            pass
-            # self.test_data = ReferenceDataInternal(structure_files=self.input_param.test_file,
-            #                                        file_format=self.input_param.file_format,
-            #                                        device=self.input_param.device,
-            #                                        descriptor=self.input_param.descriptor,
-            #                                        standardization=self.input_param.standardization,
-            #                                        data_type=self.input_param.data_type,
-            #                                        data_process=self.input_param.data_process,
-            #                                        soap_param=self.input_param.soap_param,
-            #                                        mask_constraints=self.input_param.mask_constraints,
-            #                                        c_table=self.train_data.c_table)
+    def read_reference_test_data(self, structure_files=None, file_format: str = 'xsf'):
+        if file_format == 'xsf':
+            for structure_file in structure_files:
+                image, structure, energy, force = self.read_xsf_image(structure_file)
+                self.images.extend(image)
+
+        elif file_format == 'ase':
+            self.images = structure_files
 
         else:
-            self.test_data = ReferenceData(structure_files=self.input_param.test_file,
-                                           file_format=self.input_param.file_format,
-                                           device=self.input_param.device,
-                                           descriptor=self.input_param.descriptor,
-                                           standardization=self.input_param.standardization,
-                                           data_type=self.input_param.data_type,
-                                           data_process=self.input_param.data_process,
-                                           soap_param=self.input_param.soap_param,
-                                           mace_param=self.input_param.mace_param,
-                                           mask_constraints=self.input_param.mask_constraints)
-
-        if self.test_data.energy is not None:
-            test_data_energy_shape = self.test_data.energy.shape
-        else:
-            test_data_energy_shape = None
-
-        if self.test_data.force is not None:
-            test_data_force_shape = self.test_data.force.shape
-        else:
-            test_data_force_shape = None
-        io_data_read_finalize(t=start,
-                              mem_CPU=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2,
-                              mem_GPU=torch.cuda.max_memory_allocated() / 1024 ** 3,
-                              flag='test',
-                              energy_shape=test_data_energy_shape,
-                              force_shape=test_data_force_shape)
+            for structure_file in structure_files:
+                self.images.extend(ase.io.read(structure_file, index=':', format=file_format))
 
     def model_test_evaluation(self):
         start = time.time()
-        self.test_data.calculator = self.train_data.calculator
-        energy_test_gpr, force_test_gpr, uncertainty_test_gpr = self.test_data.evaluation(
-            get_variance=self.input_param.get_variance)
+        energy_test_gpr, force_test_gpr, uncertainty_test_gpr = self.train_data.calculator.eval_batch(eval_images=self.images,
+                                                                                                      get_variance=self.input_param.get_variance)
 
         if self.train_data.standardization:
             energy_test_gpr, force_test_gpr = inverse_standard_output(energy_ref=self.train_data.energy,
@@ -203,21 +174,18 @@ class Test(object):
                            mem_GPU=torch.cuda.max_memory_allocated() / 1024 ** 3,
                            data_param=self.test_data.write_params())
 
-        if self.test_data.energy is not None:
-            abs_F_test_gpr = np.linalg.norm(force_test_gpr, axis=2)
-            abs_F_test = np.linalg.norm(self.test_data.force, axis=2)
+        abs_F_test_gpr = np.linalg.norm(force_test_gpr, axis=2)
+        abs_F_test = np.linalg.norm(self.test_data.force, axis=2)
 
-            print("GPR energy MAE (eV):", np.absolute(np.subtract(energy_test_gpr, self.test_data.energy)).mean())
-            print("GPR force MAE (eV/Ang):", np.absolute(np.subtract(abs_F_test_gpr, abs_F_test)).mean())
-            print(
-                "GPR uncertainty mean ± std: {0} ± {1}".format(uncertainty_test_gpr.mean(), uncertainty_test_gpr.std()))
+        print("GPR energy MAE (eV):", np.absolute(np.subtract(energy_test_gpr, self.test_data.energy)).mean())
+        print("GPR force MAE (eV/Ang):", np.absolute(np.subtract(abs_F_test_gpr, abs_F_test)).mean())
+        print(
+            "GPR uncertainty mean ± std: {0} ± {1}".format(uncertainty_test_gpr.mean(), uncertainty_test_gpr.std()))
 
-            print("")
-            print("Saving test target to [energy_test_reference.npy] and [force_test_reference.npy]")
-            np.save("./energy_test_reference.npy", self.test_data.energy)
-            np.save("./force_test_reference.npy", self.test_data.force)
-        else:
-            pass
+        print("")
+        print("Saving test target to [energy_test_reference.npy] and [force_test_reference.npy]")
+        np.save("./energy_test_reference.npy", self.test_data.energy)
+        np.save("./force_test_reference.npy", self.test_data.force)
 
         if self.input_param.get_variance:
             print(
@@ -231,16 +199,6 @@ class Test(object):
             np.save("./force_test_gpr.npy", force_test_gpr)
         print("")
         print("")
-
-    def write_reference_test_xsf(self):
-        start = time.time()
-        if not os.path.exists("test_xsf"):
-            os.makedirs("test_xsf")
-        self.test_data.write_image_xsf(path="test_xsf")
-        io_test_write_finalize(t=start,
-                               mem_CPU=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2,
-                               mem_GPU=torch.cuda.max_memory_allocated() / 1024 ** 3,
-                               path="test_data")
 
 
 class Augmentation(object):
