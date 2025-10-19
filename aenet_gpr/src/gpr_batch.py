@@ -451,7 +451,7 @@ class GaussianProcess(object):
                 unc_f[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(F=std[data_per_batch:].view(data_per_batch, -1),
                                                                                        atoms_mask=self.atoms_mask)
 
-            return E_hat, F_hat.view((Ntest, self.Natom, 3)), unc_e, unc_f
+            return E_hat, F_hat.view((Ntest, self.Natom, 3)), unc_e, unc_f.view((Ntest, self.Natom, 3))
 
     def eval_data_batch(self, eval_fp, eval_dfp_dr):
         # kernel between test point x and training points X
@@ -507,7 +507,7 @@ class GaussianProcess(object):
             unc_e = std[0] / self.weight
             unc_f = apply_force_mask(F=std[1:].view(1, -1), atoms_mask=self.atoms_mask)
 
-            return E_hat, F_hat.view((self.Natom, 3)), unc_e, unc_f
+            return E_hat, F_hat.view((self.Natom, 3)), unc_e, unc_f.view((self.Natom, 3))
 
     def eval_data_per_data(self, eval_fp_i, eval_dfp_dr_i):
         # kernel between test point x and training points X
