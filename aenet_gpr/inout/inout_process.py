@@ -18,29 +18,16 @@ class Train(object):
 
     def read_reference_train_data(self):
         start = time.time()
-        if self.input_param.descriptor == "internal":
-            pass
-            # self.train_data = ReferenceDataInternal(structure_files=self.input_param.train_file,
-            #                                         file_format=self.input_param.file_format,
-            #                                         device=self.input_param.device,
-            #                                         descriptor=self.input_param.descriptor,
-            #                                         standardization=self.input_param.standardization,
-            #                                         data_type=self.input_param.data_type,
-            #                                         data_process=self.input_param.data_process,
-            #                                         soap_param=self.input_param.soap_param,
-            #                                         mask_constraints=self.input_param.mask_constraints)
-
-        else:
-            self.train_data = ReferenceData(structure_files=self.input_param.train_file,
-                                            file_format=self.input_param.file_format,
-                                            device=self.input_param.device,
-                                            descriptor=self.input_param.descriptor,
-                                            standardization=self.input_param.standardization,
-                                            data_type=self.input_param.data_type,
-                                            data_process=self.input_param.data_process,
-                                            soap_param=self.input_param.soap_param,
-                                            mace_param=self.input_param.mace_param,
-                                            mask_constraints=self.input_param.mask_constraints)
+        self.train_data = ReferenceData(structure_files=self.input_param.train_file,
+                                        file_format=self.input_param.file_format,
+                                        device=self.input_param.device,
+                                        descriptor=self.input_param.descriptor,
+                                        standardization=self.input_param.standardization,
+                                        data_type=self.input_param.data_type,
+                                        data_process=self.input_param.data_process,
+                                        soap_param=self.input_param.soap_param,
+                                        mace_param=self.input_param.mace_param,
+                                        mask_constraints=self.input_param.mask_constraints)
 
         io_data_read_finalize(t=start,
                               mem_CPU=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2,
@@ -60,48 +47,21 @@ class Train(object):
         if self.train_data.standardization:
             self.train_data.standardize_energy_force(self.train_data.energy)
 
-        # try:
-        if self.input_param.descriptor == "internal":
-            pass
-            # self.train_data.config_calculator(kerneltype=self.input_param.kerneltype,
-            #                                   weight=self.input_param.weight,
-            #                                   noise=self.input_param.noise,
-            #                                   noisefactor=self.input_param.noisefactor,
-            #                                   use_forces=self.input_param.use_forces,
-            #                                   sparse=self.input_param.sparse,
-            #                                   sparse_derivative=self.input_param.sparse_derivative,
-            #                                   autograd=self.input_param.autograd,
-            #                                   train_batch_size=self.input_param.train_batch_size,
-            #                                   eval_batch_size=self.input_param.eval_batch_size,
-            #                                   fit_weight=self.input_param.fit_weight,
-            #                                   fit_scale=self.input_param.fit_scale)
-
-        else:
-            self.train_data.config_calculator(prior=self.input_param.prior,
-                                              prior_update=self.input_param.prior_update,
-                                              kerneltype=self.input_param.kerneltype,
-                                              scale=self.input_param.scale,
-                                              weight=self.input_param.weight,
-                                              noise=self.input_param.noise,
-                                              noisefactor=self.input_param.noisefactor,
-                                              use_forces=self.input_param.use_forces,
-                                              sparse=self.input_param.sparse,
-                                              sparse_derivative=self.input_param.sparse_derivative,
-                                              autograd=self.input_param.autograd,
-                                              train_batch_size=self.input_param.train_batch_size,
-                                              eval_batch_size=self.input_param.eval_batch_size,
-                                              fit_weight=self.input_param.fit_weight,
-                                              fit_scale=self.input_param.fit_scale)
-
-        # if self.train_data.calculator.weight < max_weight:
-        #     break
-        # else:
-        #     raise ValueError(f"Weight parameter too high ({self.train_data.calculator.weight}).")
-        #
-        # except Exception as e:
-        #     print(f"{e} Fix the weight and scale parameters.")
-        #     self.input_param.fit_weight = False
-        #     self.input_param.fit_scale = False
+        self.train_data.config_calculator(prior=self.input_param.prior,
+                                          prior_update=self.input_param.prior_update,
+                                          kerneltype=self.input_param.kerneltype,
+                                          scale=self.input_param.scale,
+                                          weight=self.input_param.weight,
+                                          noise=self.input_param.noise,
+                                          noisefactor=self.input_param.noisefactor,
+                                          use_forces=self.input_param.use_forces,
+                                          sparse=self.input_param.sparse,
+                                          sparse_derivative=self.input_param.sparse_derivative,
+                                          autograd=self.input_param.autograd,
+                                          train_batch_size=self.input_param.train_batch_size,
+                                          eval_batch_size=self.input_param.eval_batch_size,
+                                          fit_weight=self.input_param.fit_weight,
+                                          fit_scale=self.input_param.fit_scale)
 
         io_train_finalize(t=start,
                           mem_CPU=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2,
@@ -158,20 +118,27 @@ class Test(object):
             for structure_file in structure_files:
                 self.images.extend(ase.io.read(structure_file, index=':', format=file_format))
 
-        self.energies = np.array([image.get_potential_energy() for image in self.images], dtype=self.input_param.data_type)
+        self.energies = np.array([image.get_potential_energy() for image in self.images],
+                                 dtype=self.input_param.data_type)
         self.forces = np.array([image.get_forces() for image in self.images], dtype=self.input_param.data_type)
+        print(self.energies)
+        print(self.energies.shape)
+        print(self.forces.shape)
 
     def model_test_evaluation(self):
         start = time.time()
-        energy_test_gpr, force_test_gpr, uncertainty_test_gpr = self.train_data.calculator.eval_batch(eval_images=self.images,
-                                                                                                      get_variance=self.input_param.get_variance)
+        energy_test_gpr, force_test_gpr, uncertainty_test_gpr = self.train_data.calculator.eval_batch(
+            eval_images=self.images,
+            get_variance=self.input_param.get_variance)
+
+        energy_test_gpr = energy_test_gpr.cpu().detach().numpy()
+        force_test_gpr = force_test_gpr.cpu().detach().numpy()
+        uncertainty_test_gpr = uncertainty_test_gpr.cpu().detach().numpy()
 
         if self.train_data.standardization:
             energy_test_gpr, force_test_gpr = inverse_standard_output(energy_ref=self.train_data.energy,
                                                                       scaled_energy_target=energy_test_gpr,
                                                                       scaled_force_target=force_test_gpr)
-        else:
-            pass
 
         io_test_evaluation(t=start,
                            mem_CPU=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2,
