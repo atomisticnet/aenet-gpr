@@ -436,6 +436,7 @@ class AIDNEB:
                     new_images.append(img)
 
             if new_images:
+                pass
                 # train_data.update_train_data(new_images)
 
             if train_data.standardization:
