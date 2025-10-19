@@ -44,10 +44,9 @@ def main():
             test_process.load_train_model(train_data=train_process.train_data)
         else:
             test_process.load_train_model(train_data=None)
-        test_process.read_reference_test_data()
+        test_process.read_reference_test_data(structure_files=input_param.test_file,
+                                              file_format=input_param.file_format)
         test_process.model_test_evaluation()
-        if input_param.test_write:
-            test_process.write_reference_test_xsf()
 
     if input_param.additional_write:
         io_print_title(text='Augmentation')
