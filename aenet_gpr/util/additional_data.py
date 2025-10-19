@@ -34,7 +34,8 @@ class AdditionalData(object):
         self.additional_images = []
         self.energy_additional = np.array([], dtype=self.numpy_data_type)  # [Ndata]
         self.force_additional = np.array([], dtype=self.numpy_data_type)  # [Ndata, Natom, 3]
-        self.uncertainty_additional = np.array([], dtype=self.numpy_data_type)  # [Ndata]
+        self.unc_e_additional = np.array([], dtype=self.numpy_data_type)  # [Ndata]
+        self.unc_f_additional = np.array([], dtype=self.numpy_data_type)  # [Ndata, Natom, 3]
 
         self.energy_scale_additional = np.array([], dtype=self.numpy_data_type)  # [Ndata]
         self.force_scale_additional = np.array([], dtype=self.numpy_data_type)  # [Ndata, Natom, 3]
@@ -73,28 +74,30 @@ class AdditionalData(object):
 
         if get_variance:
             if self.reference_training_data.standardization:
-                energy_scale_additional, force_scale_additional, uncertainty_additional = self.reference_training_data.calculator.eval_batch(
+                energy_scale_additional, force_scale_additional, unc_e_additional, unc_f_additional = self.reference_training_data.calculator.eval_batch(
                     eval_images=self.additional_images,
                     get_variance=get_variance)
 
                 self.energy_scale_additional = energy_scale_additional.cpu().detach().numpy()
                 self.force_scale_additional = force_scale_additional.cpu().detach().numpy()
-                self.uncertainty_additional = uncertainty_additional.cpu().detach().numpy()
+                self.unc_e_additional = unc_e_additional.cpu().detach().numpy()
+                self.unc_f_additional = unc_f_additional.cpu().detach().numpy()
 
                 self.inverse_standardize_energy_force(reference_training_energy=self.reference_training_data.energy)
 
             else:
-                energy_additional, force_additional, uncertainty_additional = self.reference_training_data.calculator.eval_batch(
+                energy_additional, force_additional, unc_e_additional, unc_f_additional = self.reference_training_data.calculator.eval_batch(
                     eval_images=self.additional_images,
                     get_variance=get_variance)
 
                 self.energy_additional = energy_additional.cpu().detach().numpy()
                 self.force_additional = force_additional.cpu().detach().numpy()
-                self.uncertainty_additional = uncertainty_additional.cpu().detach().numpy()
+                self.unc_e_additional = unc_e_additional.cpu().detach().numpy()
+                self.unc_f_additional = unc_f_additional.cpu().detach().numpy()
 
         else:
             if self.reference_training_data.standardization:
-                energy_scale_additional, force_scale_additional, _ = self.reference_training_data.calculator.eval_batch(
+                energy_scale_additional, force_scale_additional, _, _ = self.reference_training_data.calculator.eval_batch(
                     eval_images=self.additional_images,
                     get_variance=get_variance)
 
@@ -104,7 +107,7 @@ class AdditionalData(object):
                 self.inverse_standardize_energy_force(reference_training_energy=self.reference_training_data.energy)
 
             else:
-                energy_additional, force_additional, _ = self.reference_training_data.calculator.eval_batch(
+                energy_additional, force_additional, _, _ = self.reference_training_data.calculator.eval_batch(
                     eval_images=self.additional_images,
                     get_variance=get_variance)
 
