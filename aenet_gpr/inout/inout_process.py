@@ -121,11 +121,10 @@ class Test(object):
         self.energies = np.array([image.get_potential_energy() for image in self.images],
                                  dtype=self.input_param.data_type)
         self.forces = np.array([image.get_forces() for image in self.images], dtype=self.input_param.data_type)
-        print(self.energies)
-        print(self.energies.shape)
-        print(self.forces.shape)
 
     def model_test_evaluation(self):
+        print(len(self.images))
+        print(self.images)
         start = time.time()
         energy_test_gpr, force_test_gpr, uncertainty_test_gpr = self.train_data.calculator.eval_batch(
             eval_images=self.images,
@@ -135,8 +134,9 @@ class Test(object):
             energy_test_gpr, force_test_gpr = inverse_standard_output(energy_ref=self.train_data.energy,
                                                                       scaled_energy_target=energy_test_gpr,
                                                                       scaled_force_target=force_test_gpr)
-        else:
-            pass
+        print(energy_test_gpr.shape)
+        print(force_test_gpr.shape)
+        print(energy_test_gpr)
 
         io_test_evaluation(t=start,
                            mem_CPU=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2,
