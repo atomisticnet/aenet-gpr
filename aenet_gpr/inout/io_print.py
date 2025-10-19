@@ -87,11 +87,10 @@ def io_train_model_load(t, mem_CPU, mem_GPU):
     io_double_line()
 
 
-def io_test_evaluation(t, mem_CPU, mem_GPU, data_param: dict):
+def io_test_evaluation(t, mem_CPU, mem_GPU):
 
     io_line()
     io_print("Model evaluation for test set")
-    io_test_parameters(data_param=data_param)
     io_print("Time needed for test evaluation:  {: 18.6f} s".format(time.time() - t))
     io_print("Maximum CPU memory used:   {: 18.6f} GB".format(mem_CPU))
     io_print("Maximum GPU memory used:   {: 18.6f} GB".format(mem_GPU))

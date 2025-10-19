@@ -130,8 +130,9 @@ class Test(object):
     def __init__(self, input_param: InputParameters):
         self.input_param = input_param
         self.train_data = None
-        self.test_data = None
         self.images = []
+        self.energies = []
+        self.forces = []
 
     def load_train_model(self, train_data: ReferenceData = None):
         start = time.time()
@@ -157,6 +158,9 @@ class Test(object):
             for structure_file in structure_files:
                 self.images.extend(ase.io.read(structure_file, index=':', format=file_format))
 
+        self.energies = np.array([image.get_potential_energy() for image in self.images], dtype=self.input_param.data_type)
+        self.forces = np.array([image.get_forces() for image in self.images], dtype=self.input_param.data_type)
+
     def model_test_evaluation(self):
         start = time.time()
         energy_test_gpr, force_test_gpr, uncertainty_test_gpr = self.train_data.calculator.eval_batch(eval_images=self.images,
@@ -171,21 +175,20 @@ class Test(object):
 
         io_test_evaluation(t=start,
                            mem_CPU=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2,
-                           mem_GPU=torch.cuda.max_memory_allocated() / 1024 ** 3,
-                           data_param=self.test_data.write_params())
+                           mem_GPU=torch.cuda.max_memory_allocated() / 1024 ** 3)
 
         abs_F_test_gpr = np.linalg.norm(force_test_gpr, axis=2)
-        abs_F_test = np.linalg.norm(self.test_data.force, axis=2)
+        abs_F_test = np.linalg.norm(self.forces, axis=2)
 
-        print("GPR energy MAE (eV):", np.absolute(np.subtract(energy_test_gpr, self.test_data.energy)).mean())
+        print("GPR energy MAE (eV):", np.absolute(np.subtract(energy_test_gpr, self.energies)).mean())
         print("GPR force MAE (eV/Ang):", np.absolute(np.subtract(abs_F_test_gpr, abs_F_test)).mean())
         print(
             "GPR uncertainty mean ± std: {0} ± {1}".format(uncertainty_test_gpr.mean(), uncertainty_test_gpr.std()))
 
         print("")
         print("Saving test target to [energy_test_reference.npy] and [force_test_reference.npy]")
-        np.save("./energy_test_reference.npy", self.test_data.energy)
-        np.save("./force_test_reference.npy", self.test_data.force)
+        np.save("./energy_test_reference.npy", self.energies)
+        np.save("./force_test_reference.npy", self.forces)
 
         if self.input_param.get_variance:
             print(
