@@ -47,7 +47,7 @@ def acquisition(train_images, candidates, mode='min_energy', objective='min'):
         pred_x.append(i.get_positions().reshape(-1))
         pred_y.append(i.get_potential_energy())
         if mode == 'uncertainty' or mode == 'ucb' or mode == 'lcb':
-            pred_unc.append(i.calc.results['uncertainty'])
+            pred_unc.append(i.calc.results['unc_energy'])
         if mode == 'fmax':
             pred_fmax.append(np.sqrt((i.get_forces()**2).sum(axis=1).max()))
 
