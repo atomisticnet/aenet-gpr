@@ -127,6 +127,9 @@ class Test(object):
         energy_test_gpr, force_test_gpr, uncertainty_test_gpr = self.train_data.calculator.eval_batch(
             eval_images=self.images,
             get_variance=self.input_param.get_variance)
+        energy_test_gpr = energy_test_gpr.cpu().detach().numpy()
+        force_test_gpr = force_test_gpr.cpu().detach().numpy()
+        uncertainty_test_gpr = uncertainty_test_gpr.cpu().detach().numpy()
 
         if self.train_data.standardization:
             energy_test_gpr, force_test_gpr = inverse_standard_output(energy_ref=self.train_data.energy,
