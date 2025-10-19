@@ -7,11 +7,10 @@ import torch
 
 import ase.io
 from ase import Atoms
-from ase.calculators.singlepoint import SinglePointCalculator
 
 from aenet_gpr.src import gpr_iterative
 from aenet_gpr.src import gpr_batch
-from aenet_gpr.util.prepare_data import standard_output, inverse_standard_output
+from aenet_gpr.util.prepare_data import standard_output, inverse_standard_output, read_xsf_image
 
 
 class ReferenceData(object):
@@ -93,7 +92,7 @@ class ReferenceData(object):
             energies = []
             forces = []
             for structure_file in structure_files:
-                image, structure, energy, force = self.read_xsf_image(structure_file)
+                image, structure, energy, force = read_xsf_image(structure_file)
                 self.images.extend(image)
                 structures.append(structure)
                 energies.append(energy)
@@ -462,42 +461,6 @@ class ReferenceData(object):
         self.energy, self.force = inverse_standard_output(reference_training_energy,
                                                           self.energy_scale,
                                                           self.force_scale)
-
-    def read_xsf_image(self, path):
-
-        image = ase.io.read(path, index=':', format='xsf')
-        with open(path, 'r') as infile:
-            lines = infile.readlines()
-
-        structure = np.empty((len(image[0]), 3), dtype=self.numpy_data_type)
-
-        try:
-            energy = np.asarray(lines[0].split()[4], dtype=self.numpy_data_type)
-        except IndexError:
-            energy = None
-        except ValueError:
-            energy = None
-
-        force = np.empty((len(image[0]), 3), dtype=self.numpy_data_type)
-        if "ATOMS" in lines[2]:
-            for i, line in enumerate(lines[3:]):
-                structure[i, :] = np.asarray(line.split()[1:4], dtype=self.numpy_data_type)
-                try:
-                    force[i, :] = np.asarray(line.split()[4:], dtype=self.numpy_data_type)
-                except:
-                    force = None
-
-        elif "CRYSTAL" in lines[2]:
-            for i, line in enumerate(lines[9:]):
-                structure[i, :] = np.asarray(line.split()[1:4], dtype=self.numpy_data_type)
-                try:
-                    force[i, :] = np.asarray(line.split()[4:], dtype=self.numpy_data_type)
-                except:
-                    force = None
-
-        image[0].calc = SinglePointCalculator(image[0].copy(), energy=energy, forces=force)
-
-        return image, structure, energy, force
 
     def write_image_xsf(self, path):
 

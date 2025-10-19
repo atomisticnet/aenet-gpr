@@ -1,6 +1,46 @@
 import torch
 import numpy as np
 
+import ase.io
+from ase.calculators.singlepoint import SinglePointCalculator
+
+
+def read_xsf_image(path):
+
+    image = ase.io.read(path, index=':', format='xsf')
+    with open(path, 'r') as infile:
+        lines = infile.readlines()
+
+    structure = np.empty((len(image[0]), 3))
+
+    try:
+        energy = np.asarray(lines[0].split()[4])
+    except IndexError:
+        energy = None
+    except ValueError:
+        energy = None
+
+    force = np.empty((len(image[0]), 3))
+    if "ATOMS" in lines[2]:
+        for i, line in enumerate(lines[3:]):
+            structure[i, :] = np.asarray(line.split()[1:4])
+            try:
+                force[i, :] = np.asarray(line.split()[4:])
+            except:
+                force = None
+
+    elif "CRYSTAL" in lines[2]:
+        for i, line in enumerate(lines[9:]):
+            structure[i, :] = np.asarray(line.split()[1:4])
+            try:
+                force[i, :] = np.asarray(line.split()[4:])
+            except:
+                force = None
+
+    image[0].calc = SinglePointCalculator(image[0].copy(), energy=energy, forces=force)
+
+    return image, structure, energy, force
+
 
 def get_N_batch(len_dataset, batch_size):
     """
