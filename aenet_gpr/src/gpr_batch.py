@@ -38,7 +38,7 @@ def numerical_descriptor_gradient(atoms, model, delta=1e-4, num_layers=-1):
             # central difference
             grad[:, i, j, :] = (desc_f - desc_b) / (2 * delta)
 
-    return grad
+    return desc_0, grad
 
 
 def apply_force_mask(F, atoms_mask):
@@ -133,8 +133,9 @@ class GaussianProcess(object):
                     from mace_descriptor.calculators import mace_mp
                 except ImportError:
                     raise ImportError(
-                        "The 'mace-descriptor' package is required for using pre-trained MACE descriptors.\n"
+                        "The 'mace' and 'mace-descriptor' package is required for using pre-trained MACE descriptors.\n"
                         "Please install it by running:\n\n"
+                        "    pip install mace-torch\n"
                         "    pip install mace-descriptor\n\n"
                         "Note: This is a lightweight fork of the original MACE (mace-torch) package, "
                         "designed exclusively for descriptor extraction."
@@ -241,8 +242,13 @@ class GaussianProcess(object):
             fp = []
             dfp_dr = []
             for image in images:
-                fp.append(self.mace.get_descriptors(image))
-                dfp_dr.append(numerical_descriptor_gradient(image, self.mace))
+                fp__, dfp_dr__ = self.mace.get_descriptors_with_jacobian(image)
+                fp.append(fp__)
+                dfp_dr.append(dfp_dr__)
+
+                # fp__, dfp_dr__ = numerical_descriptor_gradient(image, self.mace)
+                # fp.append(fp__)
+                # dfp_dr.append(dfp_dr__)
 
             fp = torch.stack(fp).to(dtype=self.torch_data_type, device=self.device)  # (Ndata, Natom, Ndescriptor)
             dfp_dr = torch.stack(dfp_dr).to(dtype=self.torch_data_type, device=self.device)  # (Ndata, Natom, Natom, 3, Ndescriptor)
@@ -279,8 +285,9 @@ class GaussianProcess(object):
             fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Ncenters, Natom*3)
 
         elif self.descriptor == 'mace':
-            fp = self.mace.get_descriptors(image).to(dtype=self.torch_data_type, device=self.device)  # (Natom, Ndescriptor)
-            dfp_dr = numerical_descriptor_gradient(image, self.mace).to(dtype=self.torch_data_type, device=self.device)  # (Natom, Natom, 3, Ndescriptor)
+            fp, dfp_dr = numerical_descriptor_gradient(image, self.mace)
+            fp = fp.to(dtype=self.torch_data_type, device=self.device)  # (Natom, Ndescriptor)
+            dfp_dr = dfp_dr.to(dtype=self.torch_data_type, device=self.device)  # (Natom, Natom, 3, Ndescriptor)
 
         else:
             fp = torch.as_tensor(image.get_positions(wrap=False).reshape(-1), dtype=self.torch_data_type).to(
@@ -344,7 +351,6 @@ class GaussianProcess(object):
         return
 
     def eval_batch(self, eval_images, get_variance=False):
-        eval_fp, eval_dfp_dr = self.generate_descriptor(eval_images)
 
         Ntest = len(eval_images)
         eval_x_N_batch = get_N_batch(Ntest, self.eval_batch_size)
@@ -353,36 +359,33 @@ class GaussianProcess(object):
         E_hat = torch.empty((Ntest,), dtype=self.torch_data_type, device=self.device)
         F_hat = torch.zeros((Ntest, self.Natom * 3), dtype=self.torch_data_type, device=self.device)
 
-        for i in range(0, eval_x_N_batch):
-
-            pred, kernel = self.eval_data_batch(eval_fp[eval_x_indexes[i][0]:eval_x_indexes[i][1]],
-                                                eval_dfp_dr[eval_x_indexes[i][0]:eval_x_indexes[i][1]])
-
-            data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
-            E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
-            F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(F=pred[data_per_batch:].view(data_per_batch, -1),
-                                                                                   atoms_mask=self.atoms_mask)
-
         if not get_variance:
+            for i in range(0, eval_x_N_batch):
+                eval_fp, eval_dfp_dr = self.generate_descriptor(eval_images[eval_x_indexes[i][0]:eval_x_indexes[i][1]])
+                pred, kernel = self.eval_data_batch(eval_fp, eval_dfp_dr)
 
-            return E_hat, F_hat.view((Ntest, self.Natom, 3)), None
+                data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
+                E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
+                F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(F=pred[data_per_batch:].view(data_per_batch, -1),
+                                                                                       atoms_mask=self.atoms_mask)
+
+                return E_hat, F_hat.view((Ntest, self.Natom, 3)), None
 
         else:
             uncertainty = torch.empty((Ntest,), dtype=self.torch_data_type, device=self.device)
             for i in range(0, eval_x_N_batch):
-                pred, kernel = self.eval_data_batch(eval_fp[eval_x_indexes[i][0]:eval_x_indexes[i][1]],
-                                                    eval_dfp_dr[eval_x_indexes[i][0]:eval_x_indexes[i][1]])
+                eval_fp, eval_dfp_dr = self.generate_descriptor(eval_images[eval_x_indexes[i][0]:eval_x_indexes[i][1]])
+                pred, kernel = self.eval_data_batch(eval_fp, eval_dfp_dr)
 
                 var = self.eval_variance_batch(get_variance=get_variance,
-                                               eval_fp=eval_fp[eval_x_indexes[i][0]:eval_x_indexes[i][1]],
-                                               eval_dfp_dr=eval_dfp_dr[eval_x_indexes[i][0]:eval_x_indexes[i][1]],
+                                               eval_fp=eval_fp,
+                                               eval_dfp_dr=eval_dfp_dr,
                                                k=kernel)
 
                 data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
-
                 uncertainty[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = torch.sqrt(torch.diagonal(var)[0:data_per_batch]) / self.weight
 
-            return E_hat, F_hat.view((Ntest, self.Natom, 3)), uncertainty
+                return E_hat, F_hat.view((Ntest, self.Natom, 3)), uncertainty
 
     def eval_data_batch(self, eval_fp, eval_dfp_dr):
         # kernel between test point x and training points X
