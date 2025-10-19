@@ -182,7 +182,7 @@ class GaussianProcess(object):
                     from mace_descriptor.calculators import mace_mp
                 except ImportError:
                     raise ImportError(
-                        "The 'mace' and 'mace-descriptor' package is required for using pre-trained MACE descriptors.\n"
+                        "The 'joblib', 'mace' and 'mace-descriptor' packages are required for using pre-trained MACE descriptors.\n"
                         "Please install it by running:\n\n"
                         "    pip install joblib\n"
                         "    pip install mace-torch\n"
@@ -199,8 +199,10 @@ class GaussianProcess(object):
                     from mace_descriptor.calculators import mace_off
                 except ImportError:
                     raise ImportError(
-                        "The 'mace-descriptor' package is required for using pre-trained MACE descriptors.\n"
+                        "The 'joblib', 'mace' and 'mace-descriptor' packages are required for using pre-trained MACE descriptors.\n"
                         "Please install it by running:\n\n"
+                        "    pip install joblib\n"
+                        "    pip install mace-torch\n"
                         "    pip install mace-descriptor\n\n"
                         "Note: This is a lightweight fork of the original MACE (mace-torch) package, "
                         "designed exclusively for descriptor extraction."
