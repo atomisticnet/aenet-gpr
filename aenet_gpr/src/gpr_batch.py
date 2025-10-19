@@ -19,7 +19,6 @@ def _central_diff_task(atoms, i, j, delta, model, num_layers):
     atoms_b.positions[i, j] -= delta
     desc_b = model.get_descriptors(atoms_b, num_layers=num_layers)
 
-    # 중앙차분 결과: shape = (n_atoms, descriptor_dim)
     grad_ij = (desc_f - desc_b) / (2 * delta)
     return i, j, grad_ij
 
@@ -212,6 +211,8 @@ class GaussianProcess(object):
                                      device=self.device)
 
         self.train_fp, self.train_dfp_dr = self.generate_descriptor(self.images)
+        print(self.train_fp.shape)
+        print(self.train_dfp_dr.shape)
         self.Y = function  # Y = [Ntrain]
         self.dY = derivative  # dY = [Ntrain, Natom, 3]
         self.model_vector = torch.empty((self.Ntrain * (1 + 3 * self.Natom),), dtype=self.torch_data_type,
