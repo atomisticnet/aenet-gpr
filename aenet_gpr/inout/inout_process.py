@@ -131,14 +131,12 @@ class Test(object):
             eval_images=self.images,
             get_variance=self.input_param.get_variance)
 
-        energy_test_gpr = energy_test_gpr.cpu().detach().numpy()
-        force_test_gpr = force_test_gpr.cpu().detach().numpy()
-        uncertainty_test_gpr = uncertainty_test_gpr.cpu().detach().numpy()
-
         if self.train_data.standardization:
             energy_test_gpr, force_test_gpr = inverse_standard_output(energy_ref=self.train_data.energy,
                                                                       scaled_energy_target=energy_test_gpr,
                                                                       scaled_force_target=force_test_gpr)
+        else:
+            pass
 
         io_test_evaluation(t=start,
                            mem_CPU=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2,
@@ -190,14 +188,7 @@ class Augmentation(object):
 
     def generate_additional_structures(self):
         start = time.time()
-        if self.input_param.descriptor == "internal":
-            pass
-            # self.additional_data = AdditionalDataInternal(reference_training_data=self.train_data,
-            #                                               disp_length=self.input_param.disp_length,
-            #                                               num_copy=self.input_param.num_copy)
-
-        else:
-            self.additional_data = AdditionalData(reference_training_data=self.train_data,
+        self.additional_data = AdditionalData(reference_training_data=self.train_data,
                                                   disp_length=self.input_param.disp_length,
                                                   num_copy=self.input_param.num_copy)
 
