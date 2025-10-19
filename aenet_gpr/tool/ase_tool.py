@@ -5,13 +5,24 @@ Collection of utilities for the ASE Tools package.
 from subprocess import run, PIPE
 import numpy as np
 from copy import deepcopy
-from ase.io import read, write
 
 
 __author__ = "Alexander Urban; Jianzhou Qu; In Won Yeu"
 __email__ = "aurban@atomistic.net"
 __date__ = "2025-07-05"
 __version__ = "1.0"
+
+
+def get_structure_uncertainty(unc_e: np.array, unc_f: np.array, method="combined"):
+
+    if method == "energy":
+        return unc_e
+    elif method == "force_max":
+        return unc_f.max()
+    elif method == "force_mean":
+        return unc_f.mean()
+    elif method == "combined":
+        return np.sqrt(unc_e**2 + unc_f.mean()**2)
 
 
 def prepare_neb_images(atoms_init, atoms_final, species=None, pair1=(0, 1), pair2=(0, 2)):
