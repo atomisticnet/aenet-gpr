@@ -548,11 +548,11 @@ class AIDNEB:
 
             predictions = get_neb_predictions(self.images[1:-1])
             neb_pred_energy = predictions['energy']
-            neb_pred_uncertainty = predictions['uncertainty']
+            neb_pred_unc_energy = predictions['unc_energy']
 
             # 5. Print output.
             max_e = np.max(neb_pred_energy)
-            max_unc = np.max(neb_pred_uncertainty)
+            max_unc = np.max(neb_pred_unc_energy)
             self.max_unc_hist.append(max_unc)
 
             # Calculator of train_images is reference, while Calculator of self.images is GP
@@ -684,15 +684,21 @@ def make_neb(self, images_interpolation=None):
 def get_neb_predictions(images):
     neb_pred_energy = []
     neb_pred_forces = []
-    neb_pred_unc = []
+    neb_pred_unc_energy = []
+    neb_pred_unc_forces = []
 
     for i in images:
         neb_pred_energy.append(i.get_potential_energy())
         neb_pred_forces.append(i.get_forces())
-        unc = i.calc.results['uncertainty']
-        neb_pred_unc.append(unc)
 
-    predictions = {'energy': neb_pred_energy, 'forces': neb_pred_forces, 'uncertainty': neb_pred_unc}
+        unc_energy = i.calc.results['unc_energy']
+        neb_pred_unc_energy.append(unc_energy)
+
+        unc_forces = i.calc.results['unc_forces']
+        neb_pred_unc_forces.append(unc_forces)
+
+    predictions = {'energy': neb_pred_energy, 'forces': neb_pred_forces,
+                   'unc_energy': neb_pred_unc_energy, 'unc_forces': neb_pred_unc_forces}
 
     return predictions
 
