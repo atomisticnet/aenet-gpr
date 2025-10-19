@@ -363,7 +363,7 @@ class ReferenceData(object):
 
         return
 
-    def fit_scale_only(self, candidates=3, factor=2.0):
+    def fit_scale_only(self, candidates=5, factor=2.0):
         """
         Update the kernel scale keeping all other hyperparameters fixed by evaluating marginal likelihood over candidate scales.
 
@@ -381,7 +381,7 @@ class ReferenceData(object):
         best_logp = -torch.inf
 
         # Generate candidate scales logarithmically spaced around current scale
-        candidate_scales = current_scale * factor ** torch.linspace(-1, 1, candidates, device=self.device)
+        candidate_scales = current_scale * factor ** torch.linspace(-2, 2, candidates, device=self.device)
 
         print('Candidate scales:', candidate_scales)
         for candidate_scale in candidate_scales:
