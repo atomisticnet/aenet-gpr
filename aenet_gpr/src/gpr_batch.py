@@ -45,7 +45,7 @@ def numerical_descriptor_gradient_parallel(atoms, model, delta=1e-4, num_layers=
     jobs = [(atoms, i, j, delta, model, num_layers) for i in range(n_atoms) for j in range(3)]
 
     # Pararell execution
-    results = Parallel(n_jobs=n_jobs, backend="loky")(delayed(_central_diff_task)(*job) for job in jobs)
+    results = Parallel(n_jobs=n_jobs, prefer="processes")(delayed(_central_diff_task)(*job) for job in jobs)
     results.sort(key=lambda x: (x[0], x[1]))
 
     grad = torch.empty((n_atoms, n_atoms, 3, D), dtype=dtype)
