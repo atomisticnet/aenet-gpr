@@ -197,6 +197,10 @@ def read_train_in(infile):
 			else:
 				input_param.soap_rbf = 'gto'
 
+		n_jobs, found = read_keyword_argument_same_line("n_jobs", lines)
+		if found:
+			input_param.n_jobs = int(n_jobs)
+
 		soap_centers, found = read_keyword_list_same_line("soap_centers", lines)
 		if found:
 			input_param.soap_centers = soap_centers
@@ -211,7 +215,7 @@ def read_train_in(infile):
 
 		mace_model, found = read_keyword_argument_same_line("mace_model", lines)
 		if found:
-			input_param.mace_model = int(mace_model)
+			input_param.mace_model = mace_model
 
 		scale, found = read_keyword_argument_same_line("scale", lines)
 		if found:

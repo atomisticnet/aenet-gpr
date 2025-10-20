@@ -8,6 +8,7 @@ class InputParameters(object):
     def __init__(self):
         self.file_format       = 'xsf'
         self.device            = 'cpu'
+        self.n_jobs            = -1
         self.train_file        = []
         self.test_file         = []
 
