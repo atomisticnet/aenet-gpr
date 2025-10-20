@@ -15,7 +15,7 @@ except ModuleNotFoundError:
 
 from aenet_gpr.src import GPRCalculator
 from aenet_gpr.util import ReferenceData
-from aenet_gpr.tool import acquisition, prepare_neb_images, dump_observation, get_fmax
+from aenet_gpr.tool import acquisition, dump_observation, get_fmax
 from aenet_gpr.inout.input_parameter import InputParameters
 
 
@@ -329,7 +329,7 @@ class AIDNEB:
 
     def run(self,
             fmax=0.05,
-            unc_convergence=0.02,
+            unc_convergence=0.05,
             dt=0.1,
             ml_steps=150,
             optimizer="MDMin",
