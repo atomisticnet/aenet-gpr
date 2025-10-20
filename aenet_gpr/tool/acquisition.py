@@ -40,16 +40,20 @@ def acquisition(train_images, candidates, mode='min_energy', objective='min'):
     pred_x = []
     pred_y = []
     pred_fmax = []
-    pred_unc = []
+    pred_func = []
 
     # Gather all required information to decide the order of the candidates.
     for i in candidates:
         pred_x.append(i.get_positions().reshape(-1))
         pred_y.append(i.get_potential_energy())
         if mode == 'uncertainty' or mode == 'ucb' or mode == 'lcb':
-            pred_unc.append(i.calc.results['unc_energy'])
+            # pred_unc.append(i.calc.results['unc_energy'])
+            f_unc = i.calc.results['unc_forces']
+            pred_func.append(np.linalg.norm(f_unc, axis=1).max())
+
         if mode == 'fmax':
-            pred_fmax.append(np.sqrt((i.get_forces()**2).sum(axis=1).max()))
+            force = i.get_forces()
+            pred_fmax.append(np.linalg.norm(force, axis=1).max())
 
     for i in train_images:
         x.append(i.get_positions().reshape(-1))
@@ -70,9 +74,9 @@ def acquisition(train_images, candidates, mode='min_energy', objective='min'):
 
     if mode == 'uncertainty':
         if objective == 'min':
-            score_index = np.argsort(pred_unc)
+            score_index = np.argsort(pred_func)
         if objective == 'max':
-            score_index = list(reversed(np.argsort(pred_unc)))
+            score_index = list(reversed(np.argsort(pred_func)))
 
     if mode == 'fmax':
         if objective == 'min':
@@ -81,14 +85,14 @@ def acquisition(train_images, candidates, mode='min_energy', objective='min'):
             score_index = list(reversed(np.argsort(pred_fmax)))
 
     if mode == 'ucb':
-        e_plus_u = np.array(pred_y) + np.array(pred_unc)
+        e_plus_u = np.array(pred_y) + np.array(pred_func)
         if objective == 'min':
             score_index = np.argsort(e_plus_u)
         if objective == 'max':
             score_index = list(reversed(np.argsort(e_plus_u)))
 
     if mode == 'lcb':
-        e_minus_u = np.array(pred_y) - np.array(pred_unc)
+        e_minus_u = np.array(pred_y) - np.array(pred_func)
         if objective == 'min':
             score_index = np.argsort(e_minus_u)
         if objective == 'max':

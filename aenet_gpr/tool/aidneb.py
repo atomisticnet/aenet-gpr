@@ -301,6 +301,32 @@ class AIDNEB:
         # print(f"r_max (threshold to prevent over-relaxation when training data is sparse): {self.rmax:.4f}")
         print('spring_constant: ', self.spring)
 
+    def save_neb_predictions_to_extxyz(self, predictions, filename):
+        """
+        Store NEB predictions (energy, force, unc_energy, unc_force)
+        into Atoms objects and write to extxyz file.
+
+        Parameters:
+            predictions (dict): Dictionary with 'energy', 'forces', 'unc_energy', 'unc_forces'
+            filename (str): Output file path (.extxyz)
+        """
+        out = []
+        for i, image in enumerate(self.images):
+            atoms = image.copy()
+
+            # Energies
+            atoms.info['energy'] = float(predictions['energy'][i])
+            atoms.info['unc_energy'] = float(predictions['unc_energy'][i])
+
+            # Forces
+            atoms.arrays['forces'] = np.linalg.norm(predictions['forces'][i], axis=1)
+            atoms.arrays['unc_forces'] = np.linalg.norm(predictions['unc_forces'][i], axis=1)
+
+            out.append(atoms)
+
+        # Write to extxyz file
+        io.write(filename, out, format='extxyz')
+
     def run(self,
             fmax=0.05,
             unc_convergence=0.02,
@@ -546,13 +572,18 @@ class AIDNEB:
             F = F.reshape(nim, nat, 3)
             max_f_image = np.sqrt((F ** 2).sum(-1)).max().item()
 
-            predictions = get_neb_predictions(self.images[1:-1])
+            predictions = get_neb_predictions(self.images)
+            filename = f'gpr_neb_results_step{self.step:04d}.extxyz'
+            self.save_neb_predictions_to_extxyz(predictions=predictions, filename=filename)
+
             neb_pred_energy = predictions['energy']
-            neb_pred_unc_energy = predictions['unc_energy']
+            # neb_pred_unc_energy = predictions['unc_energy']
+            neb_pred_unc_forces = predictions['unc_forces']
 
             # 5. Print output.
             max_e = np.max(neb_pred_energy)
-            max_unc = np.max(neb_pred_unc_energy)
+            # max_unc = np.max(neb_pred_unc_energy)
+            max_unc = max(np.linalg.norm(f_unc, axis=1).max() for f_unc in neb_pred_unc_forces)
             self.max_unc_hist.append(max_unc)
 
             # Calculator of train_images is reference, while Calculator of self.images is GP
@@ -696,6 +727,12 @@ def get_neb_predictions(images):
 
         unc_forces = i.calc.results['unc_forces']
         neb_pred_unc_forces.append(unc_forces)
+
+    neb_pred_unc_energy[0] = 0.0
+    neb_pred_unc_energy[-1] = 0.0
+
+    neb_pred_unc_forces[0] = np.zeros_like(neb_pred_unc_forces[1])
+    neb_pred_unc_forces[-1] = np.zeros_like(neb_pred_unc_forces[1])
 
     predictions = {'energy': neb_pred_energy, 'forces': neb_pred_forces,
                    'unc_energy': neb_pred_unc_energy, 'unc_forces': neb_pred_unc_forces}
