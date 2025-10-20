@@ -265,7 +265,7 @@ class ReferenceData(object):
 
     def config_calculator(self, prior=None, prior_update=True, kerneltype='sqexp', scale=0.4, weight=1.0, noise=1e-6, noisefactor=0.5,
                           use_forces=True, sparse=None, sparse_derivative=None, autograd=False,
-                          train_batch_size=25, eval_batch_size=25,
+                          train_batch_size=25, eval_batch_size=25, n_jobs=-1,
                           fit_weight=True, fit_scale=True):
 
         if self.standardization:
@@ -315,6 +315,7 @@ class ReferenceData(object):
                                                         eval_batch_size=eval_batch_size,
                                                         data_type=self.data_type,
                                                         device=self.device,
+                                                        n_jobs=n_jobs,
                                                         soap_param=self.soap_param,
                                                         mace_param=self.mace_param,
                                                         descriptor=self.descriptor,
