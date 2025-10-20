@@ -125,7 +125,7 @@ class GaussianProcess(object):
                  use_forces=True, images=None, function=None, derivative=None,
                  sparse=None, sparse_derivative=None, autograd=False,
                  train_batch_size=25, eval_batch_size=25,
-                 data_type='float64', device='cpu',
+                 data_type='float64', device='cpu', n_jobs=-1,
                  soap_param=None, mace_param=None, descriptor='cartesian coordinates',
                  atoms_mask=None):
 
@@ -137,6 +137,7 @@ class GaussianProcess(object):
             self.torch_data_type = torch.float64
 
         self.device = device
+        self.n_jobs = n_jobs
         self.soap_param = soap_param
         self.mace_param = mace_param
         self.descriptor = descriptor
@@ -299,7 +300,7 @@ class GaussianProcess(object):
                 # dfp_dr.append(dfp_dr__)
 
                 if self.device == 'cpu':
-                    fp__, dfp_dr__ = numerical_descriptor_gradient_parallel(image, self.mace)
+                    fp__, dfp_dr__ = numerical_descriptor_gradient_parallel(image, self.mace, n_jobs=self.n_jobs)
                 else:
                     fp__, dfp_dr__ = numerical_descriptor_gradient(image, self.mace)
                 fp.append(fp__)
@@ -341,7 +342,7 @@ class GaussianProcess(object):
 
         elif self.descriptor == 'mace':
             if self.device == 'cpu':
-                fp, dfp_dr = numerical_descriptor_gradient_parallel(image, self.mace)
+                fp, dfp_dr = numerical_descriptor_gradient_parallel(image, self.mace, n_jobs=self.n_jobs)
             else:
                 fp, dfp_dr = numerical_descriptor_gradient(image, self.mace)
             fp = fp.to(dtype=self.torch_data_type, device=self.device)  # (Natom, Ndescriptor)
