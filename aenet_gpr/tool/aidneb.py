@@ -496,6 +496,7 @@ class AIDNEB:
                                              autograd=self.input_param.autograd,
                                              train_batch_size=self.input_param.train_batch_size,
                                              eval_batch_size=self.input_param.eval_batch_size,
+                                             n_jobs=self.input_param.n_jobs,
                                              fit_weight=self.input_param.fit_weight,
                                              fit_scale=self.input_param.fit_scale)
 
@@ -520,6 +521,7 @@ class AIDNEB:
                                              autograd=self.input_param.autograd,
                                              train_batch_size=self.input_param.train_batch_size,
                                              eval_batch_size=self.input_param.eval_batch_size,
+                                             n_jobs=self.input_param.n_jobs,
                                              fit_weight=self.input_param.fit_weight,
                                              fit_scale=self.input_param.fit_scale)
 
