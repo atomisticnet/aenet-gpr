@@ -146,7 +146,6 @@ class GaussianProcess(object):
             if self.mace_param.get('system') == "materials":
                 try:
                     from mace.calculators import mace_mp
-                    from aenet_gpr.src import numerical_mace_descriptor_gradient
                 except ImportError:
                     raise ImportError(
                         "The 'joblib' and 'mace' packages are required for using pre-trained MACE descriptors.\n"
@@ -161,7 +160,6 @@ class GaussianProcess(object):
             else:
                 try:
                     from mace.calculators import mace_off
-                    from aenet_gpr.src import numerical_mace_descriptor_gradient
                 except ImportError:
                     raise ImportError(
                         "The 'joblib' and 'mace' packages are required for using pre-trained MACE descriptors.\n"
@@ -263,7 +261,7 @@ class GaussianProcess(object):
                 # if self.device == 'cpu':
                 #     fp__, dfp_dr__ = numerical_descriptor_gradient_parallel(image, self.mace, n_jobs=self.n_jobs, dtype=self.torch_data_type)
                 # else:
-                fp__, dfp_dr__ = numerical_mace_descriptor_gradient(image, self.mace, device=self.device)
+                fp__, dfp_dr__ = numerical_descriptor_gradient_parallel(image, self.mace, n_jobs=self.n_jobs, dtype=self.torch_data_type)
                 fp.append(fp__)
                 dfp_dr.append(dfp_dr__)
 
@@ -305,7 +303,7 @@ class GaussianProcess(object):
             # if self.device == 'cpu':
             #     fp, dfp_dr = numerical_descriptor_gradient_parallel(image, self.mace, n_jobs=self.n_jobs, dtype=self.torch_data_type)
             # else:
-            fp, dfp_dr = numerical_mace_descriptor_gradient(image, self.mace, device=self.device)
+            fp, dfp_dr = numerical_descriptor_gradient_parallel(image, self.mace, n_jobs=self.n_jobs, dtype=self.torch_data_type)
             fp = fp.to(dtype=self.torch_data_type, device=self.device)  # (Natom, Ndescriptor)
             dfp_dr = dfp_dr.to(dtype=self.torch_data_type, device=self.device)  # (Natom, Natom, 3, Ndescriptor)
 
