@@ -6,7 +6,7 @@ from .pytorch_kernel import FPKernel, FPKernelNoforces
 from .pytorch_kerneltypes import SquaredExp
 from .calculator import GPRCalculator
 from .prior import ConstantPrior
-from mace_tool import numerical_mace_descriptor_gradient, AenetMACE
+from .mace_tool import numerical_mace_descriptor_gradient, AenetMACE
 
 __all__ = ["gpr_iterative", "gpr_batch", "gpr_batch_internal", "pytorch_kernel", "pytorch_kernel_internal", "pytorch_kerneltypes", "calculator", "prior",
            "GaussianProcess", "FPKernel", "FPKernelNoforces", "SquaredExp", "GPRCalculator", "ConstantPrior",
