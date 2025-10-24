@@ -74,7 +74,7 @@ def numerical_descriptor_gradient(atoms, model, delta=1e-4, num_layers=-1, dtype
     desc = model.get_descriptors(atoms, num_layers=num_layers)
     n_atoms, D = desc.shape
 
-    grad = torch.empty((n_atoms, n_atoms, 3, D), dtype=dtype)
+    grad = np.empty((n_atoms, n_atoms, 3, D), dtype=dtype)
     for i in range(n_atoms):
         for j in range(3):  # x, y, z
             # forward step
@@ -305,9 +305,9 @@ class GaussianProcess(object):
                                                                self.mace,
                                                                delta=self.mace_param.get("delta"),
                                                                num_layers=self.mace_param.get("num_layers"),
-                                                               dtype=self.torch_data_type)
-                fp.append(fp__)
-                dfp_dr.append(dfp_dr__)
+                                                               dtype=self.data_type)
+                fp.append(torch.tensor(fp__, dtype=self.torch_data_type, device=self.device))
+                dfp_dr.append(torch.tensor(dfp_dr__, dtype=self.torch_data_type, device=self.device))
 
             fp = torch.stack(fp).to(dtype=self.torch_data_type, device=self.device)  # (Ndata, Natom, Ndescriptor)
             dfp_dr = torch.stack(dfp_dr).to(dtype=self.torch_data_type,
@@ -352,9 +352,9 @@ class GaussianProcess(object):
                                                        self.mace,
                                                        delta=self.mace_param.get("delta"),
                                                        num_layers=self.mace_param.get("num_layers"),
-                                                       dtype=self.torch_data_type)
-            fp = fp.to(dtype=self.torch_data_type, device=self.device)  # (Natom, Ndescriptor)
-            dfp_dr = dfp_dr.to(dtype=self.torch_data_type, device=self.device)  # (Natom, Natom, 3, Ndescriptor)
+                                                       dtype=self.data_type)
+            fp = torch.tensor(fp, dtype=self.torch_data_type, device=self.device)  # (Natom, Ndescriptor)
+            dfp_dr = torch.tensor(dfp_dr, dtype=self.torch_data_type, device=self.device)  # (Natom, Natom, 3, Ndescriptor)
 
         else:
             fp = torch.as_tensor(image.get_positions(wrap=False).reshape(-1), dtype=self.torch_data_type).to(
