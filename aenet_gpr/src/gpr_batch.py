@@ -9,88 +9,164 @@ from aenet_gpr.src.pytorch_kernel import FPKernel
 from aenet_gpr.util.prepare_data import get_N_batch, get_batch_indexes_N_batch
 
 
-def _central_diff_task(atoms, i, j, delta, model, num_layers):
+# def _central_diff_task(atoms, i, j, delta, model, num_layers):
+#     """
+#     Desciptor gradient for each atom i, and cartexian coordinate j(x/y/z)
+#     """
+#     atoms_f = deepcopy(atoms)
+#     atoms_f.positions[i, j] += delta
+#     desc_f = model.get_descriptors(atoms_f, num_layers=num_layers)
+#
+#     atoms_b = deepcopy(atoms)
+#     atoms_b.positions[i, j] -= delta
+#     desc_b = model.get_descriptors(atoms_b, num_layers=num_layers)
+#
+#     grad_ij = (desc_f - desc_b) / (2 * delta)
+#     return i, j, grad_ij
+#
+#
+# def numerical_descriptor_gradient_parallel(atoms, model, delta=1e-4, num_layers=-1, n_jobs=1, dtype=torch.float32):
+#     """
+#     Args:
+#         atoms (ase.Atoms):
+#         model: MACE calculator
+#         delta (float): displacement (Ang)
+#         num_layers (int): MACE interaction layers number
+#         n_jobs (int): pararell job number
+#         dtype (torch.dtype):
+#
+#     Returns:
+#         desc (torch.Tensor): (n_atoms, descriptor_dim)
+#         grad (torch.Tensor): (n_atoms, n_atoms, 3, descriptor_dim)
+#     """
+#
+#     desc = model.get_descriptors(atoms, num_layers=num_layers)
+#     n_atoms, D = desc.shape
+#
+#     # Job list
+#     jobs = [(atoms, i, j, delta, model, num_layers) for i in range(n_atoms) for j in range(3)]
+#
+#     # Pararell execution
+#     results = Parallel(n_jobs=n_jobs, prefer="threads")(delayed(_central_diff_task)(*job) for job in jobs)
+#     results.sort(key=lambda x: (x[0], x[1]))
+#
+#     grad = torch.empty((n_atoms, n_atoms, 3, D), dtype=dtype)
+#     for i, j, grad_ij in results:
+#         grad[:, i, j, :] = torch.tensor(grad_ij, dtype=dtype)
+#
+#     return torch.tensor(desc, dtype=dtype), grad
+
+
+def numerical_descriptor_gradient(atoms, model, delta=1e-4, num_layers=-1, n_jobs=-1, dtype='float32'):
     """
-    Desciptor gradient for each atom i, and cartexian coordinate j(x/y/z)
-    """
-    atoms_f = deepcopy(atoms)
-    atoms_f.positions[i, j] += delta
-    desc_f = model.get_descriptors(atoms_f, num_layers=num_layers)
+    Optimized batch version - pre-generates all perturbed positions and processes them efficiently
 
-    atoms_b = deepcopy(atoms)
-    atoms_b.positions[i, j] -= delta
-    desc_b = model.get_descriptors(atoms_b, num_layers=num_layers)
-
-    grad_ij = (desc_f - desc_b) / (2 * delta)
-    return i, j, grad_ij
-
-
-def numerical_descriptor_gradient_parallel(atoms, model, delta=1e-4, num_layers=-1, n_jobs=1, dtype=torch.float32):
-    """
     Args:
         atoms (ase.Atoms):
         model: MACE calculator
         delta (float): displacement (Ang)
         num_layers (int): MACE interaction layers number
-        n_jobs (int): pararell job number
-        dtype (torch.dtype):
+        n_jobs (int): number of processes
+        dtype (dtype):
 
     Returns:
         desc (torch.Tensor): (n_atoms, descriptor_dim)
         grad (torch.Tensor): (n_atoms, n_atoms, 3, descriptor_dim)
     """
-
+    # Get original descriptor
     desc = model.get_descriptors(atoms, num_layers=num_layers)
     n_atoms, D = desc.shape
 
-    # Job list
-    jobs = [(atoms, i, j, delta, model, num_layers) for i in range(n_atoms) for j in range(3)]
-
-    # Pararell execution
-    results = Parallel(n_jobs=n_jobs, prefer="threads")(delayed(_central_diff_task)(*job) for job in jobs)
-    results.sort(key=lambda x: (x[0], x[1]))
-
-    grad = torch.empty((n_atoms, n_atoms, 3, D), dtype=dtype)
-    for i, j, grad_ij in results:
-        grad[:, i, j, :] = torch.tensor(grad_ij, dtype=dtype)
-
-    return torch.tensor(desc, dtype=dtype), grad
-
-
-def numerical_descriptor_gradient(atoms, model, delta=1e-4, num_layers=-1, dtype=torch.float32):
-    """
-    Args:
-        atoms (ase.Atoms):
-        model: MACE calculator
-        delta (float): displacement (Ang)
-        num_layers (int): MACE interaction layers number
-        dtype (torch.dtype):
-
-    Returns:
-        desc (torch.Tensor): (n_atoms, descriptor_dim)
-        grad (torch.Tensor): (n_atoms, n_atoms, 3, descriptor_dim)
-    """
-
-    desc = model.get_descriptors(atoms, num_layers=num_layers)
-    n_atoms, D = desc.shape
-
+    # Pre-allocate gradient array
     grad = np.empty((n_atoms, n_atoms, 3, D), dtype=dtype)
+
+    # Get original positions once
+    original_positions = atoms.get_positions()
+
+    # Pre-create all perturbations
+    perturbations = []
     for i in range(n_atoms):
         for j in range(3):  # x, y, z
-            # forward step
-            atoms_f = deepcopy(atoms)
-            atoms_f.positions[i, j] += delta
-            desc_f = model.get_descriptors(atoms_f, num_layers=num_layers)
+            # Forward perturbation
+            pos_f = original_positions.copy()
+            pos_f[i, j] += delta
+            perturbations.append(('f', i, j, pos_f))
 
-            # backward step
-            atoms_b = deepcopy(atoms)
-            atoms_b.positions[i, j] -= delta
-            desc_b = model.get_descriptors(atoms_b, num_layers=num_layers)
+            # Backward perturbation
+            pos_b = original_positions.copy()
+            pos_b[i, j] -= delta
+            perturbations.append(('b', i, j, pos_b))
 
-            # central difference
-            grad[:, i, j, :] = (desc_f - desc_b) / (2 * delta)
+    if n_jobs == 1:
+        # Compute all descriptors
+        all_descriptors = []
+        for direction, i, j, positions in perturbations:
+            atoms_temp = deepcopy(atoms)
+            atoms.set_positions(positions)
+            desc_temp = model.get_descriptors(atoms_temp, num_layers=num_layers)
+            all_descriptors.append((direction, i, j, desc_temp))
+    else:
+        # --- Parallelize descriptor computation ---
+        def compute_descriptor(direction, i, j, positions):
+            atoms_temp = deepcopy(atoms)
+            atoms_temp.set_positions(positions)
+            desc_temp = model.get_descriptors(atoms_temp, num_layers=num_layers)
+            return direction, i, j, desc_temp
+
+        all_descriptors = Parallel(n_jobs=n_jobs, prefer="processes")(
+            delayed(compute_descriptor)(direction, i, j, positions)
+            for (direction, i, j, positions) in perturbations
+        )
+
+    # Reorganize and compute gradients
+    desc_dict = {}
+    for direction, i, j, desc_temp in all_descriptors:
+        key = (i, j)
+        if key not in desc_dict:
+            desc_dict[key] = {}
+        desc_dict[key][direction] = desc_temp
+
+    # Compute central differences
+    for (i, j), descs in desc_dict.items():
+        grad[:, i, j, :] = (descs['f'] - descs['b']) / (2 * delta)
 
     return desc, grad
+
+
+# def numerical_descriptor_gradient(atoms, model, delta=1e-4, num_layers=-1, dtype='float32'):
+#     """
+#     Args:
+#         atoms (ase.Atoms):
+#         model: MACE calculator
+#         delta (float): displacement (Ang)
+#         num_layers (int): MACE interaction layers number
+#         dtype (torch.dtype):
+#
+#     Returns:
+#         desc (torch.Tensor): (n_atoms, descriptor_dim)
+#         grad (torch.Tensor): (n_atoms, n_atoms, 3, descriptor_dim)
+#     """
+#
+#     desc = model.get_descriptors(atoms, num_layers=num_layers)
+#     n_atoms, D = desc.shape
+#
+#     grad = np.empty((n_atoms, n_atoms, 3, D), dtype=dtype)
+#     for i in range(n_atoms):
+#         for j in range(3):  # x, y, z
+#             # forward step
+#             atoms_f = deepcopy(atoms)
+#             atoms_f.positions[i, j] += delta
+#             desc_f = model.get_descriptors(atoms_f, num_layers=num_layers)
+#
+#             # backward step
+#             atoms_b = deepcopy(atoms)
+#             atoms_b.positions[i, j] -= delta
+#             desc_b = model.get_descriptors(atoms_b, num_layers=num_layers)
+#
+#             # central difference
+#             grad[:, i, j, :] = (desc_f - desc_b) / (2 * delta)
+#
+#     return desc, grad
 
 
 def apply_force_mask(F, atoms_mask):
@@ -305,6 +381,7 @@ class GaussianProcess(object):
                                                                self.mace,
                                                                delta=self.mace_param.get("delta"),
                                                                num_layers=self.mace_param.get("num_layers"),
+                                                               n_jobs=self.mace_param.get("mace_n_jobs"),
                                                                dtype=self.data_type)
                 fp.append(torch.tensor(fp__, dtype=self.torch_data_type, device=self.device))
                 dfp_dr.append(torch.tensor(dfp_dr__, dtype=self.torch_data_type, device=self.device))
@@ -352,6 +429,7 @@ class GaussianProcess(object):
                                                        self.mace,
                                                        delta=self.mace_param.get("delta"),
                                                        num_layers=self.mace_param.get("num_layers"),
+                                                       n_jobs=self.mace_param.get("mace_n_jobs"),
                                                        dtype=self.data_type)
             fp = torch.tensor(fp, dtype=self.torch_data_type, device=self.device)  # (Natom, Ndescriptor)
             dfp_dr = torch.tensor(dfp_dr, dtype=self.torch_data_type, device=self.device)  # (Natom, Natom, 3, Ndescriptor)
