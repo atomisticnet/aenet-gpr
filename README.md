@@ -133,9 +133,6 @@ Other formats such as **VASP OUTCAR** (with a line of `File_format vasp-out` in 
 Train_file ./example/3_Li-EC/train_set/file_*.xsf
 Test_file ./example/3_Li-EC/test_set/file_*.xsf
 
-# Train model save (default: False)
-Train_model_save False  # True-> train data and trained GPR model are saved in "data_dict.pt" and "calc_dict.pt"
-
 # File format (default: xsf)
 File_format xsf  # Other DFT output files, which can be read via ASE such as "vasp-out" "aims-output" "espresso-out", are also supported
 
