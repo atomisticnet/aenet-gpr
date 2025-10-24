@@ -57,6 +57,42 @@ def numerical_descriptor_gradient_parallel(atoms, model, delta=1e-4, num_layers=
     return torch.tensor(desc, dtype=dtype), grad
 
 
+def numerical_descriptor_gradient(atoms, model, delta=1e-4, num_layers=-1, dtype=torch.float32):
+    """
+    Args:
+        atoms (ase.Atoms):
+        model: MACE calculator
+        delta (float): displacement (Ang)
+        num_layers (int): MACE interaction layers number
+        dtype (torch.dtype):
+
+    Returns:
+        desc (torch.Tensor): (n_atoms, descriptor_dim)
+        grad (torch.Tensor): (n_atoms, n_atoms, 3, descriptor_dim)
+    """
+
+    desc = model.get_descriptors(atoms, num_layers=num_layers)
+    n_atoms, D = desc.shape
+
+    grad = torch.empty((n_atoms, n_atoms, 3, D), dtype=dtype)
+    for i in range(n_atoms):
+        for j in range(3):  # x, y, z
+            # forward step
+            atoms_f = deepcopy(atoms)
+            atoms_f.positions[i, j] += delta
+            desc_f = model.get_descriptors(atoms_f, num_layers=num_layers)
+
+            # backward step
+            atoms_b = deepcopy(atoms)
+            atoms_b.positions[i, j] -= delta
+            desc_b = model.get_descriptors(atoms_b, num_layers=num_layers)
+
+            # central difference
+            grad[:, i, j, :] = (desc_f - desc_b) / (2 * delta)
+
+    return desc, grad
+
+
 def apply_force_mask(F, atoms_mask):
     """
     Args:
@@ -87,6 +123,7 @@ class GaussianProcess(object):
 
     kernel: Defaults to the Squared Exponential kernel with derivatives
     '''
+
     def __init__(self, hp=None, prior=None, prior_update=True, kerneltype='sqexp',
                  scale=0.4, weight=1.0, noise=1e-6, noisefactor=0.5,
                  use_forces=True, images=None, function=None, derivative=None,
@@ -249,7 +286,8 @@ class GaussianProcess(object):
                                                return_descriptor=True,
                                                n_jobs=self.soap_param.get('n_jobs'))
 
-            dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type).to(self.device)  # (Ndata, Ncenters, Natom, 3, Natom*3)
+            dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type).to(
+                self.device)  # (Ndata, Ncenters, Natom, 3, Natom*3)
             fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Ndata, Ncenters, Natom*3)
 
         elif self.descriptor == 'mace':
@@ -263,17 +301,17 @@ class GaussianProcess(object):
                 # if self.device == 'cpu':
                 #     fp__, dfp_dr__ = numerical_descriptor_gradient_parallel(image, self.mace, n_jobs=self.n_jobs, dtype=self.torch_data_type)
                 # else:
-                fp__, dfp_dr__ = numerical_descriptor_gradient_parallel(image,
-                                                                        self.mace,
-                                                                        delta=self.mace_param.get("delta"),
-                                                                        num_layers=self.mace_param.get("num_layers"),
-                                                                        n_jobs=self.mace_param.get("n_jobs"),
-                                                                        dtype=self.torch_data_type)
+                fp__, dfp_dr__ = numerical_descriptor_gradient(image,
+                                                               self.mace,
+                                                               delta=self.mace_param.get("delta"),
+                                                               num_layers=self.mace_param.get("num_layers"),
+                                                               dtype=self.torch_data_type)
                 fp.append(fp__)
                 dfp_dr.append(dfp_dr__)
 
             fp = torch.stack(fp).to(dtype=self.torch_data_type, device=self.device)  # (Ndata, Natom, Ndescriptor)
-            dfp_dr = torch.stack(dfp_dr).to(dtype=self.torch_data_type, device=self.device)  # (Ndata, Natom, Natom, 3, Ndescriptor)
+            dfp_dr = torch.stack(dfp_dr).to(dtype=self.torch_data_type,
+                                            device=self.device)  # (Ndata, Natom, Natom, 3, Ndescriptor)
 
         else:
             fp = []
@@ -310,12 +348,11 @@ class GaussianProcess(object):
             # if self.device == 'cpu':
             #     fp, dfp_dr = numerical_descriptor_gradient_parallel(image, self.mace, n_jobs=self.n_jobs, dtype=self.torch_data_type)
             # else:
-            fp, dfp_dr = numerical_descriptor_gradient_parallel(image,
-                                                                self.mace,
-                                                                delta=self.mace_param.get("delta"),
-                                                                num_layers=self.mace_param.get("num_layers"),
-                                                                n_jobs=self.mace_param.get("n_jobs"),
-                                                                dtype=self.torch_data_type)
+            fp, dfp_dr = numerical_descriptor_gradient(image,
+                                                       self.mace,
+                                                       delta=self.mace_param.get("delta"),
+                                                       num_layers=self.mace_param.get("num_layers"),
+                                                       dtype=self.torch_data_type)
             fp = fp.to(dtype=self.torch_data_type, device=self.device)  # (Natom, Ndescriptor)
             dfp_dr = dfp_dr.to(dtype=self.torch_data_type, device=self.device)  # (Natom, Natom, 3, Ndescriptor)
 
@@ -396,8 +433,9 @@ class GaussianProcess(object):
 
                 pred, kernel = self.eval_data_batch(eval_fp, eval_dfp_dr)
                 E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
-                F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(F=pred[data_per_batch:].view(data_per_batch, -1),
-                                                                                       atoms_mask=self.atoms_mask)
+                F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(
+                    F=pred[data_per_batch:].view(data_per_batch, -1),
+                    atoms_mask=self.atoms_mask)
 
             return E_hat, F_hat.view((Ntest, self.Natom, 3)), None, None
 
@@ -411,8 +449,9 @@ class GaussianProcess(object):
 
                 pred, kernel = self.eval_data_batch(eval_fp, eval_dfp_dr)
                 E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
-                F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(F=pred[data_per_batch:].view(data_per_batch, -1),
-                                                                                       atoms_mask=self.atoms_mask)
+                F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(
+                    F=pred[data_per_batch:].view(data_per_batch, -1),
+                    atoms_mask=self.atoms_mask)
 
                 var = self.eval_variance_batch(get_variance=get_variance,
                                                eval_fp=eval_fp,
@@ -421,8 +460,9 @@ class GaussianProcess(object):
                 std = torch.sqrt(torch.diagonal(var))
 
                 unc_e[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = std[0:data_per_batch] / self.weight
-                unc_f[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(F=std[data_per_batch:].view(data_per_batch, -1),
-                                                                                       atoms_mask=self.atoms_mask)
+                unc_f[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(
+                    F=std[data_per_batch:].view(data_per_batch, -1),
+                    atoms_mask=self.atoms_mask)
 
             return E_hat, F_hat.view((Ntest, self.Natom, 3)), unc_e, unc_f.view((Ntest, self.Natom, 3))
 
