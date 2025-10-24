@@ -8,7 +8,6 @@ class InputParameters(object):
     def __init__(self):
         self.file_format       = 'xsf'
         self.device            = 'cpu'
-        self.n_jobs            = -1
         self.train_file        = []
         self.test_file         = []
 
@@ -47,8 +46,14 @@ class InputParameters(object):
 
         self.mace_system = "materials"
         self.mace_model = "small"
+        self.mace_delta = 1e-4
+        self.mace_num_layers = -1
+        self.mace_n_jobs = 1
         self.mace_param = {'system': self.mace_system,
-                           'model': self.mace_model}
+                           'model': self.mace_model,
+                           'delta': self.mace_delta,
+                           'num_layers': self.mace_num_layers,
+                           'mace_n_jobs': self.mace_n_jobs}
 
         self.kerneltype        = 'sqexp'
         self.scale             = 0.4
