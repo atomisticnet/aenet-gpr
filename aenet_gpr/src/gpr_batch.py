@@ -102,7 +102,7 @@ def numerical_descriptor_gradient(atoms, model, delta=1e-4, num_layers=-1, n_job
         all_descriptors = []
         for direction, i, j, positions in perturbations:
             atoms_temp = deepcopy(atoms)
-            atoms.set_positions(positions)
+            atoms_temp.set_positions(positions)
             desc_temp = model.get_descriptors(atoms_temp, num_layers=num_layers)
             all_descriptors.append((direction, i, j, desc_temp))
     else:
@@ -113,7 +113,7 @@ def numerical_descriptor_gradient(atoms, model, delta=1e-4, num_layers=-1, n_job
             desc_temp = model.get_descriptors(atoms_temp, num_layers=num_layers)
             return direction, i, j, desc_temp
 
-        all_descriptors = Parallel(n_jobs=n_jobs, prefer="processes")(
+        all_descriptors = Parallel(n_jobs=n_jobs, prefer="threads")(
             delayed(compute_descriptor)(direction, i, j, positions)
             for (direction, i, j, positions) in perturbations
         )
