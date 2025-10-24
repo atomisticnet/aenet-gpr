@@ -1,5 +1,7 @@
 import torch
 import numpy as np
+
+from copy import deepcopy
 from joblib import Parallel, delayed
 
 from aenet_gpr.src.prior import ConstantPrior
@@ -11,11 +13,11 @@ def _central_diff_task(atoms, i, j, delta, model, num_layers):
     """
     Desciptor gradient for each atom i, and cartexian coordinate j(x/y/z)
     """
-    atoms_f = atoms.copy()
+    atoms_f = deepcopy(atoms)
     atoms_f.positions[i, j] += delta
     desc_f = model.get_descriptors(atoms_f, num_layers=num_layers)
 
-    atoms_b = atoms.copy()
+    atoms_b = deepcopy(atoms)
     atoms_b.positions[i, j] -= delta
     desc_b = model.get_descriptors(atoms_b, num_layers=num_layers)
 
