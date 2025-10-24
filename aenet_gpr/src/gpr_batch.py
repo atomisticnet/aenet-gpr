@@ -269,8 +269,15 @@ class GaussianProcess(object):
                         "    pip install mace-torch\n"
                     )
 
+                # Check and set device
+                if torch.cuda.is_available():
+                    mace_device = "cuda:0"
+                else:
+                    mace_device = "cpu"
+                    print("[Warning] CUDA device not available. MACE descriptor computation may be slow on CPU.")
+
                 self.mace = mace_mp(model=self.mace_param.get('model'),
-                                    device=self.device)
+                                    device=mace_device)
 
             else:
                 try:
@@ -367,16 +374,10 @@ class GaussianProcess(object):
             fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Ndata, Ncenters, Natom*3)
 
         elif self.descriptor == 'mace':
+
             fp = []
             dfp_dr = []
             for image in images:
-                # fp__, dfp_dr__ = self.mace.get_descriptors_with_jacobian(image)
-                # fp.append(fp__)
-                # dfp_dr.append(dfp_dr__)
-
-                # if self.device == 'cpu':
-                #     fp__, dfp_dr__ = numerical_descriptor_gradient_parallel(image, self.mace, n_jobs=self.n_jobs, dtype=self.torch_data_type)
-                # else:
                 fp__, dfp_dr__ = numerical_descriptor_gradient(image,
                                                                self.mace,
                                                                delta=self.mace_param.get("delta"),
@@ -422,9 +423,6 @@ class GaussianProcess(object):
             fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Ncenters, Natom*3)
 
         elif self.descriptor == 'mace':
-            # if self.device == 'cpu':
-            #     fp, dfp_dr = numerical_descriptor_gradient_parallel(image, self.mace, n_jobs=self.n_jobs, dtype=self.torch_data_type)
-            # else:
             fp, dfp_dr = numerical_descriptor_gradient(image,
                                                        self.mace,
                                                        delta=self.mace_param.get("delta"),
