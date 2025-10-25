@@ -139,6 +139,13 @@ def read_train_in(infile):
 			else:
 				input_param.filter = True
 
+		mace_invariants, found = read_keyword_argument_same_line("mace_invariants", lines)
+		if found:
+			if "F" in mace_invariants.upper():
+				input_param.mace_invariants = False
+			else:
+				input_param.mace_invariants = True
+
 		# Optional parameters:
 		train_file, found = read_keyword_argument_same_line("train_file", lines)
 		if found:

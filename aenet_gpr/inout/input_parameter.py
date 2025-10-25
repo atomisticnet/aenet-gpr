@@ -47,11 +47,13 @@ class InputParameters(object):
         self.mace_system = "materials"
         self.mace_model = "small"
         self.mace_delta = 1e-4
+        self.invariants = True
         self.mace_num_layers = -1
         self.mace_n_jobs = 1
         self.mace_param = {'system': self.mace_system,
                            'model': self.mace_model,
                            'delta': self.mace_delta,
+                           'invariants': self.invariants,
                            'num_layers': self.mace_num_layers,
                            'mace_n_jobs': self.mace_n_jobs}
 
