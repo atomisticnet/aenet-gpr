@@ -57,7 +57,7 @@ from aenet_gpr.util.prepare_data import get_N_batch, get_batch_indexes_N_batch
 #     return torch.tensor(desc, dtype=dtype), grad
 
 
-def numerical_descriptor_gradient(atoms, model, delta=1e-4, num_layers=-1, n_jobs=-1, dtype='float32'):
+def numerical_descriptor_gradient(atoms, model, delta=1e-4, invariants=True, num_layers=-1, n_jobs=-1, dtype='float32'):
     """
     Optimized batch version - pre-generates all perturbed positions and processes them efficiently
 
@@ -74,7 +74,7 @@ def numerical_descriptor_gradient(atoms, model, delta=1e-4, num_layers=-1, n_job
         grad (torch.Tensor): (n_atoms, n_atoms, 3, descriptor_dim)
     """
     # Get original descriptor
-    desc = model.get_descriptors(atoms, num_layers=num_layers)
+    desc = model.get_descriptors(atoms, invariants=invariants, num_layers=num_layers)
     n_atoms, D = desc.shape
 
     # Pre-allocate gradient array
@@ -103,14 +103,14 @@ def numerical_descriptor_gradient(atoms, model, delta=1e-4, num_layers=-1, n_job
         for direction, i, j, positions in perturbations:
             atoms_temp = deepcopy(atoms)
             atoms_temp.set_positions(positions)
-            desc_temp = model.get_descriptors(atoms_temp, num_layers=num_layers)
+            desc_temp = model.get_descriptors(atoms_temp, invariants=invariants, num_layers=num_layers)
             all_descriptors.append((direction, i, j, desc_temp))
     else:
         # --- Parallelize descriptor computation ---
         def compute_descriptor(direction, i, j, positions):
             atoms_temp = deepcopy(atoms)
             atoms_temp.set_positions(positions)
-            desc_temp = model.get_descriptors(atoms_temp, num_layers=num_layers)
+            desc_temp = model.get_descriptors(atoms_temp, invariants=invariants, num_layers=num_layers)
             return direction, i, j, desc_temp
 
         all_descriptors = Parallel(n_jobs=n_jobs, prefer="threads")(
@@ -381,6 +381,7 @@ class GaussianProcess(object):
                 fp__, dfp_dr__ = numerical_descriptor_gradient(image,
                                                                self.mace,
                                                                delta=self.mace_param.get("delta"),
+                                                               invariants=self.mace_param.get("invariants"),
                                                                num_layers=self.mace_param.get("num_layers"),
                                                                n_jobs=self.mace_param.get("mace_n_jobs"),
                                                                dtype=self.data_type)
@@ -426,6 +427,7 @@ class GaussianProcess(object):
             fp, dfp_dr = numerical_descriptor_gradient(image,
                                                        self.mace,
                                                        delta=self.mace_param.get("delta"),
+                                                       invariants=self.mace_param.get("invariants"),
                                                        num_layers=self.mace_param.get("num_layers"),
                                                        n_jobs=self.mace_param.get("mace_n_jobs"),
                                                        dtype=self.data_type)
