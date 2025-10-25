@@ -74,7 +74,7 @@ def numerical_descriptor_gradient(atoms, model, delta=1e-4, invariants=True, num
         grad (torch.Tensor): (n_atoms, n_atoms, 3, descriptor_dim)
     """
     # Get original descriptor
-    desc = model.get_descriptors(atoms, invariants=invariants, num_layers=num_layers)
+    desc = model.get_descriptors(atoms, invariants_only=invariants, num_layers=num_layers)
     n_atoms, D = desc.shape
 
     # Pre-allocate gradient array
@@ -103,14 +103,14 @@ def numerical_descriptor_gradient(atoms, model, delta=1e-4, invariants=True, num
         for direction, i, j, positions in perturbations:
             atoms_temp = deepcopy(atoms)
             atoms_temp.set_positions(positions)
-            desc_temp = model.get_descriptors(atoms_temp, invariants=invariants, num_layers=num_layers)
+            desc_temp = model.get_descriptors(atoms_temp, invariants_only=invariants, num_layers=num_layers)
             all_descriptors.append((direction, i, j, desc_temp))
     else:
         # --- Parallelize descriptor computation ---
         def compute_descriptor(direction, i, j, positions):
             atoms_temp = deepcopy(atoms)
             atoms_temp.set_positions(positions)
-            desc_temp = model.get_descriptors(atoms_temp, invariants=invariants, num_layers=num_layers)
+            desc_temp = model.get_descriptors(atoms_temp, invariants_only=invariants, num_layers=num_layers)
             return direction, i, j, desc_temp
 
         all_descriptors = Parallel(n_jobs=n_jobs, prefer="threads")(
