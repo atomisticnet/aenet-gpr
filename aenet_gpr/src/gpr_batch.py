@@ -339,6 +339,7 @@ class GaussianProcess(object):
         self.kernel = FPKernel(species=self.species,
                                pbc=self.pbc,
                                Natom=self.Natom,
+                               Nmask=self.Nmask,
                                kerneltype=self.kerneltype,
                                data_type=self.data_type,
                                device=self.device)
