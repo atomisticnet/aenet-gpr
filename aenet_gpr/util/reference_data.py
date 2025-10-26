@@ -82,10 +82,7 @@ class ReferenceData(object):
             self.mace_param = mace_param
 
         self.mask_constraints = mask_constraints
-        if self.mask_constraints:
-            self.atoms_mask = self.create_mask()
-        else:
-            self.atoms_mask = None
+        self.atoms_mask = self.create_mask()
 
     def read_structure_files(self, structure_files=None, file_format: str = 'xsf'):
         # check 1: force unit
@@ -203,6 +200,7 @@ class ReferenceData(object):
                 mask_constraints[constraints[-1].a] = ~constraints[-1].mask
             except Exception:
                 pass
+
         return torch.argwhere(mask_constraints.reshape(-1)).reshape(-1)
 
     def set_fix_index_by_coord(self, max, axis=2):
