@@ -1,6 +1,7 @@
 import sys
 import torch
 
+import aenet_gpr
 from aenet_gpr.inout import Train, Test, Augmentation
 from aenet_gpr.inout.read_input import read_train_in
 from aenet_gpr.inout.io_print import *
@@ -8,7 +9,7 @@ from aenet_gpr.inout.io_print import *
 
 def main():
 
-    io_print_header()
+    io_print_header(version=aenet_gpr.__version__)
 
     # 1. Read train input
     if len(sys.argv) > 1:
