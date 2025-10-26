@@ -334,6 +334,8 @@ class FPKernel(BaseKernelType):
         fp = [Ntrain or Nsparse or Ntest, Ncenter, Nfeature]
         dfp_dr = [Ntrain or Nsparse or Ntest, Ncenter, Natom, 3, Nfeature]
         '''
+        print(fp.shape)
+        print(dfp_dr.shape)
 
         Ndata = fp.shape[0]
         X_N_batch = get_N_batch(Ndata, batch_size)
