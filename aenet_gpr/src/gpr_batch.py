@@ -478,7 +478,7 @@ class GaussianProcess(object):
         a = torch.full((self.Ntrain, 1), self.hyper_params['noise'] * self.hyper_params['noisefactor'],
                        dtype=self.torch_data_type, device=self.device)
         noise_val = self.hyper_params['noise']
-        b = noise_val.expand(self.Ntrain, 3 * self.Natom)
+        b = noise_val.expand(self.Ntrain, self.Nmask)
 
         # reg = torch.diag(torch.cat((a, b), 1).flatten() ** 2)
         diagonal_values = torch.cat((a, b), 1).flatten() ** 2
