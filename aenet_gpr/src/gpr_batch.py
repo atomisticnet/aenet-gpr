@@ -75,7 +75,7 @@ def numerical_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, invarian
         grad (torch.Tensor): (n_reduced_atoms, n_reduced_atoms, 3, descriptor_dim)
     """
     # Get original descriptor
-    atoms_maks = atoms_mask.cpu().numpy()
+    atoms_mask = atoms_mask.cpu().numpy()
     desc = model.get_descriptors(atoms, invariants_only=invariants, num_layers=num_layers)
     n_atoms, D = desc.shape
 
@@ -87,7 +87,7 @@ def numerical_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, invarian
 
     # Pre-create all perturbations
     perturbations = []
-    for i in atoms_maks:
+    for i in atoms_mask:
         for j in range(3):  # x, y, z
             # Forward perturbation
             pos_f = original_positions.copy()
@@ -133,7 +133,11 @@ def numerical_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, invarian
         grad[:, i, j, :] = (descs['f'] - descs['b']) / (2 * delta)
 
     # n_atoms -> n_reduced_atoms
-    return desc[atoms_maks, :], grad[atoms_maks, atoms_maks, :, :]
+    desc = desc[atoms_mask, :]
+    grad = grad[atoms_mask, :, :, :]
+    grad = grad[:, atoms_mask, :, :]
+
+    return desc, grad
 
 
 # def numerical_descriptor_gradient(atoms, model, delta=1e-4, num_layers=-1, dtype='float32'):
