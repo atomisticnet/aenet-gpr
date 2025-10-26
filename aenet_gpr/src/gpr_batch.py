@@ -64,23 +64,23 @@ def numerical_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, invarian
     Args:
         atoms (ase.Atoms):
         model: MACE calculator
+        atoms_mask: Atom index to keep
         delta (float): displacement (Ang)
         num_layers (int): MACE interaction layers number
         n_jobs (int): number of processes
         dtype (dtype):
 
     Returns:
-        desc (torch.Tensor): (n_atoms, descriptor_dim)
-        grad (torch.Tensor): (n_atoms, n_atoms, 3, descriptor_dim)
+        desc (torch.Tensor): (n_reduced_atoms, descriptor_dim)
+        grad (torch.Tensor): (n_reduced_atoms, n_reduced_atoms, 3, descriptor_dim)
     """
     # Get original descriptor
     atoms_maks = atoms_mask.cpu().numpy()
     desc = model.get_descriptors(atoms, invariants_only=invariants, num_layers=num_layers)
-    desc = desc[atoms_maks, :]
-    n_reduced_atoms, D = desc.shape
+    n_atoms, D = desc.shape
 
     # Pre-allocate gradient array
-    grad = np.empty((n_reduced_atoms, n_reduced_atoms, 3, D), dtype=dtype)
+    grad = np.empty((n_atoms, n_atoms, 3, D), dtype=dtype)
 
     # Get original positions once
     original_positions = atoms.get_positions()
@@ -132,7 +132,8 @@ def numerical_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, invarian
     for (i, j), descs in desc_dict.items():
         grad[:, i, j, :] = (descs['f'] - descs['b']) / (2 * delta)
 
-    return desc, grad
+    # n_atoms -> n_reduced_atoms
+    return desc[atoms_maks, :], grad[atoms_maks, atoms_maks, :, :]
 
 
 # def numerical_descriptor_gradient(atoms, model, delta=1e-4, num_layers=-1, dtype='float32'):
