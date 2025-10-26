@@ -126,7 +126,7 @@ def numerical_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, invarian
         key = (i, j)
         if key not in desc_dict:
             desc_dict[key] = {}
-        desc_dict[key][direction] = desc_temp[atoms_maks, :]
+        desc_dict[key][direction] = desc_temp[:, :]
 
     # Compute central differences
     for (i, j), descs in desc_dict.items():
