@@ -1,5 +1,4 @@
 import torch
-import gc
 
 from aenet_gpr.src.pytorch_kerneltypes import SquaredExp
 from aenet_gpr.util.prepare_data import get_N_batch, get_batch_indexes_N_batch
@@ -131,6 +130,7 @@ class FPKernel(BaseKernelType):
         """K_X1X2[X1.shape[0]: X1.shape[0] * (1 + 3 * Natom), :X2.shape[0]] kernel between fp1_deriv and fp2"""
         # [Ndata, Ncenter, Natom, 3, Nfeature] -> [Ndata, Ncenter, Natom * 3, Nfeature]
         dX1_reshaped = dX1.flatten(start_dim=2, end_dim=3)
+        del dX1
         # intermediate_result = torch.einsum('xycnf,xcdf->xycnd', X1__outer_minus__X2, dX1_reshaped)
         # intermediate_result = torch.matmul(X1__outer_minus__X2, dX1_reshaped.transpose(-1, -2))
 
@@ -142,15 +142,14 @@ class FPKernel(BaseKernelType):
         # K_X1X2[X1.shape[0]:, :X2.shape[0]] = kernel.permute(0, 2, 1).reshape(X1.shape[0] * 3 * self.Natom, X2.shape[0])
         # K_X1X2[X1.shape[0]:, :X2.shape[0]].copy_(
         #     kernel.permute(0, 2, 1).contiguous().view(X1.shape[0] * 3 * self.Natom, X2.shape[0]))
-        K_X1X2[X1.shape[0]:, :X2.shape[0]].copy_(torch.einsum('xycn,xycnd->xyd', __k_X1X2 / self.scale ** 2,
-                                                              torch.einsum('xycnf,xcdf->xycnd', X1__outer_minus__X2,
-                                                                           dX1_reshaped)).permute(0, 2,
-                                                                                                  1).contiguous().view(
-            X1.shape[0] * 3 * self.Natom, X2.shape[0]))
+        tmp1 = torch.einsum('xycnf,xcdf->xycnd', X1__outer_minus__X2, dX1_reshaped)
+        tmp1 = torch.einsum('xycn,xycnd->xyd', __k_X1X2 / self.scale ** 2, tmp1)
+        K_X1X2[X1.shape[0]:, :X2.shape[0]].copy_(tmp1.permute(0, 2, 1).contiguous().view(X1.shape[0] * 3 * self.Natom, X2.shape[0]))
 
         """K_X1X2[:X1.shape[0], X2.shape[0]: X2.shape[0] * (1 + 3 * Natom)] kernel between fp1 and fp2_deriv"""
         # [Ndata, Ncenter, Natom, 3, Nfeature] -> [Ndata, Ncenter, Natom * 3, Nfeature]
         dX2_reshaped = dX2.flatten(start_dim=2, end_dim=3)
+        del dX2
         # intermediate_result = torch.einsum('xycnf,yndf->xycnd', X2__outer_minus__X1, dX2_reshaped)
         # intermediate_result = torch.matmul(X2__outer_minus__X1, dX2_reshaped.transpose(-1, -2))
 
@@ -161,10 +160,9 @@ class FPKernel(BaseKernelType):
         # K_X1X2[:X1.shape[0], X2.shape[0]:] = kernel.reshape(X1.shape[0], X2.shape[0] * 3 * self.Natom)
         # K_X1X2[:X1.shape[0], X2.shape[0]:].copy_(
         #     kernel.view(X1.shape[0], X2.shape[0] * 3 * self.Natom))
-        K_X1X2[:X1.shape[0], X2.shape[0]:].copy_(torch.einsum('xycn,xycnd->xyd', __k_X2X1 / self.scale ** 2,
-                                                              torch.einsum('xycnf,yndf->xycnd', X2__outer_minus__X1,
-                                                                           dX2_reshaped)).view(X1.shape[0], X2.shape[
-            0] * 3 * self.Natom))
+        tmp1 = torch.einsum('xycnf,yndf->xycnd', X2__outer_minus__X1, dX2_reshaped)
+        tmp1 = torch.einsum('xycn,xycnd->xyd', __k_X2X1 / self.scale ** 2, tmp1)
+        K_X1X2[:X1.shape[0], X2.shape[0]:].copy_(tmp1.contiguous().view(X1.shape[0], X2.shape[0] * 3 * self.Natom))
 
         """K_X1X2[X1.shape[0]: X1.shape[0] * (1 + 3 * Natom), X2.shape[0]: X2.shape[0] * (1 + 3 * Natom)] 
         kernel between fp1_deriv and fp2_deriv"""
@@ -226,26 +224,22 @@ class FPKernel(BaseKernelType):
         #                                                  X2.shape[0] * 3 * self.Natom))
 
         # intermediate_result = torch.einsum('xycnb,xycnd->xycnbd', DdD_dr1, DdD_dr2)
-        K_X1X2[X1.shape[0]:, X2.shape[0]:].copy_(torch.einsum('xycn,xycnbd->xybd', __k_X1X2 / self.scale ** 4,
-                                                              torch.einsum('xycnb,xycnd->xycnbd', DdD_dr1,
-                                                                           DdD_dr2)).permute(0, 2, 1,
-                                                                                             3).contiguous().view(
-            X1.shape[0] * 3 * self.Natom, X2.shape[0] * 3 * self.Natom))
+        tmp1 = torch.einsum('xycnb,xycnd->xycnbd', DdD_dr1,  DdD_dr2)
+        tmp1 = torch.einsum('xycn,xycnbd->xybd', __k_X1X2 / self.scale ** 4, tmp1)
+        K_X1X2[X1.shape[0]:, X2.shape[0]:].copy_(tmp1.permute(0, 2, 1, 3).contiguous().view(X1.shape[0] * 3 * self.Natom, X2.shape[0] * 3 * self.Natom))
 
         # intermediate_result = torch.einsum('xcbf,yndf->xycnbd', dX1_reshaped, dX2_reshaped)
-        K_X1X2[X1.shape[0]:, X2.shape[0]:].add_(torch.einsum('xycn,xycnbd->xybd', __k_X1X2 / self.scale ** 2,
-                                                             torch.einsum('xcbf,yndf->xycnbd', dX1_reshaped,
-                                                                          dX2_reshaped)).permute(0, 2, 1,
-                                                                                                 3).contiguous().view(
-            X1.shape[0] * 3 * self.Natom, X2.shape[0] * 3 * self.Natom))
+        tmp1 = torch.einsum('xcbf,yndf->xycnbd', dX1_reshaped, dX2_reshaped)
+        tmp1 = torch.einsum('xycn,xycnbd->xybd', __k_X1X2 / self.scale ** 2, tmp1)
+        K_X1X2[X1.shape[0]:, X2.shape[0]:].add_(tmp1.permute(0, 2, 1, 3).contiguous().view(X1.shape[0] * 3 * self.Natom, X2.shape[0] * 3 * self.Natom))
 
-        del X1_expanded, X2_expanded, __k_X1X2, __k_X2X1, X1__outer_minus__X2, X2__outer_minus__X1, \
-            DdD_dr1, DdD_dr2, dX1_reshaped, dX2_reshaped
-        gc.collect()
+        # del X1_expanded, X2_expanded, __k_X1X2, __k_X2X1, X1__outer_minus__X2, X2__outer_minus__X1, \
+        #     DdD_dr1, DdD_dr2, dX1_reshaped, dX2_reshaped
+        # gc.collect()
 
         return K_X1X2
 
-    def kernel_per_data(self, X1=None, dX1=None, X2=None, dX2=None, iter=0):
+    def kernel_per_data(self, X1=None, dX1=None, X2=None, dX2=None):
         '''
         Return a full kernel matrix between two structural fingerprints, 'X1' and 'X2'.
         X1, X2 = [Ncenter, Nfeature]
@@ -324,10 +318,10 @@ class FPKernel(BaseKernelType):
                           intermediate_result)
         kernel[1:, 1:] = C0 + C1
 
-        if iter % 10 == 9:
-            del X1_expanded, X2_expanded, X1_outer_minus_X2, X2_outer_minus_X1, k, intermediate_result, \
-                DdD_dr1, DdD_dr2, C0, C1
-            gc.collect()
+        # if iter % 10 == 9:
+        #     del X1_expanded, X2_expanded, X1_outer_minus_X2, X2_outer_minus_X1, k, intermediate_result, \
+        #         DdD_dr1, DdD_dr2, C0, C1
+        #     gc.collect()
 
         return kernel
 
@@ -389,8 +383,7 @@ class FPKernel(BaseKernelType):
             selected_rows = torch.cat([row_index, row_deriv_index])
 
             K_XX[selected_rows[:, None], selected_rows] = self.kernel_per_data(X1=fp_i, dX1=dfp_dr_i,
-                                                                               X2=fp_i, dX2=dfp_dr_i,
-                                                                               iter=i)
+                                                                               X2=fp_i, dX2=dfp_dr_i)
 
             for j in range(i + 1, Ndata):
                 fp_j = fp[j, :, :]
@@ -401,8 +394,7 @@ class FPKernel(BaseKernelType):
                 selected_cols = torch.cat([col_index, col_deriv_index])
 
                 K_XX[selected_rows[:, None], selected_cols] = self.kernel_per_data(X1=fp_i, dX1=dfp_dr_i,
-                                                                                   X2=fp_j, dX2=dfp_dr_j,
-                                                                                   iter=j)
+                                                                                   X2=fp_j, dX2=dfp_dr_j)
                 K_XX[selected_cols[:, None], selected_rows] = K_XX[selected_rows[:, None], selected_cols].T
 
         return K_XX
@@ -492,8 +484,7 @@ class FPKernel(BaseKernelType):
                 selected_cols = torch.cat([col_index, col_deriv_index])
 
                 K_xX[selected_rows[:, None], selected_cols] = self.kernel_per_data(X1=fp_1_i, dX1=dfp_dr_1_i,
-                                                                                   X2=fp_2_j, dX2=dfp_dr_2_j,
-                                                                                   iter=j)
+                                                                                   X2=fp_2_j, dX2=dfp_dr_2_j)
 
         return K_xX
 

@@ -13,22 +13,33 @@ class ConstantPrior:
                  constant,
                  data_type=torch.float64,
                  device='cpu',
+                 atoms_xyz_mask=None,
                  **kwargs):
         self.data_type = data_type
         self.device = device
-
+        self.atoms_xyz_mask = atoms_xyz_mask
         self.constant = torch.tensor(constant, dtype=self.data_type, device=self.device)
 
     def set_constant(self, constant):
         self.constant = constant
 
     def potential_per_data(self, Natom):
-        output = torch.zeros((1 + 3 * Natom,), dtype=self.data_type, device=self.device)
+        if self.atoms_xyz_mask is not None:
+            Nmask = self.atoms_xyz_mask.shape[0]
+        else:
+            Nmask = 3 * Natom
+
+        output = torch.zeros((1 + Nmask,), dtype=self.data_type, device=self.device)
         output[0] = self.constant
         return output
 
     def potential_batch(self, Ndata, Natom):
-        output_array = torch.zeros(((1 + 3 * Natom) * Ndata,), dtype=self.data_type, device=self.device)
+        if self.atoms_xyz_mask is not None:
+            Nmask = self.atoms_xyz_mask.shape[0]
+        else:
+            Nmask = 3 * Natom
+
+        output_array = torch.zeros(((1 + Nmask) * Ndata,), dtype=self.data_type, device=self.device)
         output_array[:Ndata] = self.constant
         return output_array
 

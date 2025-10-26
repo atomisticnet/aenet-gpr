@@ -57,7 +57,7 @@ from aenet_gpr.util.prepare_data import get_N_batch, get_batch_indexes_N_batch
 #     return torch.tensor(desc, dtype=dtype), grad
 
 
-def numerical_descriptor_gradient(atoms, model, delta=1e-4, invariants=True, num_layers=-1, n_jobs=-1, dtype='float32'):
+def numerical_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, invariants=True, num_layers=-1, n_jobs=-1, dtype='float32'):
     """
     Optimized batch version - pre-generates all perturbed positions and processes them efficiently
 
@@ -74,18 +74,20 @@ def numerical_descriptor_gradient(atoms, model, delta=1e-4, invariants=True, num
         grad (torch.Tensor): (n_atoms, n_atoms, 3, descriptor_dim)
     """
     # Get original descriptor
+    atoms_maks = atoms_mask.cpu().numpy()
     desc = model.get_descriptors(atoms, invariants_only=invariants, num_layers=num_layers)
-    n_atoms, D = desc.shape
+    desc = desc[atoms_maks, :]
+    n_reduced_atoms, D = desc.shape
 
     # Pre-allocate gradient array
-    grad = np.empty((n_atoms, n_atoms, 3, D), dtype=dtype)
+    grad = np.empty((n_reduced_atoms, n_reduced_atoms, 3, D), dtype=dtype)
 
     # Get original positions once
     original_positions = atoms.get_positions()
 
     # Pre-create all perturbations
     perturbations = []
-    for i in range(n_atoms):
+    for i in atoms_maks:
         for j in range(3):  # x, y, z
             # Forward perturbation
             pos_f = original_positions.copy()
@@ -124,7 +126,7 @@ def numerical_descriptor_gradient(atoms, model, delta=1e-4, invariants=True, num
         key = (i, j)
         if key not in desc_dict:
             desc_dict[key] = {}
-        desc_dict[key][direction] = desc_temp
+        desc_dict[key][direction] = desc_temp[atoms_maks, :]
 
     # Compute central differences
     for (i, j), descs in desc_dict.items():
@@ -169,25 +171,22 @@ def numerical_descriptor_gradient(atoms, model, delta=1e-4, invariants=True, num
 #     return desc, grad
 
 
-def apply_force_mask(F, atoms_mask):
+def apply_force_mask(F, atoms_xyz_mask):
     """
     Args:
         F: (Ntest, 3*Natoms) force tensor
-        atoms_mask: tensor([...]) flattened xyz indices to keep
+        atoms_xyz_mask: tensor([...]) flattened xyz indices to keep
 
     Returns:
         F_masked: same shape as F, masked with zeros outside atoms_mask
     """
-    if atoms_mask is None:
-        # keep all forces
-        return F.clone()
-    else:
-        mask = torch.zeros(F.shape[1], dtype=torch.bool, device=F.device)
-        mask[atoms_mask] = True
 
-        F_masked = torch.zeros_like(F)
-        F_masked[:, mask] = F[:, mask]
-        return F_masked
+    mask = torch.zeros(F.shape[1], dtype=torch.bool, device=F.device)
+    mask[atoms_xyz_mask] = True
+
+    F_masked = torch.zeros_like(F)
+    F_masked[:, mask] = F[:, mask]
+    return F_masked
 
 
 class GaussianProcess(object):
@@ -234,9 +233,7 @@ class GaussianProcess(object):
         self.Ntrain = len(self.images)
         self.species = self.images[0].get_chemical_symbols()
         self.pbc = np.all(self.images[0].get_pbc())
-
         self.Natom = len(self.species)
-        self.atoms_mask = atoms_mask
 
         if self.descriptor == 'soap':
             try:
@@ -293,14 +290,30 @@ class GaussianProcess(object):
                 self.mace = mace_off(model=self.mace_param.get('model'),
                                      device=self.device)
 
+        self.atoms_xyz_mask = atoms_mask.to(self.device)
+        self.Nmask = self.atoms_xyz_mask.shape[0]  # 3 * Natoms or 3 * Nreduced_atoms
+        self.atoms_mask = (self.atoms_xyz_mask[self.atoms_xyz_mask % 3 == 0] // 3).to(self.device)
+
+        # train_fp: (Ndata, Ncenter, Ndescriptor)
+        # train_dfp_dr: (Ndata, Ncenter, Natom, 3, Ndescriptor)
         self.train_fp, self.train_dfp_dr = self.generate_descriptor(self.images)
+
         self.Y = function  # Y = [Ntrain]
         self.dY = derivative  # dY = [Ntrain, Natom, 3]
-        self.model_vector = torch.empty((self.Ntrain * (1 + 3 * self.Natom),), dtype=self.torch_data_type,
+
+        self.dY = self.dY.contiguous().view(self.Ntrain, self.Natom * 3)
+        self.dY = self.dY[:, self.atoms_xyz_mask]  # shape: (Ntrain, Nselected)
+
+        # Step 3: Reshape back to (Ntrain, Nreduced_atoms, 3)
+        assert self.dY.shape[1] % 3 == 0, "Selected size must be divisible by 3"
+        Nreduced_atoms = self.atoms_mask.shape[0]
+        self.dY = self.dY.view(self.Ntrain, Nreduced_atoms, 3)
+
+        self.model_vector = torch.empty((self.Ntrain * (1 + self.Nmask),), dtype=self.torch_data_type,
                                         device=self.device)
 
         if prior is None:
-            self.prior = ConstantPrior(0.0, dtype=self.torch_data_type, device=self.device, atoms_mask=self.atoms_mask)
+            self.prior = ConstantPrior(0.0, dtype=self.torch_data_type, device=self.device, atoms_xyz_mask=self.atoms_xyz_mask)
         else:
             self.prior = torch.tensor(prior, dtype=self.torch_data_type, device=self.device)
         self.prior_update = prior_update
@@ -369,9 +382,9 @@ class GaussianProcess(object):
                                                return_descriptor=True,
                                                n_jobs=self.soap_param.get('n_jobs'))
 
-            dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type).to(
-                self.device)  # (Ndata, Ncenters, Natom, 3, Natom*3)
-            fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Ndata, Ncenters, Natom*3)
+            fp = torch.as_tensor(fp, dtype=self.torch_data_type, device=self.device)  # (Ndata, Ncenters, Ndescriptor)
+            dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type, device=self.device)  # (Ndata, Ncenters, Natom, 3, Ndescriptor)
+            dfp_dr = dfp_dr[:, :, self.atoms_mask, :, :]  # (Ndata, Ncenters, Nreduced_atoms, 3, Ndescriptor)
 
         elif self.descriptor == 'mace':
 
@@ -380,6 +393,7 @@ class GaussianProcess(object):
             for image in images:
                 fp__, dfp_dr__ = numerical_descriptor_gradient(image,
                                                                self.mace,
+                                                               atoms_mask=self.atoms_mask,
                                                                delta=self.mace_param.get("delta"),
                                                                invariants=self.mace_param.get("invariants"),
                                                                num_layers=self.mace_param.get("num_layers"),
@@ -388,9 +402,9 @@ class GaussianProcess(object):
                 fp.append(torch.tensor(fp__, dtype=self.torch_data_type, device=self.device))
                 dfp_dr.append(torch.tensor(dfp_dr__, dtype=self.torch_data_type, device=self.device))
 
-            fp = torch.stack(fp).to(dtype=self.torch_data_type, device=self.device)  # (Ndata, Natom, Ndescriptor)
+            fp = torch.stack(fp).to(dtype=self.torch_data_type, device=self.device)  # (Ndata, Nreduced_atoms, Ndescriptor)
             dfp_dr = torch.stack(dfp_dr).to(dtype=self.torch_data_type,
-                                            device=self.device)  # (Ndata, Natom, Natom, 3, Ndescriptor)
+                                            device=self.device)  # (Ndata, Nreduced_atoms, Nreduced_atoms, 3, Ndescriptor)
 
         else:
             fp = []
@@ -407,6 +421,7 @@ class GaussianProcess(object):
 
             fp = fp.unsqueeze(1)  # (Ndata, 1, Natom*3)
             dfp_dr = dfp_dr.transpose(2, 3).unsqueeze(1)  # (Ndata, 1, Natom, 3, Natom*3)
+            dfp_dr = dfp_dr[:, :, self.atoms_mask, :, :]  # (Ndata, 1, Nreduced_atoms, 3, Natom*3)
 
         return fp, dfp_dr
 
@@ -419,20 +434,21 @@ class GaussianProcess(object):
                                                return_descriptor=True,
                                                n_jobs=self.soap_param.get('n_jobs'))
 
-            dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type).to(
-                self.device)  # (Ncenters, Natom, 3, Natom*3)
-            fp = torch.as_tensor(fp, dtype=self.torch_data_type).to(self.device)  # (Ncenters, Natom*3)
+            fp = torch.as_tensor(fp, dtype=self.torch_data_type, device=self.device)  # (Ncenters, Natom*3)
+            dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type, device=self.device)  # (Ncenters, Natom, 3, Natom*3)
+            dfp_dr = dfp_dr[:, self.atoms_mask, :, :]  # (Ncenters, Nreduced_atoms, 3, Ndescriptor)
 
         elif self.descriptor == 'mace':
             fp, dfp_dr = numerical_descriptor_gradient(image,
                                                        self.mace,
+                                                       atoms_mask=self.atoms_mask,
                                                        delta=self.mace_param.get("delta"),
                                                        invariants=self.mace_param.get("invariants"),
                                                        num_layers=self.mace_param.get("num_layers"),
                                                        n_jobs=self.mace_param.get("mace_n_jobs"),
                                                        dtype=self.data_type)
-            fp = torch.tensor(fp, dtype=self.torch_data_type, device=self.device)  # (Natom, Ndescriptor)
-            dfp_dr = torch.tensor(dfp_dr, dtype=self.torch_data_type, device=self.device)  # (Natom, Natom, 3, Ndescriptor)
+            fp = torch.tensor(fp, dtype=self.torch_data_type, device=self.device)  # (Nreduced_atoms, Ndescriptor)
+            dfp_dr = torch.tensor(dfp_dr, dtype=self.torch_data_type, device=self.device)  # (Nreduced_atoms, Nreduced_atoms, 3, Ndescriptor)
 
         else:
             fp = torch.as_tensor(image.get_positions(wrap=False).reshape(-1), dtype=self.torch_data_type).to(
@@ -442,6 +458,7 @@ class GaussianProcess(object):
 
             fp = fp.unsqueeze(0)
             dfp_dr = dfp_dr.transpose(1, 2).unsqueeze(0)
+            dfp_dr = dfp_dr[:, self.atoms_mask, :, :]  # (1, Nreduced_atoms, 3, Natom*3)
 
         return fp, dfp_dr
 
@@ -511,9 +528,10 @@ class GaussianProcess(object):
 
                 pred, kernel = self.eval_data_batch(eval_fp, eval_dfp_dr)
                 E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
-                F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(
-                    F=pred[data_per_batch:].view(data_per_batch, -1),
-                    atoms_mask=self.atoms_mask)
+                F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], self.atoms_xyz_mask] = pred[data_per_batch:].view(data_per_batch, -1)
+                # F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(
+                #     F=pred[data_per_batch:].view(data_per_batch, -1),
+                #     atoms_xyz_mask=self.atoms_xyz_mask)
 
             return E_hat, F_hat.view((Ntest, self.Natom, 3)), None, None
 
@@ -527,9 +545,10 @@ class GaussianProcess(object):
 
                 pred, kernel = self.eval_data_batch(eval_fp, eval_dfp_dr)
                 E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
-                F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(
-                    F=pred[data_per_batch:].view(data_per_batch, -1),
-                    atoms_mask=self.atoms_mask)
+                F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], self.atoms_xyz_mask] = pred[data_per_batch:].view(data_per_batch, -1)
+                # F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(
+                #     F=pred[data_per_batch:].view(data_per_batch, -1),
+                #     atoms_xyz_mask=self.atoms_xyz_mask)
 
                 var = self.eval_variance_batch(get_variance=get_variance,
                                                eval_fp=eval_fp,
@@ -538,9 +557,10 @@ class GaussianProcess(object):
                 std = torch.sqrt(torch.diagonal(var))
 
                 unc_e[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = std[0:data_per_batch] / self.weight
-                unc_f[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(
-                    F=std[data_per_batch:].view(data_per_batch, -1),
-                    atoms_mask=self.atoms_mask)
+                unc_f[eval_x_indexes[i][0]:eval_x_indexes[i][1], self.atoms_xyz_mask] = std[data_per_batch:].view(data_per_batch, -1)
+                # unc_f[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(
+                #     F=std[data_per_batch:].view(data_per_batch, -1),
+                #     atoms_xyz_mask=self.atoms_xyz_mask)
 
             return E_hat, F_hat.view((Ntest, self.Natom, 3)), unc_e, unc_f.view((Ntest, self.Natom, 3))
 
@@ -583,12 +603,16 @@ class GaussianProcess(object):
 
         pred, kernel = self.eval_data_per_data(eval_fp_i, eval_dfp_dr_i)
         E_hat = pred[0]
-        F_hat = apply_force_mask(F=pred[1:].view(1, -1), atoms_mask=self.atoms_mask)
+        F_hat = torch.zeros((self.Natom * 3, ), dtype=self.torch_data_type, device=self.device)
+        F_hat[self.atoms_xyz_mask] = pred[1:]
+        # F_hat = apply_force_mask(F=pred[1:].view(1, -1), atoms_xyz_mask=self.atoms_xyz_mask)
 
         if not get_variance:
             return E_hat, F_hat.view((self.Natom, 3)), None
 
         else:
+            unc_f = torch.zeros((self.Natom * 3, ), dtype=self.torch_data_type, device=self.device)
+
             var = self.eval_variance_per_data(get_variance=True,
                                               eval_fp_i=eval_fp_i,
                                               eval_dfp_dr_i=eval_dfp_dr_i,
@@ -596,7 +620,8 @@ class GaussianProcess(object):
 
             std = torch.sqrt(torch.diagonal(var))
             unc_e = std[0] / self.weight
-            unc_f = apply_force_mask(F=std[1:].view(1, -1), atoms_mask=self.atoms_mask)
+            unc_f[self.atoms_xyz_mask] = std[1:]
+            # unc_f = apply_force_mask(F=std[1:].view(1, -1), atoms_xyz_mask=self.atoms_xyz_mask)
 
             return E_hat, F_hat.view((self.Natom, 3)), unc_e, unc_f.view((self.Natom, 3))
 
