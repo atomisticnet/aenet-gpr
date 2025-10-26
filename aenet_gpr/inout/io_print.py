@@ -182,9 +182,10 @@ def io_double_line():
     io_print("======================================================================")
 
 
-def io_print_header():
+def io_print_header(version):
     io_double_line()
-    io_print("aenet-GPR: surrogate GPR for GPR-ANN indirect force training")
+    io_print("aenet-GPR: Gaussian Process Regression Surrogate Models for Accelerating Data Generation")
+    io_print("version {0}".format(version))
     io_double_line()
     io_print("")
     io_current_time()
@@ -195,12 +196,11 @@ def io_print_header():
     io_print("1. Train: Generates a GPR model using the provided structure, energy, and force data.")
     io_print("2. Test: Uses the generated GPR model to predict values for the test set structures.")
     io_print("3. Augmentation: Performs data augmentation in xsf file format, compatible with aenet-(PyTorch),")
-    io_print("supporting a GPR-ANN training in conjunction with aenet-(PyTorch).")
     io_print("")
-    io_print("Each of these steps is executed once the input file (train.in) contains the keywords:")
-    io_print("Train_file [train file path]")
-    io_print("Test_file [test file path]")
-    io_print("Additional_write [True]")
+    # io_print("Each of these steps is executed once the input file (train.in) contains the keywords:")
+    # io_print("Train_file [train file path]")
+    # io_print("Test_file [test file path]")
+    # io_print("Additional_write [True]")
     # io_print("Once the Train step is completed, the generated GPR model is saved in [data_dict.pt] and [calc_dict.pt].")
     # io_print("Using these saved model files, you can later run only the Test or Augmentation steps separately.")
     # io_print("This program is distributed in the hope that it will be useful,")
