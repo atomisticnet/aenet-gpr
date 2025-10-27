@@ -348,31 +348,6 @@ class GaussianProcess(object):
                 self.mace = mace_mp(model=self.mace_param.get('model'),
                                     device=mace_device)
 
-            elif self.descriptor == 'chebyshev':
-                try:
-                    from aenet.torch_featurize import ChebyshevDescriptor
-                    print("You are using Chebyshev descriptor:")
-                    print("N. Artrith, A. Urban, and G. Ceder, Phys. Rev. B 96 (2017) 014112. \n")
-                    print("Chebshev parameter:")
-                    print(self.cheb_param)
-                except ImportError:
-                    raise ImportError(
-                        "The 'aenet-python' package is required for using Chebyshev descriptors.\n"
-                        "Please install it by running:\n\n"
-                        "    git clone https://github.com/atomisticnet/aenet-python.git\n"
-                        "    cd ./aenet-python/\n"
-                        "    pip install . --user\n"
-                    )
-
-                self.cheb = ChebyshevDescriptor(species=set(self.species),
-                                                rad_order=self.cheb_param.get("rad_order"),  # Radial polynomial order
-                                                rad_cutoff=self.cheb_param.get("rad_cutoff"),
-                                                # Radial cutoff (Angstroms)
-                                                ang_order=self.cheb_param.get("ang_order"),  # Angular polynomial order
-                                                ang_cutoff=self.cheb_param.get("ang_cutoff")
-                                                # Angular cutoff (Angstroms)
-                                                )
-
             else:
                 try:
                     from mace.calculators import mace_off
@@ -386,6 +361,31 @@ class GaussianProcess(object):
 
                 self.mace = mace_off(model=self.mace_param.get('model'),
                                      device=self.device)
+
+        elif self.descriptor == 'chebyshev':
+            try:
+                from aenet.torch_featurize import ChebyshevDescriptor
+                print("You are using Chebyshev descriptor:")
+                print("N. Artrith, A. Urban, and G. Ceder, Phys. Rev. B 96 (2017) 014112. \n")
+                print("Chebshev parameter:")
+                print(self.cheb_param)
+            except ImportError:
+                raise ImportError(
+                    "The 'aenet-python' package is required for using Chebyshev descriptors.\n"
+                    "Please install it by running:\n\n"
+                    "    git clone https://github.com/atomisticnet/aenet-python.git\n"
+                    "    cd ./aenet-python/\n"
+                    "    pip install . --user\n"
+                )
+
+            self.cheb = ChebyshevDescriptor(species=set(self.species),
+                                            rad_order=self.cheb_param.get("rad_order"),  # Radial polynomial order
+                                            rad_cutoff=self.cheb_param.get("rad_cutoff"),
+                                            # Radial cutoff (Angstroms)
+                                            ang_order=self.cheb_param.get("ang_order"),  # Angular polynomial order
+                                            ang_cutoff=self.cheb_param.get("ang_cutoff")
+                                            # Angular cutoff (Angstroms)
+                                            )
 
         self.atoms_xyz_mask = atoms_mask.to(self.device)
         self.Nmask = self.atoms_xyz_mask.shape[0]  # 3 * Natoms or 3 * Nreduced_atoms
