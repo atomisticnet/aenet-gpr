@@ -9,55 +9,146 @@ from aenet_gpr.src.pytorch_kernel import FPKernel
 from aenet_gpr.util.prepare_data import get_N_batch, get_batch_indexes_N_batch
 
 
-# def _central_diff_task(atoms, i, j, delta, model, num_layers):
-#     """
-#     Desciptor gradient for each atom i, and cartexian coordinate j(x/y/z)
-#     """
-#     atoms_f = deepcopy(atoms)
-#     atoms_f.positions[i, j] += delta
-#     desc_f = model.get_descriptors(atoms_f, num_layers=num_layers)
-#
-#     atoms_b = deepcopy(atoms)
-#     atoms_b.positions[i, j] -= delta
-#     desc_b = model.get_descriptors(atoms_b, num_layers=num_layers)
-#
-#     grad_ij = (desc_f - desc_b) / (2 * delta)
-#     return i, j, grad_ij
-#
-#
-# def numerical_descriptor_gradient_parallel(atoms, model, delta=1e-4, num_layers=-1, n_jobs=1, dtype=torch.float32):
-#     """
-#     Args:
-#         atoms (ase.Atoms):
-#         model: MACE calculator
-#         delta (float): displacement (Ang)
-#         num_layers (int): MACE interaction layers number
-#         n_jobs (int): pararell job number
-#         dtype (torch.dtype):
-#
-#     Returns:
-#         desc (torch.Tensor): (n_atoms, descriptor_dim)
-#         grad (torch.Tensor): (n_atoms, n_atoms, 3, descriptor_dim)
-#     """
-#
-#     desc = model.get_descriptors(atoms, num_layers=num_layers)
-#     n_atoms, D = desc.shape
-#
-#     # Job list
-#     jobs = [(atoms, i, j, delta, model, num_layers) for i in range(n_atoms) for j in range(3)]
-#
-#     # Pararell execution
-#     results = Parallel(n_jobs=n_jobs, prefer="threads")(delayed(_central_diff_task)(*job) for job in jobs)
-#     results.sort(key=lambda x: (x[0], x[1]))
-#
-#     grad = torch.empty((n_atoms, n_atoms, 3, D), dtype=dtype)
-#     for i, j, grad_ij in results:
-#         grad[:, i, j, :] = torch.tensor(grad_ij, dtype=dtype)
-#
-#     return torch.tensor(desc, dtype=dtype), grad
+def chebyshev_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, n_jobs=-1, dtype='float32'):
+    """
+    Args:
+        atoms (ase.Atoms):
+        model: Chebyshev calculator
+        atoms_mask: Atom index to keep
+        delta (float): displacement (Ang)
+        n_jobs (int): number of processes
+        dtype (dtype):
+
+    Returns:
+        desc (torch.Tensor): (n_reduced_atoms, descriptor_dim)
+        grad (torch.Tensor): (n_reduced_atoms, n_reduced_atoms, 3, descriptor_dim)
+    """
+    # Get original descriptor
+    atoms_mask = atoms_mask.cpu().numpy()
+    if np.any(atoms.pbc):
+        desc = model.featurize_structure(atoms.positions,
+                                         atoms.get_chemical_symbols(),
+                                         cell=np.array([atoms.cell[i] for i in range(3)]),
+                                         pbc=atoms.pbc)
+        n_atoms, D = desc.shape
+
+        # Pre-allocate gradient array
+        grad = np.empty((n_atoms, n_atoms, 3, D), dtype=dtype)
+
+        # Get original positions once
+        original_positions = atoms.get_positions()
+
+        # Pre-create all perturbations
+        perturbations = []
+        for i in atoms_mask:
+            for j in range(3):  # x, y, z
+                # Forward perturbation
+                pos_f = original_positions.copy()
+                pos_f[i, j] += delta
+                perturbations.append(('f', i, j, pos_f))
+
+                # Backward perturbation
+                pos_b = original_positions.copy()
+                pos_b[i, j] -= delta
+                perturbations.append(('b', i, j, pos_b))
+
+        if n_jobs == 1:
+            # Compute all descriptors
+            all_descriptors = []
+            for direction, i, j, positions in perturbations:
+                atoms_temp = deepcopy(atoms)
+                atoms_temp.set_positions(positions)
+                desc_temp = model.featurize_structure(atoms.positions,
+                                                      atoms.get_chemical_symbols(),
+                                                      cell=np.array([atoms.cell[i] for i in range(3)]),
+                                                      pbc=atoms.pbc)
+                all_descriptors.append((direction, i, j, desc_temp))
+        else:
+            # --- Parallelize descriptor computation ---
+            def compute_descriptor(direction, i, j, positions):
+                atoms_temp = deepcopy(atoms)
+                atoms_temp.set_positions(positions)
+                desc_temp = model.featurize_structure(atoms.positions,
+                                                      atoms.get_chemical_symbols(),
+                                                      cell=np.array([atoms.cell[i] for i in range(3)]),
+                                                      pbc=atoms.pbc)
+                return direction, i, j, desc_temp
+
+            all_descriptors = Parallel(n_jobs=n_jobs, prefer="threads")(
+                delayed(compute_descriptor)(direction, i, j, positions)
+                for (direction, i, j, positions) in perturbations
+            )
+
+    else:
+        desc = model.featurize_structure(atoms.positions,
+                                         atoms.get_chemical_symbols())
+        n_atoms, D = desc.shape
+
+        # Pre-allocate gradient array
+        grad = np.empty((n_atoms, n_atoms, 3, D), dtype=dtype)
+
+        # Get original positions once
+        original_positions = atoms.get_positions()
+
+        # Pre-create all perturbations
+        perturbations = []
+        for i in atoms_mask:
+            for j in range(3):  # x, y, z
+                # Forward perturbation
+                pos_f = original_positions.copy()
+                pos_f[i, j] += delta
+                perturbations.append(('f', i, j, pos_f))
+
+                # Backward perturbation
+                pos_b = original_positions.copy()
+                pos_b[i, j] -= delta
+                perturbations.append(('b', i, j, pos_b))
+
+        if n_jobs == 1:
+            # Compute all descriptors
+            all_descriptors = []
+            for direction, i, j, positions in perturbations:
+                atoms_temp = deepcopy(atoms)
+                atoms_temp.set_positions(positions)
+                desc_temp = model.featurize_structure(atoms.positions,
+                                                      atoms.get_chemical_symbols())
+                all_descriptors.append((direction, i, j, desc_temp))
+        else:
+            # --- Parallelize descriptor computation ---
+            def compute_descriptor(direction, i, j, positions):
+                atoms_temp = deepcopy(atoms)
+                atoms_temp.set_positions(positions)
+                desc_temp = model.featurize_structure(atoms.positions,
+                                                      atoms.get_chemical_symbols())
+                return direction, i, j, desc_temp
+
+            all_descriptors = Parallel(n_jobs=n_jobs, prefer="threads")(
+                delayed(compute_descriptor)(direction, i, j, positions)
+                for (direction, i, j, positions) in perturbations
+            )
+
+    # Reorganize and compute gradients
+    desc_dict = {}
+    for direction, i, j, desc_temp in all_descriptors:
+        key = (i, j)
+        if key not in desc_dict:
+            desc_dict[key] = {}
+        desc_dict[key][direction] = desc_temp[:, :]
+
+    # Compute central differences
+    for (i, j), descs in desc_dict.items():
+        grad[:, i, j, :] = (descs['f'] - descs['b']) / (2 * delta)
+
+    # n_atoms -> n_reduced_atoms
+    desc = desc[atoms_mask, :]
+    grad = grad[atoms_mask, :, :, :]
+    grad = grad[:, atoms_mask, :, :]
+
+    return desc, grad
 
 
-def numerical_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, invariants=True, num_layers=-1, n_jobs=-1, dtype='float32'):
+def mace_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, invariants=True, num_layers=-1, n_jobs=-1,
+                             dtype='float32'):
     """
     Optimized batch version - pre-generates all perturbed positions and processes them efficiently
 
@@ -140,42 +231,6 @@ def numerical_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, invarian
     return desc, grad
 
 
-# def numerical_descriptor_gradient(atoms, model, delta=1e-4, num_layers=-1, dtype='float32'):
-#     """
-#     Args:
-#         atoms (ase.Atoms):
-#         model: MACE calculator
-#         delta (float): displacement (Ang)
-#         num_layers (int): MACE interaction layers number
-#         dtype (torch.dtype):
-#
-#     Returns:
-#         desc (torch.Tensor): (n_atoms, descriptor_dim)
-#         grad (torch.Tensor): (n_atoms, n_atoms, 3, descriptor_dim)
-#     """
-#
-#     desc = model.get_descriptors(atoms, num_layers=num_layers)
-#     n_atoms, D = desc.shape
-#
-#     grad = np.empty((n_atoms, n_atoms, 3, D), dtype=dtype)
-#     for i in range(n_atoms):
-#         for j in range(3):  # x, y, z
-#             # forward step
-#             atoms_f = deepcopy(atoms)
-#             atoms_f.positions[i, j] += delta
-#             desc_f = model.get_descriptors(atoms_f, num_layers=num_layers)
-#
-#             # backward step
-#             atoms_b = deepcopy(atoms)
-#             atoms_b.positions[i, j] -= delta
-#             desc_b = model.get_descriptors(atoms_b, num_layers=num_layers)
-#
-#             # central difference
-#             grad[:, i, j, :] = (desc_f - desc_b) / (2 * delta)
-#
-#     return desc, grad
-
-
 def apply_force_mask(F, atoms_xyz_mask):
     """
     Args:
@@ -210,7 +265,7 @@ class GaussianProcess(object):
                  sparse=None, sparse_derivative=None, autograd=False,
                  train_batch_size=25, eval_batch_size=25,
                  data_type='float64', device='cpu',
-                 soap_param=None, mace_param=None, descriptor='cartesian coordinates',
+                 soap_param=None, mace_param=None, cheb_param=None, descriptor='cartesian coordinates',
                  atoms_mask=None):
 
         if data_type == 'float32':
@@ -224,6 +279,7 @@ class GaussianProcess(object):
 
         self.soap_param = soap_param
         self.mace_param = mace_param
+        self.cheb_param = cheb_param
         self.descriptor = descriptor
         self.kerneltype = kerneltype
 
@@ -243,6 +299,11 @@ class GaussianProcess(object):
         if self.descriptor == 'soap':
             try:
                 from dscribe.descriptors import SOAP
+                print("You are using SOAP descriptor through DScribe:")
+                print("[1] A. P. Bartók, R. Kondor and G. Csányi, Phys. Rev. B 87 (2013) 184115.")
+                print("[2] L. Himanen, A. S Foster et al., Comput. Phys. Commun. 247 (2020) 106949. \n")
+                print("SOAP parameter:")
+                print(self.soap_param)
             except ImportError:
                 raise ImportError(
                     "The 'dscribe' package is required for using SOAP descriptors.\n"
@@ -263,6 +324,12 @@ class GaussianProcess(object):
             if self.mace_param.get('system') == "materials":
                 try:
                     from mace.calculators import mace_mp
+                    print("You are using pre-trained MACE descriptor:")
+                    print(
+                        "[1] I. Batatia, D. P Kovacs, G. Simm, C. Ortner, and G. Csányi, Adv. Neural Inf. Process. Syst. 35 (2022) 11423.")
+                    print("[2] I. Batatia, G. Csányi et al., arXiv:2401.00096 (2023). \n")
+                    print("MACE parameter:")
+                    print(self.mace_param)
                 except ImportError:
                     raise ImportError(
                         "The 'joblib' and 'mace' packages are required for using pre-trained MACE descriptors.\n"
@@ -280,6 +347,31 @@ class GaussianProcess(object):
 
                 self.mace = mace_mp(model=self.mace_param.get('model'),
                                     device=mace_device)
+
+            elif self.descriptor == 'chebyshev':
+                try:
+                    from aenet.torch_featurize import ChebyshevDescriptor
+                    print("You are using Chebyshev descriptor:")
+                    print("N. Artrith, A. Urban, and G. Ceder, Phys. Rev. B 96 (2017) 014112. \n")
+                    print("Chebshev parameter:")
+                    print(self.cheb_param)
+                except ImportError:
+                    raise ImportError(
+                        "The 'aenet-python' package is required for using Chebyshev descriptors.\n"
+                        "Please install it by running:\n\n"
+                        "    git clone https://github.com/atomisticnet/aenet-python.git\n"
+                        "    cd ./aenet-python/\n"
+                        "    pip install . --user\n"
+                    )
+
+                self.cheb = ChebyshevDescriptor(species=set(self.species),
+                                                rad_order=self.cheb_param.get("rad_order"),  # Radial polynomial order
+                                                rad_cutoff=self.cheb_param.get("rad_cutoff"),
+                                                # Radial cutoff (Angstroms)
+                                                ang_order=self.cheb_param.get("ang_order"),  # Angular polynomial order
+                                                ang_cutoff=self.cheb_param.get("ang_cutoff")
+                                                # Angular cutoff (Angstroms)
+                                                )
 
             else:
                 try:
@@ -318,7 +410,8 @@ class GaussianProcess(object):
                                         device=self.device)
 
         if prior is None:
-            self.prior = ConstantPrior(0.0, dtype=self.torch_data_type, device=self.device, atoms_xyz_mask=self.atoms_xyz_mask)
+            self.prior = ConstantPrior(0.0, dtype=self.torch_data_type, device=self.device,
+                                       atoms_xyz_mask=self.atoms_xyz_mask)
         else:
             self.prior = torch.tensor(prior, dtype=self.torch_data_type, device=self.device)
         self.prior_update = prior_update
@@ -389,7 +482,8 @@ class GaussianProcess(object):
                                                n_jobs=self.soap_param.get('n_jobs'))
 
             fp = torch.as_tensor(fp, dtype=self.torch_data_type, device=self.device)  # (Ndata, Ncenters, Ndescriptor)
-            dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type, device=self.device)  # (Ndata, Ncenters, Natom, 3, Ndescriptor)
+            dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type,
+                                     device=self.device)  # (Ndata, Ncenters, Natom, 3, Ndescriptor)
             dfp_dr = dfp_dr[:, :, self.atoms_mask, :, :]  # (Ndata, Ncenters, Nreduced_atoms, 3, Ndescriptor)
 
         elif self.descriptor == 'mace':
@@ -397,18 +491,38 @@ class GaussianProcess(object):
             fp = []
             dfp_dr = []
             for image in images:
-                fp__, dfp_dr__ = numerical_descriptor_gradient(image,
-                                                               self.mace,
+                fp__, dfp_dr__ = mace_descriptor_gradient(image,
+                                                          self.mace,
+                                                          atoms_mask=self.atoms_mask,
+                                                          delta=self.mace_param.get("delta"),
+                                                          invariants=self.mace_param.get("invariants"),
+                                                          num_layers=self.mace_param.get("num_layers"),
+                                                          n_jobs=self.mace_param.get("mace_n_jobs"),
+                                                          dtype=self.data_type)
+                fp.append(torch.tensor(fp__, dtype=self.torch_data_type, device=self.device))
+                dfp_dr.append(torch.tensor(dfp_dr__, dtype=self.torch_data_type, device=self.device))
+
+            fp = torch.stack(fp).to(dtype=self.torch_data_type,
+                                    device=self.device)  # (Ndata, Nreduced_atoms, Ndescriptor)
+            dfp_dr = torch.stack(dfp_dr).to(dtype=self.torch_data_type,
+                                            device=self.device)  # (Ndata, Nreduced_atoms, Nreduced_atoms, 3, Ndescriptor)
+
+        elif self.descriptor == 'chebyshev':
+
+            fp = []
+            dfp_dr = []
+            for image in images:
+                fp__, dfp_dr__ = chebyshev_descriptor_gradient(image,
+                                                               self.cheb,
                                                                atoms_mask=self.atoms_mask,
-                                                               delta=self.mace_param.get("delta"),
-                                                               invariants=self.mace_param.get("invariants"),
-                                                               num_layers=self.mace_param.get("num_layers"),
-                                                               n_jobs=self.mace_param.get("mace_n_jobs"),
+                                                               delta=self.cheb_param.get("delta"),
+                                                               n_jobs=self.cheb_param.get("n_jobs"),
                                                                dtype=self.data_type)
                 fp.append(torch.tensor(fp__, dtype=self.torch_data_type, device=self.device))
                 dfp_dr.append(torch.tensor(dfp_dr__, dtype=self.torch_data_type, device=self.device))
 
-            fp = torch.stack(fp).to(dtype=self.torch_data_type, device=self.device)  # (Ndata, Nreduced_atoms, Ndescriptor)
+            fp = torch.stack(fp).to(dtype=self.torch_data_type,
+                                    device=self.device)  # (Ndata, Nreduced_atoms, Ndescriptor)
             dfp_dr = torch.stack(dfp_dr).to(dtype=self.torch_data_type,
                                             device=self.device)  # (Ndata, Nreduced_atoms, Nreduced_atoms, 3, Ndescriptor)
 
@@ -441,20 +555,35 @@ class GaussianProcess(object):
                                                n_jobs=self.soap_param.get('n_jobs'))
 
             fp = torch.as_tensor(fp, dtype=self.torch_data_type, device=self.device)  # (Ncenters, Natom*3)
-            dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type, device=self.device)  # (Ncenters, Natom, 3, Natom*3)
+            dfp_dr = torch.as_tensor(dfp_dr, dtype=self.torch_data_type,
+                                     device=self.device)  # (Ncenters, Natom, 3, Natom*3)
             dfp_dr = dfp_dr[:, self.atoms_mask, :, :]  # (Ncenters, Nreduced_atoms, 3, Ndescriptor)
 
         elif self.descriptor == 'mace':
-            fp, dfp_dr = numerical_descriptor_gradient(image,
-                                                       self.mace,
-                                                       atoms_mask=self.atoms_mask,
-                                                       delta=self.mace_param.get("delta"),
-                                                       invariants=self.mace_param.get("invariants"),
-                                                       num_layers=self.mace_param.get("num_layers"),
-                                                       n_jobs=self.mace_param.get("mace_n_jobs"),
-                                                       dtype=self.data_type)
+            fp, dfp_dr = mace_descriptor_gradient(image,
+                                                  self.mace,
+                                                  atoms_mask=self.atoms_mask,
+                                                  delta=self.mace_param.get("delta"),
+                                                  invariants=self.mace_param.get("invariants"),
+                                                  num_layers=self.mace_param.get("num_layers"),
+                                                  n_jobs=self.mace_param.get("mace_n_jobs"),
+                                                  dtype=self.data_type)
+
             fp = torch.tensor(fp, dtype=self.torch_data_type, device=self.device)  # (Nreduced_atoms, Ndescriptor)
-            dfp_dr = torch.tensor(dfp_dr, dtype=self.torch_data_type, device=self.device)  # (Nreduced_atoms, Nreduced_atoms, 3, Ndescriptor)
+            dfp_dr = torch.tensor(dfp_dr, dtype=self.torch_data_type,
+                                  device=self.device)  # (Nreduced_atoms, Nreduced_atoms, 3, Ndescriptor)
+
+        elif self.descriptor == 'chebyshev':
+            fp, dfp_dr = chebyshev_descriptor_gradient(image,
+                                                       self.cheb,
+                                                       atoms_mask=self.atoms_mask,
+                                                       delta=self.cheb_param.get("delta"),
+                                                       n_jobs=self.cheb_param.get("n_jobs"),
+                                                       dtype=self.data_type)
+
+            fp = torch.tensor(fp, dtype=self.torch_data_type, device=self.device)  # (Nreduced_atoms, Ndescriptor)
+            dfp_dr = torch.tensor(dfp_dr, dtype=self.torch_data_type,
+                                  device=self.device)  # (Nreduced_atoms, Nreduced_atoms, 3, Ndescriptor)
 
         else:
             fp = torch.as_tensor(image.get_positions(wrap=False).reshape(-1), dtype=self.torch_data_type).to(
@@ -534,7 +663,8 @@ class GaussianProcess(object):
 
                 pred, kernel = self.eval_data_batch(eval_fp, eval_dfp_dr)
                 E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
-                F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], self.atoms_xyz_mask] = pred[data_per_batch:].view(data_per_batch, -1)
+                F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], self.atoms_xyz_mask] = pred[data_per_batch:].view(
+                    data_per_batch, -1)
                 # F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(
                 #     F=pred[data_per_batch:].view(data_per_batch, -1),
                 #     atoms_xyz_mask=self.atoms_xyz_mask)
@@ -551,7 +681,8 @@ class GaussianProcess(object):
 
                 pred, kernel = self.eval_data_batch(eval_fp, eval_dfp_dr)
                 E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
-                F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], self.atoms_xyz_mask] = pred[data_per_batch:].view(data_per_batch, -1)
+                F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], self.atoms_xyz_mask] = pred[data_per_batch:].view(
+                    data_per_batch, -1)
                 # F_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(
                 #     F=pred[data_per_batch:].view(data_per_batch, -1),
                 #     atoms_xyz_mask=self.atoms_xyz_mask)
@@ -563,7 +694,8 @@ class GaussianProcess(object):
                 std = torch.sqrt(torch.diagonal(var))
 
                 unc_e[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = std[0:data_per_batch] / self.weight
-                unc_f[eval_x_indexes[i][0]:eval_x_indexes[i][1], self.atoms_xyz_mask] = std[data_per_batch:].view(data_per_batch, -1)
+                unc_f[eval_x_indexes[i][0]:eval_x_indexes[i][1], self.atoms_xyz_mask] = std[data_per_batch:].view(
+                    data_per_batch, -1)
                 # unc_f[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(
                 #     F=std[data_per_batch:].view(data_per_batch, -1),
                 #     atoms_xyz_mask=self.atoms_xyz_mask)
@@ -609,7 +741,7 @@ class GaussianProcess(object):
 
         pred, kernel = self.eval_data_per_data(eval_fp_i, eval_dfp_dr_i)
         E_hat = pred[0]
-        F_hat = torch.zeros((self.Natom * 3, ), dtype=self.torch_data_type, device=self.device)
+        F_hat = torch.zeros((self.Natom * 3,), dtype=self.torch_data_type, device=self.device)
         F_hat[self.atoms_xyz_mask] = pred[1:]
         # F_hat = apply_force_mask(F=pred[1:].view(1, -1), atoms_xyz_mask=self.atoms_xyz_mask)
 
@@ -617,7 +749,7 @@ class GaussianProcess(object):
             return E_hat, F_hat.view((self.Natom, 3)), None
 
         else:
-            unc_f = torch.zeros((self.Natom * 3, ), dtype=self.torch_data_type, device=self.device)
+            unc_f = torch.zeros((self.Natom * 3,), dtype=self.torch_data_type, device=self.device)
 
             var = self.eval_variance_per_data(get_variance=True,
                                               eval_fp_i=eval_fp_i,
