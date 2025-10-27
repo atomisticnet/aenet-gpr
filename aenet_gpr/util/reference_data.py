@@ -23,6 +23,7 @@ class ReferenceData(object):
                  data_process='batch',
                  soap_param=None,
                  mace_param=None,
+                 cheb_param=None,
                  mask_constraints=True):
 
         self.data_process = data_process
@@ -80,6 +81,16 @@ class ReferenceData(object):
                                'mace_n_jobs': 1}
         else:
             self.mace_param = mace_param
+
+        if cheb_param is None:
+            self.cheb_param = {'rad_order': 12,
+                               'rad_cutoff': 6.5,
+                               'ang_order': 6,
+                               'ang_cutoff': 4.0,
+                               'delta': 1e-4,
+                               'n_jobs': -1}
+        else:
+            self.cheb_param = cheb_param
 
         self.mask_constraints = mask_constraints
         self.atoms_mask = self.create_mask()
@@ -214,7 +225,8 @@ class ReferenceData(object):
 
         fp = []
         for image in images:
-            fp.append(torch.as_tensor(image.get_positions(wrap=False).reshape(-1), dtype=self.torch_data_type).to(self.device))
+            fp.append(torch.as_tensor(image.get_positions(wrap=False).reshape(-1), dtype=self.torch_data_type).to(
+                self.device))
 
         fp = torch.stack(fp).to(self.device)  # (Ndata, Natom*3)
         fp = fp.unsqueeze(1)  # (Ndata, 1, Natom*3)
@@ -258,13 +270,15 @@ class ReferenceData(object):
                 remove_indices.append(i)
 
         if remove_indices != []:
-            print(f"Removed images {remove_indices} from training data (near-duplicates; risk of ill-conditioned covariance).")
+            print(
+                f"Removed images {remove_indices} from training data (near-duplicates; risk of ill-conditioned covariance).")
 
             keep_images = [self.images[i] for i in keep_indices]
             self.read_structure_files(structure_files=keep_images, file_format='ase')
             self.set_data()
 
-    def config_calculator(self, prior=None, prior_update=True, kerneltype='sqexp', scale=0.4, weight=1.0, noise=1e-6, noisefactor=0.5,
+    def config_calculator(self, prior=None, prior_update=True, kerneltype='sqexp', scale=0.4, weight=1.0, noise=1e-6,
+                          noisefactor=0.5,
                           use_forces=True, sparse=None, sparse_derivative=None, autograd=False,
                           train_batch_size=25, eval_batch_size=25,
                           fit_weight=True, fit_scale=True):
@@ -295,6 +309,7 @@ class ReferenceData(object):
                                                             device=self.device,
                                                             soap_param=self.soap_param,
                                                             mace_param=self.mace_param,
+                                                            cheb_param=self.cheb_param,
                                                             descriptor=self.descriptor,
                                                             atoms_mask=self.atoms_mask)
         elif self.data_process == 'batch':
@@ -318,6 +333,7 @@ class ReferenceData(object):
                                                         device=self.device,
                                                         soap_param=self.soap_param,
                                                         mace_param=self.mace_param,
+                                                        cheb_param=self.cheb_param,
                                                         descriptor=self.descriptor,
                                                         atoms_mask=self.atoms_mask)
 
@@ -403,7 +419,8 @@ class ReferenceData(object):
             a_ = self.calculator.model_vector
 
             logP = -0.5 * torch.matmul(y_flat - m_, a_) - torch.sum(torch.log(torch.diag(self.calculator.K_XX_L))) \
-                   - self.calculator.Ntrain * 0.5 * torch.log(torch.as_tensor(2 * torch.pi, dtype=self.torch_data_type).to(self.device))
+                   - self.calculator.Ntrain * 0.5 * torch.log(
+                torch.as_tensor(2 * torch.pi, dtype=self.torch_data_type).to(self.device))
 
             # MAP 보정: log-normal prior centered at previous (or initial) scale
             log_l = torch.log(candidate_scale)
@@ -432,8 +449,9 @@ class ReferenceData(object):
     def evaluation(self, get_variance=False):
 
         if get_variance:
-            energy_gpr_scale, force_gpr_scale, unc_e_gpr, unc_f_gpr = self.calculator.eval_batch(eval_images=self.images,
-                                                                                                 get_variance=get_variance)
+            energy_gpr_scale, force_gpr_scale, unc_e_gpr, unc_f_gpr = self.calculator.eval_batch(
+                eval_images=self.images,
+                get_variance=get_variance)
 
             return energy_gpr_scale.cpu().detach().numpy(), force_gpr_scale.cpu().detach().numpy(), unc_e_gpr.cpu().detach().numpy(), unc_f_gpr.cpu().detach().numpy()
 
@@ -548,6 +566,7 @@ class ReferenceData(object):
             'num_atom': self.num_atom,
             'soap_param': self.soap_param,
             'mace_param': self.mace_param,
+            'cheb_param': self.cheb_param,
         }
         torch.save(state, file)
         self.calculator.save_data()
@@ -577,6 +596,7 @@ class ReferenceData(object):
 
         self.soap_param = state.get('soap_param')
         self.mace_param = state.get('mace_param')
+        self.cheb_param = state.get('cheb_param')
 
         if self.pbc:
             atom = Atoms(self.species)
@@ -599,6 +619,7 @@ class ReferenceData(object):
                                                             device=self.device,
                                                             soap_param=self.soap_param,
                                                             mace_param=self.mace_param,
+                                                            cheb_param=self.cheb_param,
                                                             descriptor=self.descriptor)
             self.calculator.load_data()
 
@@ -608,5 +629,6 @@ class ReferenceData(object):
                                                         device=self.device,
                                                         soap_param=self.soap_param,
                                                         mace_param=self.mace_param,
+                                                        cheb_param=self.cheb_param,
                                                         descriptor=self.descriptor)
             self.calculator.load_data()
