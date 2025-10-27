@@ -27,6 +27,7 @@ class Train(object):
                                         data_process=self.input_param.data_process,
                                         soap_param=self.input_param.soap_param,
                                         mace_param=self.input_param.mace_param,
+                                        cheb_param=self.input_param.cheb_param,
                                         mask_constraints=self.input_param.mask_constraints)
 
         io_data_read_finalize(t=start,

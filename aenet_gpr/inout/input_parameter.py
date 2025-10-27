@@ -57,6 +57,19 @@ class InputParameters(object):
                            'num_layers': self.mace_num_layers,
                            'mace_n_jobs': self.mace_n_jobs}
 
+        self.cheb_rad_order = 12
+        self.cheb_rad_cutoff = 6.5
+        self.cheb_ang_order = 6
+        self.cheb_ang_cutoff = 4.0
+        self.cheb_delta = 1e-4
+        self.cheb_n_jobs = -1
+        self.cheb_param = {'rad_order': self.cheb_rad_order,
+                           'rad_cutoff': self.cheb_rad_cutoff,
+                           'ang_order': self.cheb_ang_order,
+                           'ang_cutoff': self.self.cheb_ang_cutoff,
+                           'cheb_n_jobs': self.cheb_n_jobs,
+                           'delta': self.cheb_delta}
+
         self.kerneltype        = 'sqexp'
         self.scale             = 0.4
         self.weight            = 1.0

@@ -176,10 +176,36 @@ def read_train_in(infile):
 				input_param.descriptor = 'soap'
 			elif "mace" in descriptor.lower():
 				input_param.descriptor = 'mace'
+			elif "cheb" in descriptor.lower():
+				input_param.descriptor = 'chebyshev'
 			elif "internal" in descriptor.lower():
 				input_param.descriptor = 'internal'
 			else:
 				input_param.descriptor = 'cartesian coordinates'
+
+		cheb_rad_cutoff, found = read_keyword_argument_same_line("cheb_rad_cutoff", lines)
+		if found:
+			input_param.cheb_rad_cutoff = float(cheb_rad_cutoff)
+
+		cheb_ang_cutoff, found = read_keyword_argument_same_line("cheb_ang_cutoff", lines)
+		if found:
+			input_param.cheb_ang_cutoff = float(cheb_ang_cutoff)
+
+		cheb_rad_order, found = read_keyword_argument_same_line("cheb_rad_order", lines)
+		if found:
+			input_param.cheb_rad_order = int(cheb_rad_order)
+
+		cheb_ang_order, found = read_keyword_argument_same_line("cheb_ang_order", lines)
+		if found:
+			input_param.cheb_ang_order = int(cheb_ang_order)
+
+		cheb_n_jobs, found = read_keyword_argument_same_line("cheb_n_jobs", lines)
+		if found:
+			input_param.cheb_n_jobs = int(cheb_n_jobs)
+
+		cheb_delta, found = read_keyword_argument_same_line("cheb_delta", lines)
+		if found:
+			input_param.cheb_delta = float(cheb_delta)
 
 		soap_r_cut, found = read_keyword_argument_same_line("soap_r_cut", lines)
 		if found:
