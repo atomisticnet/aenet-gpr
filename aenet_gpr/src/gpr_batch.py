@@ -359,8 +359,15 @@ class GaussianProcess(object):
                         "    pip install mace-torch\n"
                     )
 
+                # Check and set device
+                if torch.cuda.is_available():
+                    mace_device = "cuda:0"
+                else:
+                    mace_device = "cpu"
+                    print("[Warning] CUDA device not available. MACE descriptor computation may be slow on CPU.")
+
                 self.mace = mace_off(model=self.mace_param.get('model'),
-                                     device=self.device)
+                                     device=mace_device)
 
         elif self.descriptor == 'chebyshev':
             try:
@@ -380,11 +387,10 @@ class GaussianProcess(object):
 
             self.cheb = ChebyshevDescriptor(species=set(self.species),
                                             rad_order=self.cheb_param.get("rad_order"),  # Radial polynomial order
-                                            rad_cutoff=self.cheb_param.get("rad_cutoff"),
-                                            # Radial cutoff (Angstroms)
+                                            rad_cutoff=self.cheb_param.get("rad_cutoff"),  # Radial cutoff (Angstroms)
                                             ang_order=self.cheb_param.get("ang_order"),  # Angular polynomial order
-                                            ang_cutoff=self.cheb_param.get("ang_cutoff")
-                                            # Angular cutoff (Angstroms)
+                                            ang_cutoff=self.cheb_param.get("ang_cutoff"),  # Angular cutoff (Angstroms)
+                                            device=self.device
                                             )
 
         self.atoms_xyz_mask = atoms_mask.to(self.device)
