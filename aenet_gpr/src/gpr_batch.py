@@ -74,7 +74,7 @@ def chebyshev_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, n_jobs=-
                                                       pbc=atoms.pbc)
                 return direction, i, j, desc_temp
 
-            all_descriptors = Parallel(n_jobs=n_jobs, prefer="threads")(
+            all_descriptors = Parallel(n_jobs=n_jobs, prefer="processes")(  # ‘processes’ or ‘threads’
                 delayed(compute_descriptor)(direction, i, j, positions)
                 for (direction, i, j, positions) in perturbations
             )
@@ -122,7 +122,7 @@ def chebyshev_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, n_jobs=-
                                                       atoms.get_chemical_symbols())
                 return direction, i, j, desc_temp
 
-            all_descriptors = Parallel(n_jobs=n_jobs, prefer="threads")(
+            all_descriptors = Parallel(n_jobs=n_jobs, prefer="processes")(  # ‘processes’ or ‘threads’
                 delayed(compute_descriptor)(direction, i, j, positions)
                 for (direction, i, j, positions) in perturbations
             )
