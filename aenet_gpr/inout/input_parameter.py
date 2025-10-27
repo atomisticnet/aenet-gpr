@@ -66,7 +66,7 @@ class InputParameters(object):
         self.cheb_param = {'rad_order': self.cheb_rad_order,
                            'rad_cutoff': self.cheb_rad_cutoff,
                            'ang_order': self.cheb_ang_order,
-                           'ang_cutoff': self.self.cheb_ang_cutoff,
+                           'ang_cutoff': self.cheb_ang_cutoff,
                            'cheb_n_jobs': self.cheb_n_jobs,
                            'delta': self.cheb_delta}
 
