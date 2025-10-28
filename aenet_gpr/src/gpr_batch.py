@@ -23,7 +23,7 @@ def chebyshev_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, dtype=to
         grad (torch.Tensor): (n_reduced_atoms, n_reduced_atoms, 3, descriptor_dim)
     """
     # Get original descriptor
-    batch_positions = [(torch.tensor(atoms.positions, dtype=dtype))]
+    batch_positions = [(torch.tensor(atoms.positions, dtype=dtype, device=model.device))]
     original_positions = atoms.get_positions()
 
     for i in atoms_mask:
@@ -31,12 +31,12 @@ def chebyshev_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, dtype=to
             # Forward perturbation
             pos_f = original_positions.copy()
             pos_f[i, j] += delta
-            batch_positions.append(torch.tensor(pos_f, dtype=dtype))
+            batch_positions.append(torch.tensor(pos_f, dtype=dtype, device=model.device))
 
             # Backward perturbation
             pos_b = original_positions.copy()
             pos_b[i, j] -= delta
-            batch_positions.append(torch.tensor(pos_b, dtype=dtype))
+            batch_positions.append(torch.tensor(pos_b, dtype=dtype, device=model.device))
 
     batch_species = [atoms.get_chemical_symbols() for i in range(len(batch_positions))]
 
@@ -51,7 +51,7 @@ def chebyshev_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, dtype=to
     n_atoms, n_features = desc.shape
 
     # Pre-allocate gradient array
-    grad = torch.empty((n_atoms, n_atoms, 3, n_features), dtype=dtype)
+    grad = torch.empty((n_atoms, n_atoms, 3, n_features), dtype=dtype, device=model.device)
 
     for atom_idx, i in enumerate(atoms_mask):
         # 6 perturbations: +x, -x, +y, -y, +z, -z
@@ -94,7 +94,7 @@ def chebyshev_descriptor_gradient_periodic(atoms, model, atoms_mask, delta=1e-4,
         grad (torch.Tensor): (n_reduced_atoms, n_reduced_atoms, 3, descriptor_dim)
     """
     # Get original descriptor
-    batch_positions = [(torch.tensor(atoms.positions, dtype=dtype))]
+    batch_positions = [(torch.tensor(atoms.positions, dtype=dtype, device=model.device))]
     original_positions = atoms.get_positions()
 
     for i in atoms_mask:
@@ -102,16 +102,16 @@ def chebyshev_descriptor_gradient_periodic(atoms, model, atoms_mask, delta=1e-4,
             # Forward perturbation
             pos_f = original_positions.copy()
             pos_f[i, j] += delta
-            batch_positions.append(torch.tensor(pos_f, dtype=dtype))
+            batch_positions.append(torch.tensor(pos_f, dtype=dtype, device=model.device))
 
             # Backward perturbation
             pos_b = original_positions.copy()
             pos_b[i, j] -= delta
-            batch_positions.append(torch.tensor(pos_b, dtype=dtype))
+            batch_positions.append(torch.tensor(pos_b, dtype=dtype, device=model.device))
 
     batch_species = [atoms.get_chemical_symbols() for i in range(len(batch_positions))]
-    batch_cells = [torch.tensor(np.array([atoms.cell[i] for i in range(3)])) for i in range(len(batch_positions))]
-    batch_pbc = [torch.tensor(atoms.pbc) for i in range(len(batch_positions))]
+    batch_cells = [torch.tensor(np.array([atoms.cell[i] for i in range(3)]), device=model.device) for i in range(len(batch_positions))]
+    batch_pbc = [torch.tensor(atoms.pbc, device=model.device) for i in range(len(batch_positions))]
 
     # (Natoms * (6 * Nmaks + 1), Ndescriptor)
     features_batch, batch_indices = model(batch_positions,
@@ -126,7 +126,7 @@ def chebyshev_descriptor_gradient_periodic(atoms, model, atoms_mask, delta=1e-4,
     n_atoms, n_features = desc.shape
 
     # Pre-allocate gradient array
-    grad = torch.empty((n_atoms, n_atoms, 3, n_features), dtype=dtype)
+    grad = torch.empty((n_atoms, n_atoms, 3, n_features), dtype=dtype, device=model.device)
 
     for atom_idx, i in enumerate(atoms_mask):
         # 6 perturbations: +x, -x, +y, -y, +z, -z
