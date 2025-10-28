@@ -304,6 +304,7 @@ class GaussianProcess(object):
                 print("[2] L. Himanen, A. S Foster et al., Comput. Phys. Commun. 247 (2020) 106949. \n")
                 print("SOAP parameter:")
                 print(self.soap_param)
+                print("\n\n")
             except ImportError:
                 raise ImportError(
                     "The 'dscribe' package is required for using SOAP descriptors.\n"
@@ -330,6 +331,7 @@ class GaussianProcess(object):
                     print("[2] I. Batatia, G. Csányi et al., arXiv:2401.00096 (2023). \n")
                     print("MACE parameter:")
                     print(self.mace_param)
+                    print("\n\n")
                 except ImportError:
                     raise ImportError(
                         "The 'joblib' and 'mace' packages are required for using pre-trained MACE descriptors.\n"
@@ -340,11 +342,11 @@ class GaussianProcess(object):
 
                 # Check and set device
                 if torch.cuda.is_available():
-                    print("[Note] There is available CUDA device, and it will be used for MACE descriptor computation.")
+                    print("[Note] There is available CUDA device, and it will be used for MACE descriptor computation.\n")
                     mace_device = "cuda:0"
                 else:
                     mace_device = "cpu"
-                    print("[Warning] CUDA device not available. MACE descriptor computation may be slow on CPU.")
+                    print("[Warning] CUDA device not available. MACE descriptor computation may be slow on CPU.\n")
 
                 self.mace = mace_mp(model=self.mace_param.get('model'),
                                     device=mace_device)
@@ -352,6 +354,13 @@ class GaussianProcess(object):
             else:
                 try:
                     from mace.calculators import mace_off
+                    print("You are using pre-trained MACE descriptor:")
+                    print(
+                        "[1] I. Batatia, D. P Kovacs, G. Simm, C. Ortner, and G. Csányi, Adv. Neural Inf. Process. Syst. 35 (2022) 11423.")
+                    print("[2] I. Batatia, G. Csányi et al., arXiv:2401.00096 (2023). \n")
+                    print("MACE parameter:")
+                    print(self.mace_param)
+                    print("\n\n")
                 except ImportError:
                     raise ImportError(
                         "The 'joblib' and 'mace' packages are required for using pre-trained MACE descriptors.\n"
@@ -362,11 +371,11 @@ class GaussianProcess(object):
 
                 # Check and set device
                 if torch.cuda.is_available():
-                    print("[Note] There is available CUDA device, and it will be used for MACE descriptor computation.")
+                    print("[Note] There is available CUDA device, and it will be used for MACE descriptor computation.\n")
                     mace_device = "cuda:0"
                 else:
                     mace_device = "cpu"
-                    print("[Warning] CUDA device not available. MACE descriptor computation may be slow on CPU.")
+                    print("[Warning] CUDA device not available. MACE descriptor computation may be slow on CPU.\n")
 
                 self.mace = mace_off(model=self.mace_param.get('model'),
                                      device=mace_device)
@@ -378,6 +387,7 @@ class GaussianProcess(object):
                 print("N. Artrith, A. Urban, and G. Ceder, Phys. Rev. B 96 (2017) 014112. \n")
                 print("Chebshev parameter:")
                 print(self.cheb_param)
+                print("\n\n")
             except ImportError:
                 raise ImportError(
                     "The 'aenet-python' package is required for using Chebyshev descriptors.\n"
@@ -387,20 +397,20 @@ class GaussianProcess(object):
                     "    pip install . --user\n"
                 )
 
-            # Check and set device
-            if torch.cuda.is_available():
-                print("[Note] There is available CUDA device, and it will be used for Chebyshev descriptor computation.")
-                cheb_device = "cuda:0"
-            else:
-                cheb_device = "cpu"
-                # print("[Warning] CUDA device not available. MACE descriptor computation may be slow on CPU.")
+            # # Check and set device
+            # if torch.cuda.is_available():
+            #     print("[Note] There is available CUDA device, and it will be used for Chebyshev descriptor computation.\n")
+            #     cheb_device = "cuda:0"
+            # else:
+            #     cheb_device = "cpu"
+            #     # print("[Warning] CUDA device not available. MACE descriptor computation may be slow on CPU.")
 
             self.chebyshev = ChebyshevDescriptor(species=set(self.species),
                                                  rad_order=self.cheb_param.get("rad_order"),  # Radial polynomial order
                                                  rad_cutoff=self.cheb_param.get("rad_cutoff"),  # Radial cutoff (Ang)
                                                  ang_order=self.cheb_param.get("ang_order"),  # Angular polynomial order
                                                  ang_cutoff=self.cheb_param.get("ang_cutoff"),  # Angular cutoff (Ang)
-                                                 device=cheb_device)
+                                                 device=self.device)
             self.chebyshev_batch = BatchedFeaturizer(self.chebyshev)
 
         self.atoms_xyz_mask = atoms_mask.to(self.device)
@@ -611,6 +621,7 @@ class GaussianProcess(object):
                     dfp_dr[idx, :, i, 1, :] = d_dy
                     dfp_dr[idx, :, i, 2, :] = d_dz
 
+            fp = fp.contiguous().view(Ndata, self.Natom, Nfeature)
             fp = fp[:, self.atoms_mask, :]  # (Ndata, Nreduced_atoms, Ndescriptor)
             dfp_dr = dfp_dr[:, self.atoms_mask, :, :, :]
             dfp_dr = dfp_dr[:, :, self.atoms_mask, :, :]  # (Ndata, Nreduced_atoms, Nreduced_atoms, 3, Ndescriptor)
