@@ -199,10 +199,6 @@ def read_train_in(infile):
 		if found:
 			input_param.cheb_ang_order = int(cheb_ang_order)
 
-		cheb_n_jobs, found = read_keyword_argument_same_line("cheb_n_jobs", lines)
-		if found:
-			input_param.cheb_n_jobs = int(cheb_n_jobs)
-
 		cheb_delta, found = read_keyword_argument_same_line("cheb_delta", lines)
 		if found:
 			input_param.cheb_delta = float(cheb_delta)
