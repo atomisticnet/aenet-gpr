@@ -554,8 +554,8 @@ class GaussianProcess(object):
                                                                             atoms_mask=self.atoms_mask,
                                                                             delta=self.mace_param.get("delta"),
                                                                             dtype=self.torch_data_type)
-                    fp.append(torch.tensor(fp__, dtype=self.torch_data_type, device=self.device))
-                    dfp_dr.append(torch.tensor(dfp_dr__, dtype=self.torch_data_type, device=self.device))
+                    fp.append(fp__)
+                    dfp_dr.append(dfp_dr__)
 
                 else:
                     fp__, dfp_dr__ = chebyshev_descriptor_gradient(image,
@@ -563,8 +563,8 @@ class GaussianProcess(object):
                                                                    atoms_mask=self.atoms_mask,
                                                                    delta=self.mace_param.get("delta"),
                                                                    dtype=self.torch_data_type)
-                    fp.append(torch.tensor(fp__, dtype=self.torch_data_type, device=self.device))
-                    dfp_dr.append(torch.tensor(dfp_dr__, dtype=self.torch_data_type, device=self.device))
+                    fp.append(fp__)
+                    dfp_dr.append(dfp_dr__)
 
             fp = torch.stack(fp).to(dtype=self.torch_data_type,
                                     device=self.device)  # (Ndata, Nreduced_atoms, Ndescriptor)
@@ -632,10 +632,6 @@ class GaussianProcess(object):
                                                            atoms_mask=self.atoms_mask,
                                                            delta=self.mace_param.get("delta"),
                                                            dtype=self.torch_data_type)
-
-            fp = fp.to(dtype=self.torch_data_type, device=self.device)  # (Nreduced_atoms, Ndescriptor)
-            dfp_dr = dfp_dr.to(dtype=self.torch_data_type,
-                               device=self.device)  # (Nreduced_atoms, Nreduced_atoms, 3, Ndescriptor)
 
         else:
             fp = torch.as_tensor(image.get_positions(wrap=False).reshape(-1), dtype=self.torch_data_type).to(
