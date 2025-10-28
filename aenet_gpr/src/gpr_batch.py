@@ -548,7 +548,7 @@ class GaussianProcess(object):
             fp = []
             dfp_dr = []
             for image in images:
-                if np.any(images.pbc):
+                if np.any(image.pbc):
                     fp__, dfp_dr__ = chebyshev_descriptor_gradient_periodic(image,
                                                                             self.chebyshev_batch,
                                                                             atoms_mask=self.atoms_mask,
