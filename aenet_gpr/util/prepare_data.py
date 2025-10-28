@@ -5,6 +5,68 @@ import ase.io
 from ase.calculators.singlepoint import SinglePointCalculator
 
 
+class DescriptorStandardizer:
+    def __init__(self):
+        self.stats = {}
+
+    def standardize_per_species(self, descriptors, species, epsilon=1e-6):
+        """
+        descriptors: torch.Tensor of shape (Ndata, Natom, Ndescriptor)
+        species: torch.Tensor of shape (Ndata, Natom), atomic numbers
+
+        returns standardized desc
+        """
+
+        species_unique = torch.unique(species)
+        desc_flat = descriptors.clone().contiguous().view(-1, descriptors.shape[-1])  # (Ndata * Natom, Ndesc)
+
+        for s in species_unique:
+            # boolean mask for species s
+            mask = (species == s)  # shape: (Ndata, Natom)
+            mask_flat = mask.view(-1)  # shape: (Ndata * Natom)
+
+            # extract features for atoms of species s
+            selected = desc_flat[mask_flat]  # (Ndata * N_selected_atoms, Ndesc)
+
+            # compute mean/std
+            mean = selected.mean(dim=0)
+            std = selected.std(dim=0) + epsilon
+
+            key = int(s.item()) if isinstance(s, torch.Tensor) else s
+            self.stats[key] = {'mean': mean, 'std': std}
+
+            # apply normalization
+            desc_flat[mask_flat] = (selected - mean) / std
+
+        desc_std = desc_flat.view_as(descriptors)
+
+        return desc_std
+
+    def apply_grad_standardization(self, grad, species):
+        """
+        grad: torch.Tensor of shape (Ndata, Natom, Natom, 3, Ndescriptor)
+        species: torch.Tensor of shape (Ndata, Natom)
+
+        returns standardized grad
+        """
+        grad_std = grad.clone()
+        Ndata, Natoms, _, _, Nfeature = grad.shape
+
+        for i in range(Ndata):
+            for a in range(Natoms):
+                s = int(species[i, a].item())
+                std = self.stats[s]['std']
+                grad_std[i, a, :, :, :] /= std.view(1, 1, Nfeature)  # broadcast
+
+        return grad_std
+
+    def save(self, path):
+        torch.save(self.stats, path)
+
+    def load(self, path):
+        self.stats = torch.load(path)
+
+
 def read_xsf_image(path):
 
     image = ase.io.read(path, index=':', format='xsf')
