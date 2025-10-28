@@ -9,14 +9,13 @@ from aenet_gpr.src.pytorch_kernel import FPKernel
 from aenet_gpr.util.prepare_data import get_N_batch, get_batch_indexes_N_batch
 
 
-def chebyshev_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, n_jobs=-1, dtype='float32'):
+def chebyshev_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, dtype=torch.float64):
     """
     Args:
         atoms (ase.Atoms):
         model: Chebyshev calculator
         atoms_mask: Atom index to keep
         delta (float): displacement (Ang)
-        n_jobs (int): number of processes
         dtype (dtype):
 
     Returns:
@@ -24,120 +23,129 @@ def chebyshev_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, n_jobs=-
         grad (torch.Tensor): (n_reduced_atoms, n_reduced_atoms, 3, descriptor_dim)
     """
     # Get original descriptor
-    atoms_mask = atoms_mask.cpu().numpy()
-    if np.any(atoms.pbc):
-        desc = model.featurize_structure(atoms.positions,
-                                         atoms.get_chemical_symbols(),
-                                         cell=np.array([atoms.cell[i] for i in range(3)]),
-                                         pbc=atoms.pbc)
-        n_atoms, D = desc.shape
+    batch_positions = [(torch.tensor(atoms.positions, dtype=dtype))]
+    original_positions = atoms.get_positions()
 
-        # Pre-allocate gradient array
-        grad = np.empty((n_atoms, n_atoms, 3, D), dtype=dtype)
+    for i in atoms_mask:
+        for j in range(3):
+            # Forward perturbation
+            pos_f = original_positions.copy()
+            pos_f[i, j] += delta
+            batch_positions.append(torch.tensor(pos_f, dtype=dtype))
 
-        # Get original positions once
-        original_positions = atoms.get_positions()
+            # Backward perturbation
+            pos_b = original_positions.copy()
+            pos_b[i, j] -= delta
+            batch_positions.append(torch.tensor(pos_b, dtype=dtype))
 
-        # Pre-create all perturbations
-        perturbations = []
-        for i in atoms_mask:
-            for j in range(3):  # x, y, z
-                # Forward perturbation
-                pos_f = original_positions.copy()
-                pos_f[i, j] += delta
-                perturbations.append(('f', i, j, pos_f))
+    batch_species = [atoms.get_chemical_symbols() for i in range(len(batch_positions))]
 
-                # Backward perturbation
-                pos_b = original_positions.copy()
-                pos_b[i, j] -= delta
-                perturbations.append(('b', i, j, pos_b))
+    # (Natoms * (6 * Nmaks + 1), Ndescriptor)
+    features_batch, batch_indices = model(batch_positions,
+                                          batch_species)
 
-        if n_jobs == 1:
-            # Compute all descriptors
-            all_descriptors = []
-            for direction, i, j, positions in perturbations:
-                atoms_temp = deepcopy(atoms)
-                atoms_temp.set_positions(positions)
-                desc_temp = model.featurize_structure(atoms.positions,
-                                                      atoms.get_chemical_symbols(),
-                                                      cell=np.array([atoms.cell[i] for i in range(3)]),
-                                                      pbc=atoms.pbc)
-                all_descriptors.append((direction, i, j, desc_temp))
-        else:
-            # --- Parallelize descriptor computation ---
-            def compute_descriptor(direction, i, j, positions):
-                atoms_temp = deepcopy(atoms)
-                atoms_temp.set_positions(positions)
-                desc_temp = model.featurize_structure(atoms.positions,
-                                                      atoms.get_chemical_symbols(),
-                                                      cell=np.array([atoms.cell[i] for i in range(3)]),
-                                                      pbc=atoms.pbc)
-                return direction, i, j, desc_temp
+    n_atoms = len(atoms)
+    n_mask = len(atoms_mask)
+    desc = features_batch[:n_atoms]  # (Natoms, Ndescriptor)
 
-            all_descriptors = Parallel(n_jobs=n_jobs, prefer="processes")(  # ‘processes’ or ‘threads’
-                delayed(compute_descriptor)(direction, i, j, positions)
-                for (direction, i, j, positions) in perturbations
-            )
+    n_atoms, n_features = desc.shape
 
-    else:
-        desc = model.featurize_structure(atoms.positions,
-                                         atoms.get_chemical_symbols())
-        n_atoms, D = desc.shape
+    # Pre-allocate gradient array
+    grad = np.empty((n_atoms, n_atoms, 3, n_features), dtype=dtype)
 
-        # Pre-allocate gradient array
-        grad = np.empty((n_atoms, n_atoms, 3, D), dtype=dtype)
+    for atom_idx, i in enumerate(atoms_mask):
+        # 6 perturbations: +x, -x, +y, -y, +z, -z
+        desc_f_x = features_batch[n_atoms + n_atoms * (atom_idx * 6 + 0): n_atoms + n_atoms * (atom_idx * 6 + 1)]
+        desc_b_x = features_batch[n_atoms + n_atoms * (atom_idx * 6 + 1): n_atoms + n_atoms * (atom_idx * 6 + 2)]
+        desc_f_y = features_batch[n_atoms + n_atoms * (atom_idx * 6 + 2): n_atoms + n_atoms * (atom_idx * 6 + 3)]
+        desc_b_y = features_batch[n_atoms + n_atoms * (atom_idx * 6 + 3): n_atoms + n_atoms * (atom_idx * 6 + 4)]
+        desc_f_z = features_batch[n_atoms + n_atoms * (atom_idx * 6 + 4): n_atoms + n_atoms * (atom_idx * 6 + 5)]
+        desc_b_z = features_batch[n_atoms + n_atoms * (atom_idx * 6 + 5): n_atoms + n_atoms * (atom_idx * 6 + 6)]
 
-        # Get original positions once
-        original_positions = atoms.get_positions()
+        # Central difference: shape = (Natoms, Ndescriptor)
+        d_dx = (desc_f_x - desc_b_x) / (2 * delta)
+        d_dy = (desc_f_y - desc_b_y) / (2 * delta)
+        d_dz = (desc_f_z - desc_b_z) / (2 * delta)
 
-        # Pre-create all perturbations
-        perturbations = []
-        for i in atoms_mask:
-            for j in range(3):  # x, y, z
-                # Forward perturbation
-                pos_f = original_positions.copy()
-                pos_f[i, j] += delta
-                perturbations.append(('f', i, j, pos_f))
+        # (Natoms, 3, Ndescriptor) → assign to dfp_dr[idx, :, i, :, :]
+        grad[:, i, 0, :] = d_dx
+        grad[:, i, 1, :] = d_dy
+        grad[:, i, 2, :] = d_dz
 
-                # Backward perturbation
-                pos_b = original_positions.copy()
-                pos_b[i, j] -= delta
-                perturbations.append(('b', i, j, pos_b))
+    # n_atoms -> n_reduced_atoms
+    desc = desc[atoms_mask, :]
+    grad = grad[atoms_mask, :, :, :]
+    grad = grad[:, atoms_mask, :, :]
 
-        if n_jobs == 1:
-            # Compute all descriptors
-            all_descriptors = []
-            for direction, i, j, positions in perturbations:
-                atoms_temp = deepcopy(atoms)
-                atoms_temp.set_positions(positions)
-                desc_temp = model.featurize_structure(atoms.positions,
-                                                      atoms.get_chemical_symbols())
-                all_descriptors.append((direction, i, j, desc_temp))
-        else:
-            # --- Parallelize descriptor computation ---
-            def compute_descriptor(direction, i, j, positions):
-                atoms_temp = deepcopy(atoms)
-                atoms_temp.set_positions(positions)
-                desc_temp = model.featurize_structure(atoms.positions,
-                                                      atoms.get_chemical_symbols())
-                return direction, i, j, desc_temp
+    return desc, grad
 
-            all_descriptors = Parallel(n_jobs=n_jobs, prefer="processes")(  # ‘processes’ or ‘threads’
-                delayed(compute_descriptor)(direction, i, j, positions)
-                for (direction, i, j, positions) in perturbations
-            )
 
-    # Reorganize and compute gradients
-    desc_dict = {}
-    for direction, i, j, desc_temp in all_descriptors:
-        key = (i, j)
-        if key not in desc_dict:
-            desc_dict[key] = {}
-        desc_dict[key][direction] = desc_temp[:, :]
+def chebyshev_descriptor_gradient_periodic(atoms, model, atoms_mask, delta=1e-4, dtype=torch.float64):
+    """
+    Args:
+        atoms (ase.Atoms):
+        model: Chebyshev calculator
+        atoms_mask: Atom index to keep
+        delta (float): displacement (Ang)
+        dtype (dtype):
 
-    # Compute central differences
-    for (i, j), descs in desc_dict.items():
-        grad[:, i, j, :] = (descs['f'] - descs['b']) / (2 * delta)
+    Returns:
+        desc (torch.Tensor): (n_reduced_atoms, descriptor_dim)
+        grad (torch.Tensor): (n_reduced_atoms, n_reduced_atoms, 3, descriptor_dim)
+    """
+    # Get original descriptor
+    batch_positions = [(torch.tensor(atoms.positions, dtype=dtype))]
+    original_positions = atoms.get_positions()
+
+    for i in atoms_mask:
+        for j in range(3):
+            # Forward perturbation
+            pos_f = original_positions.copy()
+            pos_f[i, j] += delta
+            batch_positions.append(torch.tensor(pos_f, dtype=dtype))
+
+            # Backward perturbation
+            pos_b = original_positions.copy()
+            pos_b[i, j] -= delta
+            batch_positions.append(torch.tensor(pos_b, dtype=dtype))
+
+    batch_species = [atoms.get_chemical_symbols() for i in range(len(batch_positions))]
+    batch_cells = [torch.tensor(np.array([atoms.cell[i] for i in range(3)])) for i in range(len(batch_positions))]
+    batch_pbc = [torch.tensor(atoms.pbc) for i in range(len(batch_positions))]
+
+    # (Natoms * (6 * Nmaks + 1), Ndescriptor)
+    features_batch, batch_indices = model(batch_positions,
+                                          batch_species,
+                                          batch_cells=batch_cells,
+                                          batch_pbc=batch_pbc)
+
+    n_atoms = len(atoms)
+    n_mask = len(atoms_mask)
+    desc = features_batch[:n_atoms]
+
+    n_atoms, n_features = desc.shape
+
+    # Pre-allocate gradient array
+    grad = np.empty((n_atoms, n_atoms, 3, n_features), dtype=dtype)
+
+    for atom_idx, i in enumerate(atoms_mask):
+        # 6 perturbations: +x, -x, +y, -y, +z, -z
+        desc_f_x = features_batch[n_atoms + n_atoms * (atom_idx * 6 + 0): n_atoms + n_atoms * (atom_idx * 6 + 1)]
+        desc_b_x = features_batch[n_atoms + n_atoms * (atom_idx * 6 + 1): n_atoms + n_atoms * (atom_idx * 6 + 2)]
+        desc_f_y = features_batch[n_atoms + n_atoms * (atom_idx * 6 + 2): n_atoms + n_atoms * (atom_idx * 6 + 3)]
+        desc_b_y = features_batch[n_atoms + n_atoms * (atom_idx * 6 + 3): n_atoms + n_atoms * (atom_idx * 6 + 4)]
+        desc_f_z = features_batch[n_atoms + n_atoms * (atom_idx * 6 + 4): n_atoms + n_atoms * (atom_idx * 6 + 5)]
+        desc_b_z = features_batch[n_atoms + n_atoms * (atom_idx * 6 + 5): n_atoms + n_atoms * (atom_idx * 6 + 6)]
+
+        # Central difference: shape = (Natoms, Ndescriptor)
+        d_dx = (desc_f_x - desc_b_x) / (2 * delta)
+        d_dy = (desc_f_y - desc_b_y) / (2 * delta)
+        d_dz = (desc_f_z - desc_b_z) / (2 * delta)
+
+        # (Natoms, 3, Ndescriptor) → assign to dfp_dr[idx, :, i, :, :]
+        grad[:, i, 0, :] = d_dx
+        grad[:, i, 1, :] = d_dy
+        grad[:, i, 2, :] = d_dz
 
     # n_atoms -> n_reduced_atoms
     desc = desc[atoms_mask, :]
@@ -342,7 +350,8 @@ class GaussianProcess(object):
 
                 # Check and set device
                 if torch.cuda.is_available():
-                    print("[Note] There is available CUDA device, and it will be used for MACE descriptor computation.\n")
+                    print(
+                        "[Note] There is available CUDA device, and it will be used for MACE descriptor computation.\n")
                     mace_device = "cuda:0"
                 else:
                     mace_device = "cpu"
@@ -371,7 +380,8 @@ class GaussianProcess(object):
 
                 # Check and set device
                 if torch.cuda.is_available():
-                    print("[Note] There is available CUDA device, and it will be used for MACE descriptor computation.\n")
+                    print(
+                        "[Note] There is available CUDA device, and it will be used for MACE descriptor computation.\n")
                     mace_device = "cuda:0"
                 else:
                     mace_device = "cpu"
@@ -535,99 +545,31 @@ class GaussianProcess(object):
 
         elif self.descriptor == 'chebyshev':
 
-            batch_positions = []
-            batch_species = []
-            batch_cells = []
-            batch_pbc = []
-            if np.any(images[0].pbc):
-                for image in images:
-                    batch_positions.append(torch.tensor(image.positions, dtype=self.torch_data_type))
-                    batch_species.append(image.get_chemical_symbols())
-                    batch_cells.append(torch.tensor(np.array([image.cell[i] for i in range(3)])))
-                    batch_pbc.append(torch.tensor(image.pbc))
-                    original_positions = image.get_positions()
+            fp = []
+            dfp_dr = []
+            for image in images:
+                if np.any(images.pbc):
+                    fp__, dfp_dr__ = chebyshev_descriptor_gradient_periodic(image,
+                                                                            self.chebyshev_batch,
+                                                                            atoms_mask=self.atoms_mask,
+                                                                            delta=self.mace_param.get("delta"),
+                                                                            dtype=self.torch_data_type)
+                    fp.append(torch.tensor(fp__, dtype=self.torch_data_type, device=self.device))
+                    dfp_dr.append(torch.tensor(dfp_dr__, dtype=self.torch_data_type, device=self.device))
 
-                    for i in self.atoms_mask:
-                        for j in range(3):
-                            # Forward perturbation
-                            pos_f = original_positions.copy()
-                            pos_f[i, j] += self.cheb_param.get("delta")
-                            batch_positions.append(torch.tensor(pos_f, dtype=torch.float64))
-                            batch_species.append(image.get_chemical_symbols())
-                            batch_cells.append(torch.tensor(np.array([image.cell[i] for i in range(3)])))
-                            batch_pbc.append(torch.tensor(image.pbc))
+                else:
+                    fp__, dfp_dr__ = chebyshev_descriptor_gradient(image,
+                                                                   self.chebyshev_batch,
+                                                                   atoms_mask=self.atoms_mask,
+                                                                   delta=self.mace_param.get("delta"),
+                                                                   dtype=self.torch_data_type)
+                    fp.append(torch.tensor(fp__, dtype=self.torch_data_type, device=self.device))
+                    dfp_dr.append(torch.tensor(dfp_dr__, dtype=self.torch_data_type, device=self.device))
 
-                            # Backward perturbation
-                            pos_b = original_positions.copy()
-                            pos_b[i, j] -= self.cheb_param.get("delta")
-                            batch_positions.append(torch.tensor(pos_b, dtype=torch.float64))
-                            batch_species.append(image.get_chemical_symbols())
-                            batch_cells.append(torch.tensor(np.array([image.cell[i] for i in range(3)])))
-                            batch_pbc.append(torch.tensor(image.pbc))
-
-                features_batch, batch_indices = self.chebyshev_batch(batch_positions,
-                                                                     batch_species,
-                                                                     batch_cells=batch_cells,
-                                                                     batch_pbc=batch_pbc)
-
-            else:
-                for image in images:
-                    batch_positions.append(torch.tensor(image.positions, dtype=self.torch_data_type))
-                    batch_species.append(image.get_chemical_symbols())
-                    original_positions = image.get_positions()
-
-                    for i in self.atoms_mask:
-                        for j in range(3):
-                            # Forward perturbation
-                            pos_f = original_positions.copy()
-                            pos_f[i, j] += self.cheb_param.get("delta")
-                            batch_positions.append(torch.tensor(pos_f, dtype=self.torch_data_type))
-                            batch_species.append(image.get_chemical_symbols())
-
-                            # Backward perturbation
-                            pos_b = original_positions.copy()
-                            pos_b[i, j] -= self.cheb_param.get("delta")
-                            batch_positions.append(torch.tensor(pos_b, dtype=self.torch_data_type))
-                            batch_species.append(image.get_chemical_symbols())
-
-                features_batch, batch_indices = self.chebyshev_batch(batch_positions,
-                                                                     batch_species)
-            Ndata = len(images)
-            Nmask = len(self.atoms_mask)
-            Nfeature = features_batch.shape[-1]
-            fp = features_batch[::(1 + 6 * Nmask)]  # (Ndata, Natoms, Ndescriptor)
-            dfp_dr = torch.empty((Ndata, self.Natom, self.Natom, 3, Nfeature), dtype=self.torch_data_type)
-
-            for idx in range(Ndata):
-                base_idx = idx * (1 + 6 * Nmask)
-                perturb_idx = base_idx + 1
-
-                for atom_idx, i in enumerate(self.atoms_mask):
-                    # 6 perturbations: +x, -x, +y, -y, +z, -z
-                    desc_p_x = features_batch[perturb_idx + atom_idx * 6 + 0]
-                    desc_m_x = features_batch[perturb_idx + atom_idx * 6 + 1]
-                    desc_p_y = features_batch[perturb_idx + atom_idx * 6 + 2]
-                    desc_m_y = features_batch[perturb_idx + atom_idx * 6 + 3]
-                    desc_p_z = features_batch[perturb_idx + atom_idx * 6 + 4]
-                    desc_m_z = features_batch[perturb_idx + atom_idx * 6 + 5]
-
-                    # Central difference: shape = (Natoms, Ndescriptor)
-                    d_dx = (desc_p_x - desc_m_x) / (2 * self.cheb_param.get("delta"))
-                    d_dy = (desc_p_y - desc_m_y) / (2 * self.cheb_param.get("delta"))
-                    d_dz = (desc_p_z - desc_m_z) / (2 * self.cheb_param.get("delta"))
-
-                    # (Natoms, 3, Ndescriptor) → assign to dfp_dr[idx, :, i, :, :]
-                    dfp_dr[idx, :, i, 0, :] = d_dx
-                    dfp_dr[idx, :, i, 1, :] = d_dy
-                    dfp_dr[idx, :, i, 2, :] = d_dz
-
-            fp = fp.contiguous().view(Ndata, self.Natom, Nfeature)
-            fp = fp[:, self.atoms_mask, :]  # (Ndata, Nreduced_atoms, Ndescriptor)
-            dfp_dr = dfp_dr[:, self.atoms_mask, :, :, :]
-            dfp_dr = dfp_dr[:, :, self.atoms_mask, :, :]  # (Ndata, Nreduced_atoms, Nreduced_atoms, 3, Ndescriptor)
-
-            fp = fp.to(dtype=self.torch_data_type, device=self.device)
-            dfp_dr = dfp_dr.to(dtype=self.torch_data_type, device=self.device)
+            fp = torch.stack(fp).to(dtype=self.torch_data_type,
+                                    device=self.device)  # (Ndata, Nreduced_atoms, Ndescriptor)
+            dfp_dr = torch.stack(dfp_dr).to(dtype=self.torch_data_type,
+                                            device=self.device)  # (Ndata, Nreduced_atoms, Nreduced_atoms, 3, Ndescriptor)
 
         else:
             fp = []
