@@ -407,20 +407,20 @@ class GaussianProcess(object):
                     "    pip install . --user\n"
                 )
 
-            # Check and set device
-            if torch.cuda.is_available():
-                print("[Note] There is available CUDA device, and it will be used for Chebyshev descriptor computation.\n")
-                cheb_device = "cuda:0"
-            else:
-                cheb_device = "cpu"
-                # print("[Warning] CUDA device not available. Chebyshev descriptor computation may be slow on CPU.")
+            # # Check and set device
+            # if torch.cuda.is_available():
+            #     print("[Note] There is available CUDA device, and it will be used for Chebyshev descriptor computation.\n")
+            #     cheb_device = "cuda:0"
+            # else:
+            #     cheb_device = "cpu"
+            #     # print("[Warning] CUDA device not available. Chebyshev descriptor computation may be slow on CPU.")
 
             self.chebyshev = ChebyshevDescriptor(species=set(self.species),
                                                  rad_order=self.cheb_param.get("rad_order"),  # Radial polynomial order
                                                  rad_cutoff=self.cheb_param.get("rad_cutoff"),  # Radial cutoff (Ang)
                                                  ang_order=self.cheb_param.get("ang_order"),  # Angular polynomial order
                                                  ang_cutoff=self.cheb_param.get("ang_cutoff"),  # Angular cutoff (Ang)
-                                                 device=cheb_device)
+                                                 device=self.device)
             self.chebyshev_batch = BatchedFeaturizer(self.chebyshev)
 
         self.atoms_xyz_mask = atoms_mask.to(self.device)
