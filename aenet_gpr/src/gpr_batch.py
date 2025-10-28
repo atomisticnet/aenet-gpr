@@ -51,7 +51,7 @@ def chebyshev_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, dtype=to
     n_atoms, n_features = desc.shape
 
     # Pre-allocate gradient array
-    grad = np.empty((n_atoms, n_atoms, 3, n_features), dtype=dtype)
+    grad = torch.empty((n_atoms, n_atoms, 3, n_features), dtype=dtype)
 
     for atom_idx, i in enumerate(atoms_mask):
         # 6 perturbations: +x, -x, +y, -y, +z, -z
@@ -126,7 +126,7 @@ def chebyshev_descriptor_gradient_periodic(atoms, model, atoms_mask, delta=1e-4,
     n_atoms, n_features = desc.shape
 
     # Pre-allocate gradient array
-    grad = np.empty((n_atoms, n_atoms, 3, n_features), dtype=dtype)
+    grad = torch.empty((n_atoms, n_atoms, 3, n_features), dtype=dtype)
 
     for atom_idx, i in enumerate(atoms_mask):
         # 6 perturbations: +x, -x, +y, -y, +z, -z
@@ -554,8 +554,8 @@ class GaussianProcess(object):
                                                                             atoms_mask=self.atoms_mask,
                                                                             delta=self.mace_param.get("delta"),
                                                                             dtype=self.torch_data_type)
-                    fp.append(torch.tensor(fp__, dtype=self.torch_data_type, device=self.device))
-                    dfp_dr.append(torch.tensor(dfp_dr__, dtype=self.torch_data_type, device=self.device))
+                    fp.append(fp__)
+                    dfp_dr.append(dfp_dr__)
 
                 else:
                     fp__, dfp_dr__ = chebyshev_descriptor_gradient(image,
@@ -563,8 +563,8 @@ class GaussianProcess(object):
                                                                    atoms_mask=self.atoms_mask,
                                                                    delta=self.mace_param.get("delta"),
                                                                    dtype=self.torch_data_type)
-                    fp.append(torch.tensor(fp__, dtype=self.torch_data_type, device=self.device))
-                    dfp_dr.append(torch.tensor(dfp_dr__, dtype=self.torch_data_type, device=self.device))
+                    fp.append(fp__)
+                    dfp_dr.append(dfp_dr__)
 
             fp = torch.stack(fp).to(dtype=self.torch_data_type,
                                     device=self.device)  # (Ndata, Nreduced_atoms, Ndescriptor)
