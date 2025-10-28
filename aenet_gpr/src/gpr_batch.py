@@ -312,7 +312,7 @@ class GaussianProcess(object):
                 print("[2] L. Himanen, A. S Foster et al., Comput. Phys. Commun. 247 (2020) 106949. \n")
                 print("SOAP parameter:")
                 print(self.soap_param)
-                print("\n\n")
+                print("\n")
             except ImportError:
                 raise ImportError(
                     "The 'dscribe' package is required for using SOAP descriptors.\n"
@@ -339,7 +339,7 @@ class GaussianProcess(object):
                     print("[2] I. Batatia, G. Csányi et al., arXiv:2401.00096 (2023). \n")
                     print("MACE parameter:")
                     print(self.mace_param)
-                    print("\n\n")
+                    print("\n")
                 except ImportError:
                     raise ImportError(
                         "The 'joblib' and 'mace' packages are required for using pre-trained MACE descriptors.\n"
@@ -369,7 +369,7 @@ class GaussianProcess(object):
                     print("[2] I. Batatia, G. Csányi et al., arXiv:2401.00096 (2023). \n")
                     print("MACE parameter:")
                     print(self.mace_param)
-                    print("\n\n")
+                    print("\n")
                 except ImportError:
                     raise ImportError(
                         "The 'joblib' and 'mace' packages are required for using pre-trained MACE descriptors.\n"
@@ -397,7 +397,7 @@ class GaussianProcess(object):
                 print("N. Artrith, A. Urban, and G. Ceder, Phys. Rev. B 96 (2017) 014112. \n")
                 print("Chebshev parameter:")
                 print(self.cheb_param)
-                print("\n\n")
+                print("\n")
             except ImportError:
                 raise ImportError(
                     "The 'aenet-python' package is required for using Chebyshev descriptors.\n"
@@ -407,20 +407,20 @@ class GaussianProcess(object):
                     "    pip install . --user\n"
                 )
 
-            # # Check and set device
-            # if torch.cuda.is_available():
-            #     print("[Note] There is available CUDA device, and it will be used for Chebyshev descriptor computation.\n")
-            #     cheb_device = "cuda:0"
-            # else:
-            #     cheb_device = "cpu"
-            #     # print("[Warning] CUDA device not available. MACE descriptor computation may be slow on CPU.")
+            # Check and set device
+            if torch.cuda.is_available():
+                print("[Note] There is available CUDA device, and it will be used for Chebyshev descriptor computation.\n")
+                cheb_device = "cuda:0"
+            else:
+                cheb_device = "cpu"
+                # print("[Warning] CUDA device not available. Chebyshev descriptor computation may be slow on CPU.")
 
             self.chebyshev = ChebyshevDescriptor(species=set(self.species),
                                                  rad_order=self.cheb_param.get("rad_order"),  # Radial polynomial order
                                                  rad_cutoff=self.cheb_param.get("rad_cutoff"),  # Radial cutoff (Ang)
                                                  ang_order=self.cheb_param.get("ang_order"),  # Angular polynomial order
                                                  ang_cutoff=self.cheb_param.get("ang_cutoff"),  # Angular cutoff (Ang)
-                                                 device=self.device)
+                                                 device=cheb_device)
             self.chebyshev_batch = BatchedFeaturizer(self.chebyshev)
 
         self.atoms_xyz_mask = atoms_mask.to(self.device)
@@ -619,90 +619,23 @@ class GaussianProcess(object):
                                   device=self.device)  # (Nreduced_atoms, Nreduced_atoms, 3, Ndescriptor)
 
         elif self.descriptor == 'chebyshev':
-            batch_positions = []
-            batch_species = []
-            batch_cells = []
-            batch_pbc = []
             if np.any(image.pbc):
-                batch_positions.append(torch.tensor(image.positions, dtype=self.torch_data_type))
-                batch_species.append(image.get_chemical_symbols())
-                batch_cells.append(torch.tensor(np.array([image.cell[i] for i in range(3)])))
-                batch_pbc.append(torch.tensor(image.pbc))
-                original_positions = image.get_positions()
-
-                for i in self.atoms_mask:
-                    for j in range(3):
-                        # Forward perturbation
-                        pos_f = original_positions.copy()
-                        pos_f[i, j] += self.cheb_param.get("delta")
-                        batch_positions.append(torch.tensor(pos_f, dtype=self.torch_data_type))
-                        batch_species.append(image.get_chemical_symbols())
-                        batch_cells.append(torch.tensor(np.array([image.cell[i] for i in range(3)])))
-                        batch_pbc.append(torch.tensor(image.pbc))
-
-                        # Backward perturbation
-                        pos_b = original_positions.copy()
-                        pos_b[i, j] -= self.cheb_param.get("delta")
-                        batch_positions.append(torch.tensor(pos_b, dtype=self.torch_data_type))
-                        batch_species.append(image.get_chemical_symbols())
-                        batch_cells.append(torch.tensor(np.array([image.cell[i] for i in range(3)])))
-                        batch_pbc.append(torch.tensor(image.pbc))
-
-                features_batch, batch_indices = self.chebyshev_batch(batch_positions,
-                                                                     batch_species,
-                                                                     batch_cells=batch_cells,
-                                                                     batch_pbc=batch_pbc)
+                fp, dfp_dr = chebyshev_descriptor_gradient_periodic(image,
+                                                                    self.chebyshev_batch,
+                                                                    atoms_mask=self.atoms_mask,
+                                                                    delta=self.mace_param.get("delta"),
+                                                                    dtype=self.torch_data_type)
 
             else:
-                batch_positions.append(torch.tensor(image.positions, dtype=self.torch_data_type))
-                batch_species.append(image.get_chemical_symbols())
-                original_positions = image.get_positions()
+                fp, dfp_dr = chebyshev_descriptor_gradient(image,
+                                                           self.chebyshev_batch,
+                                                           atoms_mask=self.atoms_mask,
+                                                           delta=self.mace_param.get("delta"),
+                                                           dtype=self.torch_data_type)
 
-                for i in self.atoms_mask:
-                    for j in range(3):
-                        # Forward perturbation
-                        pos_f = original_positions.copy()
-                        pos_f[i, j] += self.cheb_param.get("delta")
-                        batch_positions.append(torch.tensor(pos_f, dtype=torch.float64))
-                        batch_species.append(image.get_chemical_symbols())
-
-                        # Backward perturbation
-                        pos_b = original_positions.copy()
-                        pos_b[i, j] -= self.cheb_param.get("delta")
-                        batch_positions.append(torch.tensor(pos_b, dtype=torch.float64))
-                        batch_species.append(image.get_chemical_symbols())
-
-                features_batch, batch_indices = self.chebyshev_batch(batch_positions,
-                                                                     batch_species)
-            Nfeature = features_batch.shape[-1]
-            fp = features_batch[0]  # (Natoms, Ndescriptor)
-            dfp_dr = torch.empty((self.Natom, self.Natom, 3, Nfeature), dtype=self.torch_data_type)
-
-            for atom_idx, i in enumerate(self.atoms_mask):
-                # 6 perturbations: +x, -x, +y, -y, +z, -z
-                desc_p_x = features_batch[1 + atom_idx * 6 + 0]
-                desc_m_x = features_batch[1 + atom_idx * 6 + 1]
-                desc_p_y = features_batch[1 + atom_idx * 6 + 2]
-                desc_m_y = features_batch[1 + atom_idx * 6 + 3]
-                desc_p_z = features_batch[1 + atom_idx * 6 + 4]
-                desc_m_z = features_batch[1 + atom_idx * 6 + 5]
-
-                # Central difference: shape = (Natoms, Ndescriptor)
-                d_dx = (desc_p_x - desc_m_x) / (2 * self.cheb_param.get("delta"))
-                d_dy = (desc_p_y - desc_m_y) / (2 * self.cheb_param.get("delta"))
-                d_dz = (desc_p_z - desc_m_z) / (2 * self.cheb_param.get("delta"))
-
-                # (Natoms, 3, Ndescriptor) → assign to dfp_dr[idx, :, i, :, :]
-                dfp_dr[:, i, 0, :] = d_dx
-                dfp_dr[:, i, 1, :] = d_dy
-                dfp_dr[:, i, 2, :] = d_dz
-
-            fp = fp[self.atoms_mask, :]  # (Nreduced_atoms, Ndescriptor)
-            dfp_dr = dfp_dr[self.atoms_mask, :, :, :]
-            dfp_dr = dfp_dr[:, self.atoms_mask, :, :]  # (Nreduced_atoms, Nreduced_atoms, 3, Ndescriptor)
-
-            fp = fp.to(dtype=self.torch_data_type, device=self.device)
-            dfp_dr = dfp_dr.to(dtype=self.torch_data_type, device=self.device)
+            fp = fp.to(dtype=self.torch_data_type, device=self.device)  # (Nreduced_atoms, Ndescriptor)
+            dfp_dr = dfp_dr.to(dtype=self.torch_data_type,
+                               device=self.device)  # (Nreduced_atoms, Nreduced_atoms, 3, Ndescriptor)
 
         else:
             fp = torch.as_tensor(image.get_positions(wrap=False).reshape(-1), dtype=self.torch_data_type).to(
