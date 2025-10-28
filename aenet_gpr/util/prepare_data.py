@@ -9,7 +9,7 @@ class DescriptorStandardizer:
     def __init__(self):
         self.stats = {}
 
-    def standardize_per_species(self, descriptors, species, epsilon=1e-6):
+    def standardize_per_species(self, descriptors, species, epsilon=1e-8):
         """
         descriptors: torch.Tensor of shape (Ndata, Natom, Ndescriptor)
         species: torch.Tensor of shape (Ndata, Natom), atomic numbers
