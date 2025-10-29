@@ -87,8 +87,7 @@ class ReferenceData(object):
                                'rad_cutoff': 6.5,
                                'ang_order': 6,
                                'ang_cutoff': 4.0,
-                               'delta': 1e-4,
-                               'n_jobs': -1}
+                               'delta': 1e-4}
         else:
             self.cheb_param = cheb_param
 
@@ -281,7 +280,8 @@ class ReferenceData(object):
                           noisefactor=0.5,
                           use_forces=True, sparse=None, sparse_derivative=None, autograd=False,
                           train_batch_size=25, eval_batch_size=25,
-                          fit_weight=True, fit_scale=True):
+                          fit_weight=True, fit_scale=True,
+                          descriptor_standardization=False):
 
         if self.standardization:
             Y_train_tensor = torch.as_tensor(self.energy_scale, dtype=self.torch_data_type).to(self.device)
@@ -335,6 +335,7 @@ class ReferenceData(object):
                                                         mace_param=self.mace_param,
                                                         cheb_param=self.cheb_param,
                                                         descriptor=self.descriptor,
+                                                        descriptor_standardization=descriptor_standardization,
                                                         atoms_mask=self.atoms_mask)
 
         self.calculator.train_model()
