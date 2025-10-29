@@ -9,7 +9,7 @@ class DescriptorStandardizer:
     def __init__(self):
         self.stats = {}
 
-    def standardize_per_species(self, descriptors, species, epsilon=1e-8):
+    def standardize_per_species(self, descriptors, species, dtype=torch.float64):
         """
         descriptors: torch.Tensor of shape (Ndata, Natom, Ndescriptor)
         species: torch.Tensor of shape (Ndata, Natom), atomic numbers
@@ -17,6 +17,7 @@ class DescriptorStandardizer:
         returns standardized desc
         """
 
+        epsilon = torch.finfo(dtype).eps
         species_unique = torch.unique(species)
         desc_flat = descriptors.clone().contiguous().view(-1, descriptors.shape[-1])  # (Ndata * Natom, Ndesc)
 
@@ -39,6 +40,24 @@ class DescriptorStandardizer:
             desc_flat[mask_flat] = (selected - mean) / std
 
         desc_std = desc_flat.view_as(descriptors)
+
+        return desc_std
+
+    def apply_desc_standardization(self, desc, species):
+        """
+        desc: torch.Tensor of shape (Ndata, Natom, Ndescriptor)
+        species: torch.Tensor of shape (Ndata, Natom)
+
+        returns standardized grad
+        """
+        desc_std = desc.clone()
+        Ndata, Natoms, Nfeature = desc.shape
+
+        for i in range(Ndata):
+            for a in range(Natoms):
+                s = int(species[i, a].item())
+                std = self.stats[s]['std']
+                desc_std[i, a, :] /= std  # broadcast
 
         return desc_std
 
