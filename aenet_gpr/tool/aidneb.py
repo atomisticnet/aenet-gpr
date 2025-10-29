@@ -335,7 +335,7 @@ class AIDNEB:
             optimizer="MDMin",
             update_step=10,
             check_ref_force=False,
-            climbing=True):
+            climbing=False):
 
         """
         Executing run will start the NEB optimization process.
