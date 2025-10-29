@@ -6,7 +6,7 @@ from joblib import Parallel, delayed
 
 from aenet_gpr.src.prior import ConstantPrior
 from aenet_gpr.src.pytorch_kernel import FPKernel
-from aenet_gpr.util.prepare_data import get_N_batch, get_batch_indexes_N_batch
+from aenet_gpr.util.prepare_data import get_N_batch, get_batch_indexes_N_batch, DescriptorStandardizer
 
 
 def chebyshev_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, dtype=torch.float64):
@@ -110,7 +110,8 @@ def chebyshev_descriptor_gradient_periodic(atoms, model, atoms_mask, delta=1e-4,
             batch_positions.append(torch.tensor(pos_b, dtype=dtype, device=model.featurizer.device))
 
     batch_species = [atoms.get_chemical_symbols() for i in range(len(batch_positions))]
-    batch_cells = [torch.tensor(np.array([atoms.cell[i] for i in range(3)]), device=model.featurizer.device) for i in range(len(batch_positions))]
+    batch_cells = [torch.tensor(np.array([atoms.cell[i] for i in range(3)]), device=model.featurizer.device) for i in
+                   range(len(batch_positions))]
     batch_pbc = [torch.tensor(atoms.pbc, device=model.featurizer.device) for i in range(len(batch_positions))]
 
     # (Natoms * (6 * Nmaks + 1), Ndescriptor)
@@ -425,11 +426,24 @@ class GaussianProcess(object):
 
         self.atoms_xyz_mask = atoms_mask.to(self.device)
         self.Nmask_xyz = self.atoms_xyz_mask.shape[0]  # 3 * Natoms or 3 * Nreduced_atoms
-        self.atoms_mask = (self.atoms_xyz_mask[self.atoms_xyz_mask % 3 == 0] // 3).to(self.device)
+        self.atoms_mask = (self.atoms_xyz_mask[self.atoms_xyz_mask % 3 == 0] // 3).to(
+            self.device)  # Natoms or Nreduced_atoms
+
+        if (self.descriptor == 'soap' and self.soap_param.get("centers") is None) or (self.descriptor == 'mace') or (
+                self.descriptor == 'chebyshev'):
+            self.standardizer = DescriptorStandardizer()
+        else:
+            self.standardizer = None
 
         # train_fp: (Ndata, Ncenter, Ndescriptor)
-        # train_dfp_dr: (Ndata, Ncenter, Natom, 3, Ndescriptor)
+        # train_dfp_dr: (Ndata, Ncenter, Nreduced_atoms, 3, Ndescriptor)
         self.train_fp, self.train_dfp_dr = self.generate_descriptor(self.images)
+        if self.standardizer is not None:
+            batch_atomic_number = torch.tensor(np.array([image.get_atomic_numbers() for image in self.images]))
+            batch_atomic_number = batch_atomic_number[:, self.atoms_mask]  # (Ndata, Nreduced_atoms)
+            self.train_fp = self.standardizer.standardize_per_species(self.train_fp, batch_atomic_number,
+                                                                      dtype=self.torch_data_type)
+            self.train_dfp_dr = self.standardizer.apply_grad_standardization(self.train_dfp_dr, batch_atomic_number)
 
         self.Y = function  # Y = [Ntrain]
         self.dY = derivative  # dY = [Ntrain, Natom, 3]
@@ -437,7 +451,7 @@ class GaussianProcess(object):
         self.dY = self.dY.contiguous().view(self.Ntrain, self.Natom * 3)
         self.dY = self.dY[:, self.atoms_xyz_mask]  # shape: (Ntrain, Nselected)
 
-        # Step 3: Reshape back to (Ntrain, Nreduced_atoms, 3)
+        # Reshape back to (Ntrain, Nreduced_atoms, 3)
         assert self.dY.shape[1] % 3 == 0, "Selected size must be divisible by 3"
         Nreduced_atoms = self.atoms_mask.shape[0]
         self.dY = self.dY.view(self.Ntrain, Nreduced_atoms, 3)
@@ -707,7 +721,15 @@ class GaussianProcess(object):
         if not get_variance:
             for i in range(0, eval_x_N_batch):
                 data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
-                eval_fp, eval_dfp_dr = self.generate_descriptor(eval_images[eval_x_indexes[i][0]:eval_x_indexes[i][1]])
+                batch_eval_images = eval_images[eval_x_indexes[i][0]:eval_x_indexes[i][1]]
+                eval_fp, eval_dfp_dr = self.generate_descriptor(batch_eval_images)
+                if self.standardizer is not None:
+                    batch_atomic_number = torch.tensor(
+                        np.array([image.get_atomic_numbers() for image in batch_eval_images]))
+                    batch_atomic_number = batch_atomic_number[:, self.atoms_mask]  # (Ndata, Nreduced_atoms)
+                    eval_fp = self.standardizer.apply_desc_standardization(eval_fp, batch_atomic_number)
+                    eval_dfp_dr = self.standardizer.apply_grad_standardization(eval_dfp_dr,
+                                                                               batch_atomic_number)
 
                 pred, kernel = self.eval_data_batch(eval_fp, eval_dfp_dr)
                 E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
@@ -725,7 +747,15 @@ class GaussianProcess(object):
 
             for i in range(0, eval_x_N_batch):
                 data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
-                eval_fp, eval_dfp_dr = self.generate_descriptor(eval_images[eval_x_indexes[i][0]:eval_x_indexes[i][1]])
+                batch_eval_images = eval_images[eval_x_indexes[i][0]:eval_x_indexes[i][1]]
+                eval_fp, eval_dfp_dr = self.generate_descriptor(batch_eval_images)
+                if self.standardizer is not None:
+                    batch_atomic_number = torch.tensor(
+                        np.array([image.get_atomic_numbers() for image in batch_eval_images]))
+                    batch_atomic_number = batch_atomic_number[:, self.atoms_mask]  # (Ndata, Nreduced_atoms)
+                    eval_fp = self.standardizer.apply_desc_standardization(eval_fp, batch_atomic_number)
+                    eval_dfp_dr = self.standardizer.apply_grad_standardization(eval_dfp_dr,
+                                                                               batch_atomic_number)
 
                 pred, kernel = self.eval_data_batch(eval_fp, eval_dfp_dr)
                 E_hat[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = pred[0:data_per_batch]
@@ -743,7 +773,7 @@ class GaussianProcess(object):
 
                 unc_e[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = std[0:data_per_batch] / self.weight
                 unc_f[eval_x_indexes[i][0]:eval_x_indexes[i][1], self.atoms_xyz_mask] = std[data_per_batch:].view(
-                    data_per_batch, -1)
+                    data_per_batch, -1) / self.weight
                 # unc_f[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(
                 #     F=std[data_per_batch:].view(data_per_batch, -1),
                 #     atoms_xyz_mask=self.atoms_xyz_mask)
@@ -786,6 +816,13 @@ class GaussianProcess(object):
 
     def eval_per_data(self, eval_image, get_variance=False):
         eval_fp_i, eval_dfp_dr_i = self.generate_descriptor_per_data(eval_image)
+        if self.standardizer is not None:
+            atomic_number = torch.tensor(eval_image).unsqueeze(dim=0)
+            atomic_number = atomic_number[:, self.atoms_mask]  # (Ndata, Nreduced_atoms)
+            eval_fp_i = self.standardizer.apply_desc_standardization(eval_fp_i.unsqueeze(dim=0), atomic_number)
+            eval_fp_i = eval_fp_i.squeeze(dim=0)
+            eval_dfp_dr_i = self.standardizer.apply_grad_standardization(eval_dfp_dr_i.unsqueeze(dim=0), atomic_number)
+            eval_dfp_dr_i = eval_dfp_dr_i.squeeze(dim=0)
 
         pred, kernel = self.eval_data_per_data(eval_fp_i, eval_dfp_dr_i)
         E_hat = pred[0]
@@ -806,7 +843,7 @@ class GaussianProcess(object):
 
             std = torch.sqrt(torch.diagonal(var))
             unc_e = std[0] / self.weight
-            unc_f[self.atoms_xyz_mask] = std[1:]
+            unc_f[self.atoms_xyz_mask] = std[1:] / self.weight
             # unc_f = apply_force_mask(F=std[1:].view(1, -1), atoms_xyz_mask=self.atoms_xyz_mask)
 
             return E_hat, F_hat.view((self.Natom, 3)), unc_e, unc_f.view((self.Natom, 3))
