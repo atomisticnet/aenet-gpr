@@ -432,7 +432,7 @@ class GaussianProcess(object):
         self.atoms_mask = (self.atoms_xyz_mask[self.atoms_xyz_mask % 3 == 0] // 3).to(
             self.device)  # Natoms or Nreduced_atoms
 
-        if (self.descriptor == 'soap' and self.soap_param.get("centers") is None) or (self.descriptor == 'mace') or (
+        if self.descriptor_standardization and (self.descriptor == 'soap' and self.soap_param.get("centers") is None) or (self.descriptor == 'mace') or (
                 self.descriptor == 'chebyshev'):
             self.standardizer = DescriptorStandardizer()
         else:
@@ -776,7 +776,7 @@ class GaussianProcess(object):
 
                 unc_e[eval_x_indexes[i][0]:eval_x_indexes[i][1]] = std[0:data_per_batch] / self.weight
                 unc_f[eval_x_indexes[i][0]:eval_x_indexes[i][1], self.atoms_xyz_mask] = std[data_per_batch:].view(
-                    data_per_batch, -1) / self.weight
+                    data_per_batch, -1)
                 # unc_f[eval_x_indexes[i][0]:eval_x_indexes[i][1], :] = apply_force_mask(
                 #     F=std[data_per_batch:].view(data_per_batch, -1),
                 #     atoms_xyz_mask=self.atoms_xyz_mask)
@@ -846,7 +846,7 @@ class GaussianProcess(object):
 
             std = torch.sqrt(torch.diagonal(var))
             unc_e = std[0] / self.weight
-            unc_f[self.atoms_xyz_mask] = std[1:] / self.weight
+            unc_f[self.atoms_xyz_mask] = std[1:]
             # unc_f = apply_force_mask(F=std[1:].view(1, -1), atoms_xyz_mask=self.atoms_xyz_mask)
 
             return E_hat, F_hat.view((self.Natom, 3)), unc_e, unc_f.view((self.Natom, 3))
