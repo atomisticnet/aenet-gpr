@@ -83,11 +83,11 @@ class ReferenceData(object):
             self.mace_param = mace_param
 
         if cheb_param is None:
-            self.cheb_param = {'rad_order': 12,
-                               'rad_cutoff': 6.5,
+            self.cheb_param = {'rad_order': 10,
+                               'rad_cutoff': 5.0,
                                'ang_order': 6,
-                               'ang_cutoff': 4.0,
-                               'delta': 1e-4}
+                               'ang_cutoff': 3.0,
+                               'delta': 0.01}
         else:
             self.cheb_param = cheb_param
 
