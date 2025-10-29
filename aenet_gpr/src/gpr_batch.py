@@ -274,7 +274,8 @@ class GaussianProcess(object):
                  sparse=None, sparse_derivative=None, autograd=False,
                  train_batch_size=25, eval_batch_size=25,
                  data_type='float64', device='cpu',
-                 soap_param=None, mace_param=None, cheb_param=None, descriptor='cartesian coordinates',
+                 soap_param=None, mace_param=None, cheb_param=None,
+                 descriptor='cartesian coordinates', descriptor_standardization=False,
                  atoms_mask=None):
 
         if data_type == 'float32':
@@ -289,7 +290,9 @@ class GaussianProcess(object):
         self.soap_param = soap_param
         self.mace_param = mace_param
         self.cheb_param = cheb_param
+
         self.descriptor = descriptor
+        self.descriptor_standardization = descriptor_standardization
         self.kerneltype = kerneltype
 
         self.scale = torch.tensor(scale, dtype=self.torch_data_type, device=self.device)
@@ -438,7 +441,7 @@ class GaussianProcess(object):
         # train_fp: (Ndata, Ncenter, Ndescriptor)
         # train_dfp_dr: (Ndata, Ncenter, Nreduced_atoms, 3, Ndescriptor)
         self.train_fp, self.train_dfp_dr = self.generate_descriptor(self.images)
-        if self.standardizer is not None:
+        if self.descriptor_standardization and self.standardizer is not None:
             batch_atomic_number = torch.tensor(np.array([image.get_atomic_numbers() for image in self.images]))
             batch_atomic_number = batch_atomic_number[:, self.atoms_mask]  # (Ndata, Nreduced_atoms)
             self.train_fp = self.standardizer.standardize_per_species(self.train_fp, batch_atomic_number,
@@ -723,7 +726,7 @@ class GaussianProcess(object):
                 data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
                 batch_eval_images = eval_images[eval_x_indexes[i][0]:eval_x_indexes[i][1]]
                 eval_fp, eval_dfp_dr = self.generate_descriptor(batch_eval_images)
-                if self.standardizer is not None:
+                if self.descriptor_standardization and self.standardizer is not None:
                     batch_atomic_number = torch.tensor(
                         np.array([image.get_atomic_numbers() for image in batch_eval_images]))
                     batch_atomic_number = batch_atomic_number[:, self.atoms_mask]  # (Ndata, Nreduced_atoms)
@@ -749,7 +752,7 @@ class GaussianProcess(object):
                 data_per_batch = eval_x_indexes[i][1] - eval_x_indexes[i][0]
                 batch_eval_images = eval_images[eval_x_indexes[i][0]:eval_x_indexes[i][1]]
                 eval_fp, eval_dfp_dr = self.generate_descriptor(batch_eval_images)
-                if self.standardizer is not None:
+                if self.descriptor_standardization and self.standardizer is not None:
                     batch_atomic_number = torch.tensor(
                         np.array([image.get_atomic_numbers() for image in batch_eval_images]))
                     batch_atomic_number = batch_atomic_number[:, self.atoms_mask]  # (Ndata, Nreduced_atoms)
@@ -816,8 +819,8 @@ class GaussianProcess(object):
 
     def eval_per_data(self, eval_image, get_variance=False):
         eval_fp_i, eval_dfp_dr_i = self.generate_descriptor_per_data(eval_image)
-        if self.standardizer is not None:
-            atomic_number = torch.tensor(eval_image).unsqueeze(dim=0)
+        if self.descriptor_standardization and self.standardizer is not None:
+            atomic_number = torch.tensor(eval_image.get_atomic_numbers()).unsqueeze(dim=0)
             atomic_number = atomic_number[:, self.atoms_mask]  # (Ndata, Nreduced_atoms)
             eval_fp_i = self.standardizer.apply_desc_standardization(eval_fp_i.unsqueeze(dim=0), atomic_number)
             eval_fp_i = eval_fp_i.squeeze(dim=0)

@@ -14,7 +14,7 @@ class GPRCalculator(Calculator):
         self.results = {}
 
     def calculate(self, atoms=None,
-                  properties=['energy', 'forces', 'unc_energy', 'unc_forces'],
+                  properties=None,
                   system_changes=all_changes):
         '''
         Calculate the energy and forces for a given Atoms structure.
@@ -22,6 +22,8 @@ class GPRCalculator(Calculator):
         predicted forces using *atoms.get_forces()*
         '''
 
+        if properties is None:
+            properties = ['energy', 'forces']
         Calculator.calculate(self, atoms, properties, system_changes)
 
         energy_gpr, force_gpr, unc_e_gpr, unc_f_gpr = self.calculator.eval_per_data(eval_image=atoms, get_variance=True)
