@@ -14,6 +14,7 @@ class InputParameters(object):
         self.data_type         = 'float64'
         self.data_process      = 'batch'
         self.descriptor        = 'cartesian coordinates'
+        self.descriptor_standardization = False
 
         self.prior             = None
         self.prior_update      = True

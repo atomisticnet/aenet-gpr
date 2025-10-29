@@ -62,7 +62,8 @@ class Train(object):
                                           train_batch_size=self.input_param.train_batch_size,
                                           eval_batch_size=self.input_param.eval_batch_size,
                                           fit_weight=self.input_param.fit_weight,
-                                          fit_scale=self.input_param.fit_scale)
+                                          fit_scale=self.input_param.fit_scale,
+                                          descriptor_standardization=self.input_param.descriptor_standardization)
 
         io_train_finalize(t=start,
                           mem_CPU=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 ** 2,

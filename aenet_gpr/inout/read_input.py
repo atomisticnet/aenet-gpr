@@ -62,6 +62,13 @@ def read_train_in(infile):
 			else:
 				input_param.standardization = True
 
+		descriptor_standardization, found = read_keyword_argument_same_line("descriptor_standardization", lines)
+		if found:
+			if "F" in descriptor_standardization.upper():
+				input_param.descriptor_standardization = False
+			else:
+				input_param.descriptor_standardization = True
+
 		constraints, found = read_keyword_argument_same_line("constraints", lines)
 		if found:
 			if "F" in constraints.upper():
