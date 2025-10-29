@@ -58,11 +58,11 @@ class InputParameters(object):
                            'num_layers': self.mace_num_layers,
                            'mace_n_jobs': self.mace_n_jobs}
 
-        self.cheb_rad_order = 12
-        self.cheb_rad_cutoff = 6.5
+        self.cheb_rad_order = 10
+        self.cheb_rad_cutoff = 5.0
         self.cheb_ang_order = 6
-        self.cheb_ang_cutoff = 4.0
-        self.cheb_delta = 1e-4
+        self.cheb_ang_cutoff = 3.0
+        self.cheb_delta = 0.01
         self.cheb_param = {'rad_order': self.cheb_rad_order,
                            'rad_cutoff': self.cheb_rad_cutoff,
                            'ang_order': self.cheb_ang_order,
@@ -78,8 +78,8 @@ class InputParameters(object):
         self.sparse            = None
         self.sparse_derivative = None
         self.autograd          = False
-        self.train_batch_size  = 25
-        self.eval_batch_size   = 25
+        self.train_batch_size  = 5
+        self.eval_batch_size   = 5
         self.get_variance      = True
 
         self.train_write       = False
