@@ -432,8 +432,8 @@ class GaussianProcess(object):
         self.atoms_mask = (self.atoms_xyz_mask[self.atoms_xyz_mask % 3 == 0] // 3).to(
             self.device)  # Natoms or Nreduced_atoms
 
-        if self.descriptor_standardization and (self.descriptor == 'soap' and self.soap_param.get("centers") is None) or (self.descriptor == 'mace') or (
-                self.descriptor == 'chebyshev'):
+        if self.descriptor_standardization and ((self.descriptor == 'soap' and self.soap_param.get("centers") is None) or (self.descriptor == 'mace') or (
+                self.descriptor == 'chebyshev')):
             self.standardizer = DescriptorStandardizer()
         else:
             self.standardizer = None
