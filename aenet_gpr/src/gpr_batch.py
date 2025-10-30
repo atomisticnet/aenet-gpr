@@ -337,7 +337,7 @@ class GaussianProcess(object):
             if self.mace_param.get('system') == "materials":
                 try:
                     from mace.calculators import mace_mp
-                    print("You are using pre-trained MACE descriptor:")
+                    print("You are using pre-trained MACE-MP descriptor:")
                     print(
                         "[1] I. Batatia, D. P Kovacs, G. Simm, C. Ortner, and G. Csányi, Adv. Neural Inf. Process. Syst. 35 (2022) 11423.")
                     print("[2] I. Batatia, G. Csányi et al., arXiv:2401.00096 (2023). \n")
@@ -367,7 +367,7 @@ class GaussianProcess(object):
             else:
                 try:
                     from mace.calculators import mace_off
-                    print("You are using pre-trained MACE descriptor:")
+                    print("You are using pre-trained MACE-OFF descriptor:")
                     print(
                         "[1] I. Batatia, D. P Kovacs, G. Simm, C. Ortner, and G. Csányi, Adv. Neural Inf. Process. Syst. 35 (2022) 11423.")
                     print("[2] I. Batatia, G. Csányi et al., arXiv:2401.00096 (2023). \n")
