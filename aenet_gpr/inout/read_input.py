@@ -48,8 +48,6 @@ def read_train_in(infile):
 		for i in list_comments:
 			lines.pop(i)
 
-		print("debugging", lines)
-
 		# List parameters:
 		soap_centers, found = read_keyword_list_same_line("soap_centers", lines)
 		if found:
@@ -247,7 +245,6 @@ def read_train_in(infile):
 
 		mace_system, found = read_keyword_argument_same_line("mace_system", lines)
 		if found:
-			print("debugging", mace_system)
 			input_param.mace_system = mace_system
 
 		mace_model, found = read_keyword_argument_same_line("mace_model", lines)
@@ -298,8 +295,5 @@ def read_train_in(infile):
 		filter_threshold, found = read_keyword_argument_same_line("filter_threshold", lines)
 		if found:
 			input_param.filter_threshold = float(filter_threshold)
-
-		print("After read_train_in:", input_param.mace_param)
-		print("After read_train_in:", input_param.cheb_param)
 
 		return input_param
