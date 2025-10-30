@@ -35,15 +35,7 @@ class InputParameters(object):
         self.soap_centers      = None
         self.soap_method       = 'numerical'
         self.soap_n_jobs       = 1
-        self.soap_param = {'r_cut': self.soap_r_cut,
-                           'n_max': self.soap_n_max,
-                           'l_max': self.soap_l_max,
-                           'sigma': self.soap_sigma,
-                           'rbf': self.soap_rbf,
-                           'sparse': self.soap_sparse,
-                           'centers': self.soap_centers,
-                           'method': self.soap_method,
-                           'n_jobs': self.soap_n_jobs}
+        self.soap_param        = {}
 
         self.mace_system = "materials"
         self.mace_model = "small"
@@ -51,23 +43,14 @@ class InputParameters(object):
         self.invariants = True
         self.mace_num_layers = -1
         self.mace_n_jobs = 1
-        self.mace_param = {'system': self.mace_system,
-                           'model': self.mace_model,
-                           'delta': self.mace_delta,
-                           'invariants': self.invariants,
-                           'num_layers': self.mace_num_layers,
-                           'mace_n_jobs': self.mace_n_jobs}
+        self.mace_param = {}
 
         self.cheb_rad_order = 10
         self.cheb_rad_cutoff = 5.0
         self.cheb_ang_order = 6
         self.cheb_ang_cutoff = 3.0
         self.cheb_delta = 0.001
-        self.cheb_param = {'rad_order': self.cheb_rad_order,
-                           'rad_cutoff': self.cheb_rad_cutoff,
-                           'ang_order': self.cheb_ang_order,
-                           'ang_cutoff': self.cheb_ang_cutoff,
-                           'delta': self.cheb_delta}
+        self.cheb_param = {}
 
         self.kerneltype        = 'sqexp'
         self.scale             = 0.4
@@ -90,7 +73,7 @@ class InputParameters(object):
         self.disp_length       = 0.055
         self.num_copy          = 25
 
-    def update_soap_param(self):
+    def update_param(self):
         self.soap_param = {'r_cut': self.soap_r_cut,
                            'n_max': self.soap_n_max,
                            'l_max': self.soap_l_max,
@@ -100,3 +83,17 @@ class InputParameters(object):
                            'centers': self.soap_centers,
                            'method': self.soap_method,
                            'n_jobs': self.soap_n_jobs}
+
+        self.mace_param = {'system': self.mace_system,
+                           'model': self.mace_model,
+                           'delta': self.mace_delta,
+                           'invariants': self.invariants,
+                           'num_layers': self.mace_num_layers,
+                           'mace_n_jobs': self.mace_n_jobs}
+
+        self.cheb_param = {'rad_order': self.cheb_rad_order,
+                           'rad_cutoff': self.cheb_rad_cutoff,
+                           'ang_order': self.cheb_ang_order,
+                           'ang_cutoff': self.cheb_ang_cutoff,
+                           'delta': self.cheb_delta}
+
