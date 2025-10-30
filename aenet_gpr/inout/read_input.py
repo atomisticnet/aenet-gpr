@@ -32,10 +32,11 @@ def read_keyword_list_same_line(keyword, lines):
 
 
 def read_train_in(infile):
-	# Initialize InputParameters with default values
-	input_param = InputParameters()
 
 	with open(infile, "r") as f:
+
+		# Initialize InputParameters with default values
+		input_param = InputParameters()
 
 		# Remove comments from input file:
 		lines = f.readlines()
@@ -294,4 +295,4 @@ def read_train_in(infile):
 		if found:
 			input_param.filter_threshold = float(filter_threshold)
 
-	return input_param
+		return input_param
