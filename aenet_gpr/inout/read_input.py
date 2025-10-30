@@ -37,8 +37,6 @@ def read_train_in(infile):
 
 		# Initialize InputParameters with default values
 		input_param = InputParameters()
-		print("Before read_train_in:", input_param.mace_param)
-		print("Before read_train_in:", input_param.cheb_param)
 
 		# Remove comments from input file:
 		lines = f.readlines()
@@ -49,6 +47,13 @@ def read_train_in(infile):
 
 		for i in list_comments:
 			lines.pop(i)
+
+		print("debugging", lines)
+
+		# List parameters:
+		soap_centers, found = read_keyword_list_same_line("soap_centers", lines)
+		if found:
+			input_param.soap_centers = soap_centers
 
 		# Logical parameters:
 		prior_update, found = read_keyword_argument_same_line("prior_update", lines)
@@ -236,16 +241,13 @@ def read_train_in(infile):
 			else:
 				input_param.soap_rbf = 'gto'
 
-		soap_centers, found = read_keyword_list_same_line("soap_centers", lines)
-		if found:
-			input_param.soap_centers = soap_centers
-
 		soap_n_jobs, found = read_keyword_argument_same_line("soap_n_jobs", lines)
 		if found:
 			input_param.soap_n_jobs = int(soap_n_jobs)
 
-		mace_system, found = read_keyword_list_same_line("mace_system", lines)
+		mace_system, found = read_keyword_argument_same_line("mace_system", lines)
 		if found:
+			print("debugging", mace_system)
 			input_param.mace_system = mace_system
 
 		mace_model, found = read_keyword_argument_same_line("mace_model", lines)
@@ -299,4 +301,5 @@ def read_train_in(infile):
 
 		print("After read_train_in:", input_param.mace_param)
 		print("After read_train_in:", input_param.cheb_param)
+
 		return input_param
