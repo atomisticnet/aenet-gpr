@@ -62,7 +62,7 @@ class InputParameters(object):
         self.cheb_rad_cutoff = 5.0
         self.cheb_ang_order = 6
         self.cheb_ang_cutoff = 3.0
-        self.cheb_delta = 0.01
+        self.cheb_delta = 0.001
         self.cheb_param = {'rad_order': self.cheb_rad_order,
                            'rad_cutoff': self.cheb_rad_cutoff,
                            'ang_order': self.cheb_ang_order,
