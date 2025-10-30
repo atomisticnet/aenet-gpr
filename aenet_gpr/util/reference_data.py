@@ -87,7 +87,7 @@ class ReferenceData(object):
                                'rad_cutoff': 5.0,
                                'ang_order': 6,
                                'ang_cutoff': 3.0,
-                               'delta': 0.01}
+                               'delta': 0.001}
         else:
             self.cheb_param = cheb_param
 
