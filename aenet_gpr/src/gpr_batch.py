@@ -569,7 +569,7 @@ class GaussianProcess(object):
                     fp__, dfp_dr__ = chebyshev_descriptor_gradient_periodic(image,
                                                                             self.chebyshev_batch,
                                                                             atoms_mask=self.atoms_mask,
-                                                                            delta=self.mace_param.get("delta"),
+                                                                            delta=self.cheb_param.get("delta"),
                                                                             dtype=self.torch_data_type)
                     fp.append(fp__)
                     dfp_dr.append(dfp_dr__)
@@ -578,7 +578,7 @@ class GaussianProcess(object):
                     fp__, dfp_dr__ = chebyshev_descriptor_gradient(image,
                                                                    self.chebyshev_batch,
                                                                    atoms_mask=self.atoms_mask,
-                                                                   delta=self.mace_param.get("delta"),
+                                                                   delta=self.cheb_param.get("delta"),
                                                                    dtype=self.torch_data_type)
                     fp.append(fp__)
                     dfp_dr.append(dfp_dr__)
@@ -640,14 +640,14 @@ class GaussianProcess(object):
                 fp, dfp_dr = chebyshev_descriptor_gradient_periodic(image,
                                                                     self.chebyshev_batch,
                                                                     atoms_mask=self.atoms_mask,
-                                                                    delta=self.mace_param.get("delta"),
+                                                                    delta=self.cheb_param.get("delta"),
                                                                     dtype=self.torch_data_type)
 
             else:
                 fp, dfp_dr = chebyshev_descriptor_gradient(image,
                                                            self.chebyshev_batch,
                                                            atoms_mask=self.atoms_mask,
-                                                           delta=self.mace_param.get("delta"),
+                                                           delta=self.cheb_param.get("delta"),
                                                            dtype=self.torch_data_type)
 
         else:
