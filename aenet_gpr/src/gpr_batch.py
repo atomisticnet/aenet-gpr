@@ -9,7 +9,7 @@ from aenet_gpr.src.pytorch_kernel import FPKernel
 from aenet_gpr.util.prepare_data import get_N_batch, get_batch_indexes_N_batch, DescriptorStandardizer
 
 
-def chebyshev_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, dtype=torch.float64):
+def chebyshev_descriptor_gradient(atoms, model, atoms_mask, delta=1e-3, dtype=torch.float64):
     """
     Args:
         atoms (ase.Atoms):
@@ -80,7 +80,7 @@ def chebyshev_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, dtype=to
     return desc, grad
 
 
-def chebyshev_descriptor_gradient_periodic(atoms, model, atoms_mask, delta=1e-4, dtype=torch.float64):
+def chebyshev_descriptor_gradient_periodic(atoms, model, atoms_mask, delta=1e-3, dtype=torch.float64):
     """
     Args:
         atoms (ase.Atoms):
@@ -156,7 +156,7 @@ def chebyshev_descriptor_gradient_periodic(atoms, model, atoms_mask, delta=1e-4,
     return desc, grad
 
 
-def mace_descriptor_gradient(atoms, model, atoms_mask, delta=1e-4, invariants=True, num_layers=-1, n_jobs=-1,
+def mace_descriptor_gradient(atoms, model, atoms_mask, delta=1e-3, invariants=True, num_layers=-1, n_jobs=-1,
                              dtype='float32'):
     """
     Optimized batch version - pre-generates all perturbed positions and processes them efficiently
