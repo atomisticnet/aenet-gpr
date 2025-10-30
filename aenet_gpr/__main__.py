@@ -17,7 +17,7 @@ def main():
     else:
         input_file = "train.in"
     input_param = read_train_in(input_file)
-    input_param.update_soap_param()
+    input_param.update_param()
 
     if input_param.device == 'gpu' and torch.cuda.is_available():
         input_param.device = "cuda:0"
