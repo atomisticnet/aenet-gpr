@@ -18,8 +18,6 @@ def main():
         input_file = "train.in"
     input_param = read_train_in(input_file)
     input_param.update_param()
-    print("After update_param:", input_param.mace_param)
-    print("After update_param:", input_param.cheb_param)
 
     if input_param.device == 'gpu' and torch.cuda.is_available():
         input_param.device = "cuda:0"
