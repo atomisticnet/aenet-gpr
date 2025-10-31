@@ -76,7 +76,7 @@ class ReferenceData(object):
         if mace_param is None:
             self.mace_param = {'system': "materials",
                                'model': "small",
-                               'delta': 0.001,
+                               'delta': 1e-5,
                                'num_layers': -1,
                                'mace_n_jobs': 1}
         else:
