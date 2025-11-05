@@ -347,7 +347,7 @@ class GaussianProcess(object):
                     print("\n")
                 except ImportError:
                     raise ImportError(
-                        "The 'mace' packages is required for using pre-trained MACE descriptors.\n"
+                        "The 'mace' package is required for using pre-trained MACE descriptors.\n"
                         "Please install it by running:\n\n"
                         "    pip install mace-torch\n"
                     )
@@ -363,64 +363,66 @@ class GaussianProcess(object):
 
                 self.mace = MACECalculator(model_paths=[self.mace_param.get('model')],
                                            device=mace_device)
-
-            elif self.mace_param.get('system') == "materials":
-                try:
-                    from mace.calculators import mace_mp
-                    print("You are using pre-trained MACE-MP descriptor:")
-                    print(
-                        "[1] I. Batatia, D. P Kovacs, G. Simm, C. Ortner, and G. Csányi, Adv. Neural Inf. Process. Syst. 35 (2022) 11423.")
-                    print("[2] I. Batatia, G. Csányi et al., arXiv:2401.00096 (2023). \n")
-                    print("MACE parameter:")
-                    print(self.mace_param)
-                    print("\n")
-                except ImportError:
-                    raise ImportError(
-                        "The 'mace' package is required for using pre-trained MACE descriptors.\n"
-                        "Please install it by running:\n\n"
-                        "    pip install mace-torch\n"
-                    )
-
-                # Check and set device
-                if torch.cuda.is_available():
-                    print(
-                        "[Note] There is available CUDA device, and it will be used for MACE descriptor computation.\n")
-                    mace_device = "cuda:0"
-                else:
-                    mace_device = "cpu"
-                    print("[Warning] CUDA device not available. MACE descriptor computation may be slow on CPU.\n")
-
-                self.mace = mace_mp(model=self.mace_param.get('model'),
-                                    device=mace_device)
+                print("\nUsing MACE for MACECalculator with ", self.mace_param.get('model'))
 
             else:
-                try:
-                    from mace.calculators import mace_off
-                    print("You are using pre-trained MACE-OFF descriptor:")
-                    print(
-                        "[1] I. Batatia, D. P Kovacs, G. Simm, C. Ortner, and G. Csányi, Adv. Neural Inf. Process. Syst. 35 (2022) 11423.")
-                    print("[2] I. Batatia, G. Csányi et al., arXiv:2401.00096 (2023). \n")
-                    print("MACE parameter:")
-                    print(self.mace_param)
-                    print("\n")
-                except ImportError:
-                    raise ImportError(
-                        "The 'mace' package is required for using pre-trained MACE descriptors.\n"
-                        "Please install it by running:\n\n"
-                        "    pip install mace-torch\n"
-                    )
+                if self.mace_param.get('system') == "materials":
+                    try:
+                        from mace.calculators import mace_mp
+                        print("You are using pre-trained MACE-MP descriptor:")
+                        print(
+                            "[1] I. Batatia, D. P Kovacs, G. Simm, C. Ortner, and G. Csányi, Adv. Neural Inf. Process. Syst. 35 (2022) 11423.")
+                        print("[2] I. Batatia, G. Csányi et al., arXiv:2401.00096 (2023). \n")
+                        print("MACE parameter:")
+                        print(self.mace_param)
+                        print("\n")
+                    except ImportError:
+                        raise ImportError(
+                            "The 'mace' package is required for using pre-trained MACE descriptors.\n"
+                            "Please install it by running:\n\n"
+                            "    pip install mace-torch\n"
+                        )
 
-                # Check and set device
-                if torch.cuda.is_available():
-                    print(
-                        "[Note] There is available CUDA device, and it will be used for MACE descriptor computation.\n")
-                    mace_device = "cuda:0"
+                    # Check and set device
+                    if torch.cuda.is_available():
+                        print(
+                            "[Note] There is available CUDA device, and it will be used for MACE descriptor computation.\n")
+                        mace_device = "cuda:0"
+                    else:
+                        mace_device = "cpu"
+                        print("[Warning] CUDA device not available. MACE descriptor computation may be slow on CPU.\n")
+
+                    self.mace = mace_mp(model=self.mace_param.get('model'),
+                                        device=mace_device)
+
                 else:
-                    mace_device = "cpu"
-                    print("[Warning] CUDA device not available. MACE descriptor computation may be slow on CPU.\n")
+                    try:
+                        from mace.calculators import mace_off
+                        print("You are using pre-trained MACE-OFF descriptor:")
+                        print(
+                            "[1] I. Batatia, D. P Kovacs, G. Simm, C. Ortner, and G. Csányi, Adv. Neural Inf. Process. Syst. 35 (2022) 11423.")
+                        print("[2] I. Batatia, G. Csányi et al., arXiv:2401.00096 (2023). \n")
+                        print("MACE parameter:")
+                        print(self.mace_param)
+                        print("\n")
+                    except ImportError:
+                        raise ImportError(
+                            "The 'mace' package is required for using pre-trained MACE descriptors.\n"
+                            "Please install it by running:\n\n"
+                            "    pip install mace-torch\n"
+                        )
 
-                self.mace = mace_off(model=self.mace_param.get('model'),
-                                     device=mace_device)
+                    # Check and set device
+                    if torch.cuda.is_available():
+                        print(
+                            "[Note] There is available CUDA device, and it will be used for MACE descriptor computation.\n")
+                        mace_device = "cuda:0"
+                    else:
+                        mace_device = "cpu"
+                        print("[Warning] CUDA device not available. MACE descriptor computation may be slow on CPU.\n")
+
+                    self.mace = mace_off(model=self.mace_param.get('model'),
+                                         device=mace_device)
 
         elif self.descriptor == 'chebyshev':
             try:
