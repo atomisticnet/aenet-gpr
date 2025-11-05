@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import os
 
 from copy import deepcopy
 from joblib import Parallel, delayed
@@ -334,7 +335,36 @@ class GaussianProcess(object):
                              sparse=self.soap_param.get('sparse'))
 
         elif self.descriptor == 'mace':
-            if self.mace_param.get('system') == "materials":
+            if os.path.isfile(self.mace_param.get('model')):
+                try:
+                    from mace.calculators import MACECalculator
+                    print("You are using pre-trained MACE descriptor:")
+                    print(
+                        "[1] I. Batatia, D. P Kovacs, G. Simm, C. Ortner, and G. Csányi, Adv. Neural Inf. Process. Syst. 35 (2022) 11423.")
+                    print("[2] I. Batatia, G. Csányi et al., arXiv:2401.00096 (2023). \n")
+                    print("MACE parameter:")
+                    print(self.mace_param)
+                    print("\n")
+                except ImportError:
+                    raise ImportError(
+                        "The 'mace' packages is required for using pre-trained MACE descriptors.\n"
+                        "Please install it by running:\n\n"
+                        "    pip install mace-torch\n"
+                    )
+
+                # Check and set device
+                if torch.cuda.is_available():
+                    print(
+                        "[Note] There is available CUDA device, and it will be used for MACE descriptor computation.\n")
+                    mace_device = "cuda:0"
+                else:
+                    mace_device = "cpu"
+                    print("[Warning] CUDA device not available. MACE descriptor computation may be slow on CPU.\n")
+
+                self.mace = MACECalculator(model_paths=[self.mace_param.get('model')],
+                                           device=mace_device)
+
+            elif self.mace_param.get('system') == "materials":
                 try:
                     from mace.calculators import mace_mp
                     print("You are using pre-trained MACE-MP descriptor:")
@@ -346,9 +376,8 @@ class GaussianProcess(object):
                     print("\n")
                 except ImportError:
                     raise ImportError(
-                        "The 'joblib' and 'mace' packages are required for using pre-trained MACE descriptors.\n"
+                        "The 'mace' package is required for using pre-trained MACE descriptors.\n"
                         "Please install it by running:\n\n"
-                        "    pip install joblib\n"
                         "    pip install mace-torch\n"
                     )
 
@@ -376,9 +405,8 @@ class GaussianProcess(object):
                     print("\n")
                 except ImportError:
                     raise ImportError(
-                        "The 'joblib' and 'mace' packages are required for using pre-trained MACE descriptors.\n"
+                        "The 'mace' package is required for using pre-trained MACE descriptors.\n"
                         "Please install it by running:\n\n"
-                        "    pip install joblib\n"
                         "    pip install mace-torch\n"
                     )
 
