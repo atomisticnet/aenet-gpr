@@ -113,7 +113,7 @@ def chebyshev_descriptor_gradient_periodic(atoms, model, atoms_mask, delta=1e-3,
     batch_species = [atoms.get_chemical_symbols() for i in range(len(batch_positions))]
     batch_cells = [torch.tensor(np.array([atoms.cell[i] for i in range(3)]), device=model.featurizer.device) for i in
                    range(len(batch_positions))]
-    batch_pbc = [torch.tensor(atoms.pbc, device=model.featurizer.device) for i in range(len(batch_positions))]
+    batch_pbc = [torch.tensor(atoms.pbc, dtype=torch.bool, device=model.featurizer.device) for i in range(len(batch_positions))]
 
     # (Natoms * (6 * Nmaks + 1), Ndescriptor)
     features_batch, batch_indices = model(batch_positions,
