@@ -333,7 +333,7 @@ class AIDNEB:
             dt=0.1,
             ml_steps=100,
             optimizer="MDMin",
-            update_step=2,
+            update_step=1,
             check_ref_force=False,
             climbing=False):
 
