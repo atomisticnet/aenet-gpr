@@ -408,7 +408,7 @@ class AIDNEB:
                 print(f"[INFO] Adding training image at NEB index {middle_idx}")
 
                 self.atoms.positions = self.images[middle_idx].get_positions()
-                self.atoms.calc = self.ase_calc
+                self.atoms.calc = copy.deepcopy(self.ase_calc)
 
                 # Reference calculation
                 self.atoms.get_potential_energy(force_consistent=self.force_consistent)
@@ -684,7 +684,7 @@ class AIDNEB:
 
             # 8. Evaluate the target function and save it in *observations*.
             self.atoms.positions = chosen_candidate.get_positions()
-            self.atoms.calc = self.ase_calc
+            self.atoms.calc = copy.deepcopy(self.ase_calc)
             self.atoms.get_potential_energy(force_consistent=self.force_consistent)
             self.atoms.get_forces()
             dump_observation(atoms=self.atoms,
