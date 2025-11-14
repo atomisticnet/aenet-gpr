@@ -39,7 +39,7 @@ class InputParameters(object):
 
         self.mace_system = "materials"
         self.mace_model = "small"
-        self.mace_delta = 1e-5
+        self.mace_delta = 1e-4
         self.mace_invariants = True
         self.mace_num_layers = -1
         self.mace_n_jobs = 1
@@ -49,7 +49,7 @@ class InputParameters(object):
         self.cheb_rad_cutoff = 5.0
         self.cheb_ang_order = 6
         self.cheb_ang_cutoff = 3.0
-        self.cheb_delta = 0.001
+        self.cheb_delta = 1e-4
         self.cheb_param = {}
 
         self.kerneltype        = 'sqexp'
