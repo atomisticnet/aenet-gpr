@@ -584,6 +584,8 @@ class GaussianProcess(object):
                                                           dtype=self.data_type)
                 fp.append(torch.tensor(fp__, dtype=self.torch_data_type, device=self.device))
                 dfp_dr.append(torch.tensor(dfp_dr__, dtype=self.torch_data_type, device=self.device))
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
 
             fp = torch.stack(fp).to(dtype=self.torch_data_type,
                                     device=self.device)  # (Ndata, Nreduced_atoms, Ndescriptor)
@@ -664,6 +666,8 @@ class GaussianProcess(object):
             fp = torch.tensor(fp, dtype=self.torch_data_type, device=self.device)  # (Nreduced_atoms, Ndescriptor)
             dfp_dr = torch.tensor(dfp_dr, dtype=self.torch_data_type,
                                   device=self.device)  # (Nreduced_atoms, Nreduced_atoms, 3, Ndescriptor)
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
         elif self.descriptor == 'chebyshev':
             if np.any(image.pbc):
