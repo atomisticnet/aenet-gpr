@@ -1,9 +1,10 @@
 import numpy as np
 import copy
 import time
+import io, sys
 
 import torch
-from ase import io
+import ase.io
 from ase.atoms import Atoms
 from ase.optimize import FIRE, MDMin, LBFGS, BFGS
 from ase.parallel import parprint, parallel_function
@@ -173,10 +174,10 @@ class AIDNEB:
 
         # Convert Atoms and list of Atoms to trajectory files.
         if isinstance(start, Atoms):
-            io.write('initial.traj', start)
+            ase.io.write('initial.traj', start)
             start = 'initial.traj'
         if isinstance(end, Atoms):
-            io.write('final.traj', end)
+            ase.io.write('final.traj', end)
             end = 'final.traj'
 
         # if isinstance(start, Atoms) and isinstance(end, Atoms):
@@ -190,7 +191,7 @@ class AIDNEB:
         if interpolation != 'idpp' and interpolation != 'linear':
             interp_path = interpolation
         if isinstance(interp_path, list):
-            io.write('initial_path.traj', interp_path)
+            ase.io.write('initial_path.traj', interp_path)
             interp_path = 'initial_path.traj'
 
         # NEB parameters.
@@ -203,8 +204,8 @@ class AIDNEB:
         self.rrt = remove_rotation_and_translation
         self.neb_method = neb_method
         self.spring = k
-        self.i_endpoint = io.read(self.start, '-1')
-        self.e_endpoint = io.read(self.end, '-1')
+        self.i_endpoint = ase.io.read(self.start, '-1')
+        self.e_endpoint = ase.io.read(self.end, '-1')
 
         # GP calculator:
         self.model_calculator = model_calculator
@@ -214,7 +215,7 @@ class AIDNEB:
         self.function_calls = 0
         self.force_calls = 0
         self.ase_calc = calculator
-        self.atoms = io.read(self.start, '-1')
+        self.atoms = ase.io.read(self.start, '-1')
 
         self.constraints = self.atoms.constraints
         self.force_consistent = force_consistent
@@ -245,9 +246,9 @@ class AIDNEB:
         self.e_endpoint.get_forces()
 
         if isinstance(self.i_endpoint, Atoms):
-            io.write('initial.traj', self.i_endpoint)
+            ase.io.write('initial.traj', self.i_endpoint)
         if isinstance(self.e_endpoint, Atoms):
-            io.write('final.traj', self.e_endpoint)
+            ase.io.write('final.traj', self.e_endpoint)
 
         # Calculate the distance between the initial and final endpoints.
         self.d_start_end = np.sum((self.i_endpoint.positions.flatten() -
@@ -274,7 +275,7 @@ class AIDNEB:
 
         # B) Alternatively, the user can propose an initial path.
         if interp_path is not None:
-            images_path = io.read(interp_path, ':')
+            images_path = ase.io.read(interp_path, ':')
             first_image = images_path[0].get_positions().reshape(-1)
             last_image = images_path[-1].get_positions().reshape(-1)
 
@@ -325,7 +326,7 @@ class AIDNEB:
             out.append(atoms)
 
         # Write to extxyz file
-        io.write(filename, out, format='extxyz')
+        ase.io.write(filename, out, format='extxyz')
 
     def run(self,
             fmax=0.05,
@@ -393,7 +394,7 @@ class AIDNEB:
 
         print(f"[INFO] Number of initial training data: {self.n_train_images} including initial and final")
 
-        train_images = io.read(trajectory_observations, ':')
+        train_images = ase.io.read(trajectory_observations, ':')
         if len(train_images) == 2:
             # middle = int(self.n_images * (2. / 3.))
             # e_is = self.i_endpoint.get_potential_energy()
@@ -439,7 +440,7 @@ class AIDNEB:
             #     self.images = copy.deepcopy(self.initial_interpolation)
 
             # 1. Collect observations.
-            train_images = io.read(trajectory_observations, ':')
+            train_images = ase.io.read(trajectory_observations, ':')
 
             """
             # (N_candidate, N_atoms, 3)
@@ -615,7 +616,7 @@ class AIDNEB:
             if len(train_images) > 2 and max_f <= fmax and ok_unc and (climbing_neb or not climbing):
                 parprint('A saddle point was found.')
 
-                io.write(self.trajectory, self.images)
+                ase.io.write(self.trajectory, self.images)
                 parprint('Uncertainty of the images below threshold.')
                 parprint('NEB converged.')
                 parprint('The NEB path can be found in:', self.trajectory)
@@ -680,10 +681,9 @@ class AIDNEB:
 
             # Save the other candidates for multi-task optimization.
             if sorted_candidates:
-                io.write(trajectory_candidates, sorted_candidates)
+                ase.io.write(trajectory_candidates, sorted_candidates)
 
             # 8. Evaluate the target function and save it in *observations*.
-            import io, sys
             sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
             sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
