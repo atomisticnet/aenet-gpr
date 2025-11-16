@@ -683,6 +683,10 @@ class AIDNEB:
                 io.write(trajectory_candidates, sorted_candidates)
 
             # 8. Evaluate the target function and save it in *observations*.
+            import io, sys
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
             self.atoms.positions = chosen_candidate.get_positions()
             self.atoms.calc = copy.deepcopy(self.ase_calc)
             self.atoms.get_potential_energy(force_consistent=self.force_consistent)
