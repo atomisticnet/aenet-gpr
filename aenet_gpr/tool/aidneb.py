@@ -1,7 +1,6 @@
 import numpy as np
 import copy
 import time
-import io, sys
 
 import torch
 import ase.io
@@ -684,8 +683,6 @@ class AIDNEB:
                 ase.io.write(trajectory_candidates, sorted_candidates)
 
             # 8. Evaluate the target function and save it in *observations*.
-            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
             self.atoms.positions = chosen_candidate.get_positions()
             self.atoms.calc = copy.deepcopy(self.ase_calc)
