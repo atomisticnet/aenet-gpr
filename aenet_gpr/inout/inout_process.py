@@ -156,7 +156,8 @@ class Test(object):
         np.save("./force_test_reference.npy", self.forces)
 
         if self.input_param.get_variance:
-            print("Saving GPR prediction to [energy_test_gpr.npy], [force_test_gpr.npy], [unc_e_test_gpr.npy], and [unc_f_test_gpr.npy]")
+            print(
+                "Saving GPR prediction to [energy_test_gpr.npy], [force_test_gpr.npy], [unc_e_test_gpr.npy], and [unc_f_test_gpr.npy]")
             np.save("./energy_test_gpr.npy", energy_test_gpr)
             np.save("./force_test_gpr.npy", force_test_gpr)
             np.save("./unc_e_test_gpr.npy", unc_e_test_gpr)
@@ -190,8 +191,8 @@ class Augmentation(object):
     def generate_additional_structures(self):
         start = time.time()
         self.additional_data = AdditionalData(reference_training_data=self.train_data,
-                                                  disp_length=self.input_param.disp_length,
-                                                  num_copy=self.input_param.num_copy)
+                                              disp_length=self.input_param.disp_length,
+                                              num_copy=self.input_param.num_copy)
 
         self.additional_data.generate_additional_image()
         io_additional_generate_finalize(t=start,
@@ -212,7 +213,8 @@ class Augmentation(object):
 
         print("")
         if self.input_param.get_variance:
-            print("Saving GPR prediction to [energy_additional_gpr.npy], [force_additional_gpr.npy], [unc_e_additional_gpr.npy], and [unc_f_additional_gpr.npy]")
+            print(
+                "Saving GPR prediction to [energy_additional_gpr.npy], [force_additional_gpr.npy], [unc_e_additional_gpr.npy], and [unc_f_additional_gpr.npy]")
             np.save("./energy_additional_gpr.npy", self.additional_data.energy_additional)
             np.save("./force_additional_gpr.npy", self.additional_data.force_additional)
             np.save("./unc_e_additional_gpr.npy", self.additional_data.unc_e_additional)
