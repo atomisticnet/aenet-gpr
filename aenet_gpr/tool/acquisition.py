@@ -55,9 +55,9 @@ def acquisition(train_images, candidates, mode='min_energy', objective='min'):
             force = i.get_forces()
             pred_fmax.append(np.linalg.norm(force, axis=1).max())
 
-    for i in train_images:
-        x.append(i.get_positions().reshape(-1))
-        y.append(i.get_potential_energy())
+    # for i in train_images:
+    #     x.append(i.get_positions().reshape(-1))
+    #     y.append(i.get_potential_energy())
 
     implemented_acq = ['energy', 'fmax', 'uncertainty', 'ucb', 'lcb', 'random']
 
