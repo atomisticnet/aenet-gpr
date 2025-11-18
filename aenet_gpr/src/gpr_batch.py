@@ -3,6 +3,7 @@ import numpy as np
 import os
 
 from copy import deepcopy
+from ase import Atoms
 from joblib import Parallel, delayed
 
 from aenet_gpr.src.prior import ConstantPrior
@@ -204,14 +205,20 @@ def mace_descriptor_gradient(atoms, model, atoms_mask, delta=1e-5, invariants=Tr
         # Compute all descriptors
         all_descriptors = []
         for direction, i, j, positions in perturbations:
-            atoms.set_positions(positions)
-            desc_temp = model.get_descriptors(atoms, invariants_only=invariants, num_layers=num_layers)
+            atoms_temp = Atoms(symbols=atoms.get_chemical_symbols(),
+                               positions=positions,
+                               cell=atoms.cell,
+                               pbc=atoms.pbc)
+            desc_temp = model.get_descriptors(atoms_temp, invariants_only=invariants, num_layers=num_layers)
             all_descriptors.append((direction, i, j, desc_temp))
     else:
         # --- Parallelize descriptor computation ---
         def compute_descriptor(direction, i, j, positions):
-            atoms.set_positions(positions)
-            desc_temp = model.get_descriptors(atoms, invariants_only=invariants, num_layers=num_layers)
+            atoms_temp = Atoms(symbols=atoms.get_chemical_symbols(),
+                               positions=positions,
+                               cell=atoms.cell,
+                               pbc=atoms.pbc)
+            desc_temp = model.get_descriptors(atoms_temp, invariants_only=invariants, num_layers=num_layers)
             return direction, i, j, desc_temp
 
         all_descriptors = Parallel(n_jobs=n_jobs, prefer="threads")(
