@@ -20,7 +20,6 @@ from aenet_gpr.inout.input_parameter import InputParameters
 
 
 def min_cartesian_dist(img, train_images):
-
     best = np.inf
     for t in train_images:
         dt = img.positions.flatten() - t.positions.flatten()
@@ -229,7 +228,7 @@ class AIDNEB:
             for i in range(10000):
                 mic_images += [mic_initial.copy()]
             mic_images += [mic_final]
-            neb_mic = DyNEB(mic_images, climb=False, method=self.neb_method, remove_rotation_and_translation=self.rrt)
+            neb_mic = NEB(mic_images, climb=False, method=self.neb_method, remove_rotation_and_translation=self.rrt)
             neb_mic.interpolate(method='linear', mic=self.mic)
             self.i_endpoint.positions = mic_images[1].positions[:]
             self.e_endpoint.positions = mic_images[-2].positions[:]
@@ -250,25 +249,23 @@ class AIDNEB:
             ase.io.write('final.traj', self.e_endpoint)
 
         # Calculate the distance between the initial and final endpoints.
-        self.d_start_end = np.sum((self.i_endpoint.positions.flatten() -
-                                   self.e_endpoint.positions.flatten()) ** 2) ** 0.5
+        d_start_end = np.sum((self.i_endpoint.positions.flatten() -
+                              self.e_endpoint.positions.flatten()) ** 2) ** 0.5
 
-        # self.rmax = 0.4 * self.d_start_end
         # A) Create images using interpolation if user does define a path.
         if interp_path is None:
             if isinstance(self.n_images, float):
-                self.n_images = int(self.d_start_end / self.n_images)
+                self.n_images = int(d_start_end / self.n_images)
             if self.n_images <= 3:
                 self.n_images = 3
             self.images = make_neb(self)
-            if self.spring is None:
-                self.spring = 0.1 * (self.n_images - 1) / self.d_start_end
-                # self.spring = 2. * np.sqrt(self.n_images - 1) / self.d_start_end ** 2
 
-            neb_interpolation = DyNEB(self.images, climb=False, k=self.spring, method=self.neb_method, remove_rotation_and_translation=self.rrt)
+            neb_interpolation = NEB(self.images, climb=False, method=self.neb_method,
+                                    remove_rotation_and_translation=self.rrt)
             neb_interpolation.interpolate(method='linear', mic=self.mic)
             if interpolation == 'idpp':
-                neb_interpolation = DyNEB(self.images, climb=True, k=self.spring, method=self.neb_method, remove_rotation_and_translation=self.rrt)
+                neb_interpolation = NEB(self.images, climb=True, method=self.neb_method,
+                                        remove_rotation_and_translation=self.rrt)
                 neb_interpolation.interpolate(method='idpp', mic=self.mic)
                 # neb_interpolation.idpp_interpolate(optimizer=FIRE, mic=self.mic)
 
@@ -290,16 +287,23 @@ class AIDNEB:
             self.images = make_neb(self, images_interpolation=images_path)
 
         # Guess spring constant (k) if not defined by the user.
+        self.total_path_length = 0.0
+        for i in range(len(self.images) - 1):
+            pos1 = self.images[i].positions.flatten()
+            pos2 = self.images[i + 1].positions.flatten()
+            distance = np.linalg.norm(pos2 - pos1)
+            self.total_path_length += distance
+
         if self.spring is None:
-            self.spring = 0.1 * (self.n_images - 1) / self.d_start_end
+            self.spring = 0.1 * (self.n_images - 1) / self.total_path_length
             # self.spring = 2. * np.sqrt(self.n_images - 1) / self.d_start_end ** 2
         # Save initial interpolation.
         self.initial_interpolation = self.images[:]
 
         print()
-        print('Distance between initial and final: ', self.d_start_end)
+        print('Total path length (Å): ', self.total_path_length)
         # print(f"r_max (threshold to prevent over-relaxation when training data is sparse): {self.rmax:.4f}")
-        print('spring_constant: ', self.spring)
+        print('Spring constant (eV/Å): ', self.spring)
 
     def save_neb_predictions_to_extxyz(self, predictions, filename):
         """
@@ -385,9 +389,9 @@ class AIDNEB:
                          filename=trajectory_observations,
                          restart=self.use_previous_observations)
 
-        n_to_add = min(self.n_images - 2, max(1, int(self.d_start_end / 3.0)))
+        n_to_add = min(self.n_images - 2, max(1, int(self.total_path_length / 3.0)))
         if (n_to_add + 2) > self.n_train_images:
-            print(f"[INFO] Distance between initial and final (ΔR = {self.d_start_end} Å) is too large")
+            print(f"[INFO] Distance between initial and final (ΔR = {self.total_path_length} Å) is too large")
             print(f"[INFO] Use {n_to_add + 2} initial training data instead of {self.n_train_images}")
             self.n_train_images = n_to_add + 2
 
@@ -552,7 +556,7 @@ class AIDNEB:
             else:
                 pass
 
-            ml_neb = DyNEB(self.images, climb=climbing_neb, method=self.neb_method, k=self.spring)
+            ml_neb = NEB(self.images, climb=climbing_neb, method=self.neb_method, k=self.spring)
             # FIRE, MDMin, LBFGS, BFGS
             if optimizer.lower() == 'mdmin':
                 neb_opt = MDMin(ml_neb, dt=dt, trajectory="gpr_neb.traj")
