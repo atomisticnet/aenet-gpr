@@ -334,9 +334,9 @@ class AIDNEB:
     def run(self,
             fmax=0.05,
             unc_convergence=0.05,
-            dt=0.1,
+            dt=0.05,
             ml_steps=100,
-            optimizer="MDMin",
+            optimizer="FIRE",
             update_step=1,
             check_ref_force=False,
             climbing=False):
