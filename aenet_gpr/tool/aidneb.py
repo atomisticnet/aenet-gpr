@@ -581,14 +581,16 @@ class AIDNEB:
             filename = f'gpr_neb_results_step{self.step:04d}.extxyz'
             self.save_neb_predictions_to_extxyz(predictions=predictions, filename=filename)
 
-            neb_pred_energy = predictions['energy']
-            # neb_pred_unc_energy = predictions['unc_energy']
-            neb_pred_unc_forces = predictions['unc_forces']
-
             # 5. Print output.
+            neb_pred_energy = predictions['energy']
             max_e = np.max(neb_pred_energy)
-            # max_unc = np.max(neb_pred_unc_energy)
-            max_unc = max(np.linalg.norm(f_unc, axis=1).max() for f_unc in neb_pred_unc_forces)
+
+            if self.input_param.descriptor == 'cartesian coordinates':
+                neb_pred_unc_energy = predictions['unc_energy']
+                max_unc = np.max(neb_pred_unc_energy)
+            else:
+                neb_pred_unc_forces = predictions['unc_forces']
+                max_unc = max(np.linalg.norm(f_unc, axis=1).max() for f_unc in neb_pred_unc_forces)
             self.max_unc_hist.append(max_unc)
 
             # Calculator of train_images is reference, while Calculator of self.images is GP
