@@ -336,7 +336,7 @@ class AIDNEB:
             unc_convergence=0.05,
             dt=0.05,
             ml_steps=100,
-            optimizer="FIRE",
+            optimizer="MDMin",
             update_step=1,
             check_ref_force=False,
             climbing=False):
@@ -438,9 +438,9 @@ class AIDNEB:
         while True:
 
             # 0. Start from initial interpolation every 50 steps.
-            # if self.step % 50 == 0:
-            #     parprint('Starting from initial interpolation...')
-            #     self.images = copy.deepcopy(self.initial_interpolation)
+            if self.step % 50 == 0:
+                parprint('Starting from initial interpolation...')
+                self.images = copy.deepcopy(self.initial_interpolation)
 
             # 1. Collect observations.
             train_images = ase.io.read(trajectory_observations, ':')
