@@ -2,7 +2,7 @@ import numpy as np
 import random
 
 
-def acquisition(train_images, candidates, mode='min_energy', objective='min'):
+def acquisition(descriptor, candidates, mode='min_energy', objective='min'):
     """
     Acquisition function class.
     This function is in charge of ordering a list of Atoms candidates to
@@ -11,8 +11,8 @@ def acquisition(train_images, candidates, mode='min_energy', objective='min'):
 
     Parameters
     ----------
-    train_images: list
-        List of Atoms containing the previously evaluated structures.
+    # train_images: list
+    #     List of Atoms containing the previously evaluated structures.
     candidates: list
         Unordered list of Atoms with the candidates to be evaluated.
     mode: string
@@ -35,21 +35,23 @@ def acquisition(train_images, candidates, mode='min_energy', objective='min'):
         Ordered list of Atoms with the candidates to be evaluated.
     """
 
-    x = []
-    y = []
+    # x = []
+    # y = []
     pred_x = []
     pred_y = []
     pred_fmax = []
-    pred_func = []
+    pred_unc = []
 
     # Gather all required information to decide the order of the candidates.
     for i in candidates:
         pred_x.append(i.get_positions().reshape(-1))
         pred_y.append(i.get_potential_energy())
         if mode == 'uncertainty' or mode == 'ucb' or mode == 'lcb':
-            # pred_unc.append(i.calc.results['unc_energy'])
-            f_unc = i.calc.results['unc_forces']
-            pred_func.append(np.linalg.norm(f_unc, axis=1).max())
+            if descriptor == 'cartesian coordinates':
+                pred_unc.append(i.calc.results['unc_energy'])
+            else:
+                f_unc = i.calc.results['unc_forces']
+                pred_unc.append(np.linalg.norm(f_unc, axis=1).max())
 
         if mode == 'fmax':
             force = i.get_forces()
@@ -74,9 +76,9 @@ def acquisition(train_images, candidates, mode='min_energy', objective='min'):
 
     if mode == 'uncertainty':
         if objective == 'min':
-            score_index = np.argsort(pred_func)
+            score_index = np.argsort(pred_unc)
         if objective == 'max':
-            score_index = list(reversed(np.argsort(pred_func)))
+            score_index = list(reversed(np.argsort(pred_unc)))
 
     if mode == 'fmax':
         if objective == 'min':
@@ -85,14 +87,14 @@ def acquisition(train_images, candidates, mode='min_energy', objective='min'):
             score_index = list(reversed(np.argsort(pred_fmax)))
 
     if mode == 'ucb':
-        e_plus_u = np.array(pred_y) + np.array(pred_func)
+        e_plus_u = np.array(pred_y) + np.array(pred_unc)
         if objective == 'min':
             score_index = np.argsort(e_plus_u)
         if objective == 'max':
             score_index = list(reversed(np.argsort(e_plus_u)))
 
     if mode == 'lcb':
-        e_minus_u = np.array(pred_y) - np.array(pred_func)
+        e_minus_u = np.array(pred_y) - np.array(pred_unc)
         if objective == 'min':
             score_index = np.argsort(e_minus_u)
         if objective == 'max':

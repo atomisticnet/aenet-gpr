@@ -577,13 +577,13 @@ class AIDNEB:
             F = F.reshape(nim, nat, 3)
             max_f_image = np.sqrt((F ** 2).sum(-1)).max().item()
 
+            predictions = get_neb_predictions(self.images)
             filename_extxyz = f'gpr_neb_results_step{self.step:04d}.extxyz'
             filename_traj = f'gpr_neb_results_step{self.step:04d}.traj'
             self.save_neb_predictions_to_extxyz(predictions=predictions, filename=filename_extxyz)
             ase.io.write(filename_traj, self.images)
 
             # 5. Print output.
-            predictions = get_neb_predictions(self.images)
             neb_pred_energy = predictions['energy']
             max_e = np.max(neb_pred_energy)
 
@@ -637,18 +637,18 @@ class AIDNEB:
             candidates = copy.deepcopy(self.images)[1:-1]
 
             if max_unc > unc_convergence:
-                sorted_candidates = acquisition(train_images=train_images,
+                sorted_candidates = acquisition(descriptor=self.input_param.descriptor,
                                                 candidates=candidates,
                                                 mode='uncertainty',
                                                 objective='max')
             else:
                 if self.step % 5 == 0:
-                    sorted_candidates = acquisition(train_images=train_images,
+                    sorted_candidates = acquisition(descriptor=self.input_param.descriptor,
                                                     candidates=candidates,
                                                     mode='fmax',
                                                     objective='min')
                 else:
-                    sorted_candidates = acquisition(train_images=train_images,
+                    sorted_candidates = acquisition(descriptor=self.input_param.descriptor,
                                                     candidates=candidates,
                                                     mode='ucb',
                                                     objective='max')
