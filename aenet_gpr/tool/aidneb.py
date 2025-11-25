@@ -335,7 +335,7 @@ class AIDNEB:
             fmax=0.05,
             unc_convergence=0.05,
             dt=0.05,
-            ml_steps=100,
+            ml_steps=150,
             optimizer="MDMin",
             update_step=1,
             check_ref_force=False,
@@ -577,11 +577,13 @@ class AIDNEB:
             F = F.reshape(nim, nat, 3)
             max_f_image = np.sqrt((F ** 2).sum(-1)).max().item()
 
-            predictions = get_neb_predictions(self.images)
-            filename = f'gpr_neb_results_step{self.step:04d}.extxyz'
-            self.save_neb_predictions_to_extxyz(predictions=predictions, filename=filename)
+            filename_extxyz = f'gpr_neb_results_step{self.step:04d}.extxyz'
+            filename_traj = f'gpr_neb_results_step{self.step:04d}.traj'
+            self.save_neb_predictions_to_extxyz(predictions=predictions, filename=filename_extxyz)
+            ase.io.write(filename_traj, self.images)
 
             # 5. Print output.
+            predictions = get_neb_predictions(self.images)
             neb_pred_energy = predictions['energy']
             max_e = np.max(neb_pred_energy)
 
