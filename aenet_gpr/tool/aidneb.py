@@ -334,7 +334,7 @@ class AIDNEB:
     def run(self,
             fmax=0.05,
             unc_convergence=0.05,
-            dt=0.05,
+            dt=0.1,
             ml_steps=150,
             optimizer="MDMin",
             update_step=1,
@@ -528,7 +528,8 @@ class AIDNEB:
                                              fit_weight=self.input_param.fit_weight,
                                              fit_scale=self.input_param.fit_scale)
 
-            print(f"r_min (threshold to avoid adding nearly-duplicate training data): {self.rmin:.2f}")
+            # print(f"r_min (threshold to avoid adding nearly-duplicate training data): {self.rmin:.2f}")
+            print()
             print('GPR model hyperparameters: ', train_data.calculator.hyper_params)
 
             self.model_calculator = GPRCalculator(calculator=train_data.calculator, train_data=train_data)
