@@ -338,6 +338,7 @@ class AIDNEB:
             ml_steps=150,
             optimizer="MDMin",
             update_step=1,
+            uncertainty='force',
             check_ref_force=False,
             climbing=False):
 
@@ -588,7 +589,7 @@ class AIDNEB:
             neb_pred_energy = predictions['energy']
             max_e = np.max(neb_pred_energy)
 
-            if self.input_param.descriptor == 'cartesian coordinates':
+            if uncertainty == 'energy':
                 neb_pred_unc_energy = predictions['unc_energy']
                 max_unc = np.max(neb_pred_unc_energy)
             else:
@@ -638,18 +639,18 @@ class AIDNEB:
             candidates = copy.deepcopy(self.images)[1:-1]
 
             if max_unc > unc_convergence:
-                sorted_candidates = acquisition(descriptor=self.input_param.descriptor,
+                sorted_candidates = acquisition(uncertainty=uncertainty,
                                                 candidates=candidates,
                                                 mode='uncertainty',
                                                 objective='max')
             else:
                 if self.step % 5 == 0:
-                    sorted_candidates = acquisition(descriptor=self.input_param.descriptor,
+                    sorted_candidates = acquisition(uncertainty=uncertainty,
                                                     candidates=candidates,
                                                     mode='fmax',
                                                     objective='min')
                 else:
-                    sorted_candidates = acquisition(descriptor=self.input_param.descriptor,
+                    sorted_candidates = acquisition(uncertainty=uncertainty,
                                                     candidates=candidates,
                                                     mode='ucb',
                                                     objective='max')

@@ -2,7 +2,7 @@ import numpy as np
 import random
 
 
-def acquisition(descriptor, candidates, mode='min_energy', objective='min'):
+def acquisition(uncertainty, candidates, mode='min_energy', objective='min'):
     """
     Acquisition function class.
     This function is in charge of ordering a list of Atoms candidates to
@@ -47,7 +47,7 @@ def acquisition(descriptor, candidates, mode='min_energy', objective='min'):
         pred_x.append(i.get_positions().reshape(-1))
         pred_y.append(i.get_potential_energy())
         if mode == 'uncertainty' or mode == 'ucb' or mode == 'lcb':
-            if descriptor == 'cartesian coordinates':
+            if uncertainty == 'energy':
                 pred_unc.append(i.calc.results['unc_energy'])
             else:
                 f_unc = i.calc.results['unc_forces']
