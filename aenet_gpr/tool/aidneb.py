@@ -305,7 +305,7 @@ class AIDNEB:
         # print(f"r_max (threshold to prevent over-relaxation when training data is sparse): {self.rmax:.4f}")
         print('Spring constant (eV/Å): ', self.spring)
 
-    def save_neb_predictions_to_extxyz(self, predictions, filename):
+    def save_neb_predictions_to_extxyz(self, predictions, image_neb_force, filename):
         """
         Store NEB predictions (energy, force, unc_energy, unc_force)
         into Atoms objects and write to extxyz file.
@@ -323,7 +323,8 @@ class AIDNEB:
             atoms.info['unc_energy'] = float(predictions['unc_energy'][i])
 
             # Forces
-            atoms.arrays['forces'] = np.linalg.norm(predictions['forces'][i], axis=1)
+            atoms.arrays['pes_forces'] = np.linalg.norm(predictions['forces'][i], axis=1)
+            atoms.arrays['neb_forces'] = np.linalg.norm(image_neb_force[i], axis=1)
             atoms.arrays['unc_forces'] = np.linalg.norm(predictions['unc_forces'][i], axis=1)
 
             out.append(atoms)
@@ -575,14 +576,19 @@ class AIDNEB:
             nim = len(self.images) - 2
             nat = len(self.images[0])
 
-            F = ml_neb.get_forces()  # (n_mobile*nat*3) flat
-            F = F.reshape(nim, nat, 3)
-            max_f_image = np.sqrt((F ** 2).sum(-1)).max().item()
+            # NEB force (not potential energy force)
+            neb_force = ml_neb.get_forces()  # (N_mobile_image * N_atom, 3) flat
+            neb_force = neb_force.reshape(nim, nat, 3)
+            max_f_image = np.sqrt((neb_force ** 2).sum(-1)).max().item()
+
+            image_neb_force = np.zeros((len(self.images), nat, 3))
+            image_neb_force[1:-1, :, :] = neb_force
 
             predictions = get_neb_predictions(self.images)
             filename_extxyz = f'gpr_neb_results_step{self.step:04d}.extxyz'
+            self.save_neb_predictions_to_extxyz(predictions=predictions, image_neb_force=image_neb_force, filename=filename_extxyz)
+
             filename_traj = f'gpr_neb_results_step{self.step:04d}.traj'
-            self.save_neb_predictions_to_extxyz(predictions=predictions, filename=filename_extxyz)
             ase.io.write(filename_traj, self.images)
 
             # 5. Print output.
