@@ -511,7 +511,7 @@ class AIDANEBA:
             if self.level == self.n_flags:
                 neb_opt.run(fmax=fmax * 1.0, steps=ml_steps)
             else:
-                neb_opt.run(fmax=fmax * 10.0, steps=ml_steps)
+                neb_opt.run(fmax=fmax * 2.0, steps=ml_steps)
 
             nim = len(self.images) - 2
             nat = len(self.images[0])
@@ -676,7 +676,7 @@ class AIDANEBA:
                     continue
 
                 # 7. Select next point to train (acquisition function):
-                candidates = [copy.deepcopy(self.images[1]), copy.deepcopy(self.images[3])]
+                candidates = copy.deepcopy(self.images)[1:-1]
                 sorted_candidates = acquisition(uncertainty=uncertainty,
                                                 candidates=candidates,
                                                 mode='uncertainty',
