@@ -490,7 +490,7 @@ class AIDANEBA:
             # Switch on climbing image only when the uncertainty of the NEB the force of the climbing image are low.
             climbing_neb = False
             if climbing:
-                if self.step > 1 and self.max_unc_hist[-1] <= unc_convergence:
+                if self.step > 1 and self.level == self.n_flags and self.max_unc_hist[-1] <= unc_convergence:
                     parprint(f"Climbing image is now activated.")
                     climbing_neb = True
             else:
@@ -626,6 +626,7 @@ class AIDANEBA:
                     parprint('Level up.')
                     self.level += 1
                     self.step = 1
+                    update_step = 1
 
                     # Reset initial and final
                     self.i_endpoint = self.images[1]
