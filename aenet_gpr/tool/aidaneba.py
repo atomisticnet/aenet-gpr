@@ -214,26 +214,18 @@ class AIDANEBA:
             self.i_endpoint.calc = copy.deepcopy(self.ase_calc)
         if self.e_endpoint.calc is None:
             self.e_endpoint.calc = copy.deepcopy(self.ase_calc)
-        self.i_endpoint.get_potential_energy(force_consistent=force_consistent)
+        self.very_i_endpoint_energy = self.i_endpoint.get_potential_energy(force_consistent=force_consistent)
         self.i_endpoint.get_forces()
-        self.e_endpoint.get_potential_energy(force_consistent=force_consistent)
+        self.very_e_endpoint_energy = self.e_endpoint.get_potential_energy(force_consistent=force_consistent)
         self.e_endpoint.get_forces()
 
         if isinstance(self.i_endpoint, Atoms):
-            ase.io.write(f'initial_{self.level:04d}.traj', self.i_endpoint)
+            ase.io.write(f'initial_level{self.level:02d}.traj', self.i_endpoint)
         if isinstance(self.e_endpoint, Atoms):
-            ase.io.write(f'final_{self.level:04d}.traj', self.e_endpoint)
-
-        # Calculate the distance between the initial and final endpoints.
-        d_start_end = np.sum((self.i_endpoint.positions.flatten() -
-                              self.e_endpoint.positions.flatten()) ** 2) ** 0.5
+            ase.io.write(f'final_level{self.level:02d}.traj', self.e_endpoint)
 
         # A) Create images using interpolation if user does define a path.
         if interp_path is None:
-            if isinstance(self.n_images, float):
-                self.n_images = int(d_start_end / self.n_images)
-            if self.n_images <= 3:
-                self.n_images = 3
             self.images = make_neb(self)
 
             neb_interpolation = NEB(self.images, climb=False, method=self.neb_method,
@@ -528,10 +520,10 @@ class AIDANEBA:
             image_neb_force[1:-1, :, :] = neb_force
 
             # Write trajectories
-            filename_extxyz = f'gpr_neb_results_step{self.step:04d}.extxyz'
+            filename_extxyz = f'gpr_neb_results_level{self.level:02d}_step{self.step:04d}.extxyz'
             self.save_neb_predictions_to_extxyz(predictions=predictions, image_neb_force=image_neb_force, filename=filename_extxyz)
 
-            filename_traj = f'gpr_neb_results_step{self.step:04d}.traj'
+            filename_traj = f'gpr_neb_results_level{self.level:02d}_step{self.step:04d}.traj'
             ase.io.write(filename_traj, self.images)
 
             # 5. Print output.
@@ -552,8 +544,8 @@ class AIDANEBA:
             else:
                 max_f = max_f_image
 
-            pbf = max_e - self.i_endpoint.get_potential_energy(force_consistent=self.force_consistent)
-            pbb = max_e - self.e_endpoint.get_potential_energy(force_consistent=self.force_consistent)
+            pbf = max_e - self.very_i_endpoint_energy
+            pbb = max_e - self.very_e_endpoint_energy
 
             msg = "--------------------------------------------------------"
             parprint(msg)
@@ -633,19 +625,11 @@ class AIDANEBA:
                     self.e_endpoint = self.images[3]
 
                     if isinstance(self.i_endpoint, Atoms):
-                        ase.io.write(f'initial_{self.level:04d}.traj', self.i_endpoint)
+                        ase.io.write(f'initial_level{self.level:02d}.traj', self.i_endpoint)
                     if isinstance(self.e_endpoint, Atoms):
-                        ase.io.write(f'final_{self.level:04d}.traj', self.e_endpoint)
-
-                    # Calculate the distance between the initial and final endpoints.
-                    d_start_end = np.sum((self.i_endpoint.positions.flatten() -
-                                          self.e_endpoint.positions.flatten()) ** 2) ** 0.5
+                        ase.io.write(f'final_level{self.level:02d}.traj', self.e_endpoint)
 
                     # A) Create images using interpolation if user does define a path.
-                    if isinstance(self.n_images, float):
-                        self.n_images = int(d_start_end / self.n_images)
-                    if self.n_images <= 3:
-                        self.n_images = 3
                     self.images = make_neb(self)
 
                     neb_interpolation = NEB(self.images, climb=False, method=self.neb_method,
@@ -664,8 +648,7 @@ class AIDANEBA:
                         distance = np.linalg.norm(pos2 - pos1)
                         self.total_path_length += distance
 
-                    if self.spring is None:
-                        self.spring = 0.1 * (self.n_images - 1) / self.total_path_length
+                    self.spring = 0.1 * (self.n_images - 1) / self.total_path_length
 
                     # Save initial interpolation.
                     self.initial_interpolation = self.images[:]
