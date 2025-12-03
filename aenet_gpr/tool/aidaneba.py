@@ -384,20 +384,6 @@ class AIDANEBA:
 
         while True:
 
-            # 0. Start by saving the new middle image
-            if self.level > 1:
-                self.atoms.positions = self.images[2].get_positions()
-                self.atoms.calc = self.ase_calc
-
-                # Reference calculation
-                self.atoms.get_potential_energy(force_consistent=self.force_consistent)
-                self.atoms.get_forces()
-                dump_observation(atoms=self.atoms, method='neb',
-                                 filename=trajectory_observations,
-                                 restart=self.use_previous_observations)
-                self.function_calls += 1
-                self.force_calls += 1
-
             # 1. Collect observations.
             train_images = ase.io.read(trajectory_observations, ':')
 
