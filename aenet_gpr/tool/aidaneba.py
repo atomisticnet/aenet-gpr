@@ -607,12 +607,12 @@ class AIDANEBA:
                     update_step = 1
 
                     # Reset initial and final
-                    self.i_endpoint = self.images[1]
-                    self.e_endpoint = self.images[3]
-
-                    if isinstance(self.i_endpoint, Atoms):
+                    if self.i_endpoint.get_potential_energy() < self.images[1].get_potential_energy():
+                        self.i_endpoint = self.images[1]
                         ase.io.write(f'initial_level{self.level:02d}.traj', self.i_endpoint)
-                    if isinstance(self.e_endpoint, Atoms):
+
+                    if self.e_endpoint.get_potential_energy() < self.images[3].get_potential_energy():
+                        self.e_endpoint = self.images[3]
                         ase.io.write(f'final_level{self.level:02d}.traj', self.e_endpoint)
 
                     # A) Create images using interpolation if user does define a path.
