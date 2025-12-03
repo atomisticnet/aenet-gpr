@@ -39,7 +39,7 @@ def is_duplicate(pos_new, existing_positions, atol=1e-4):
 class AIDNEB:
 
     def __init__(self, start, end, input_param: InputParameters, model_calculator=None, calculator=None,
-                 interpolation='idpp', n_images=15, n_train_images=3, k=None, mic=False,
+                 interpolation='idpp', n_images=10, n_train_images=3, k=None, mic=False,
                  neb_method='improvedtangent',  # 'improvedtangent', 'aseneb'
                  remove_rotation_and_translation=False,
                  max_train_data=25, force_consistent=None,
@@ -335,7 +335,7 @@ class AIDNEB:
     def run(self,
             fmax=0.05,
             unc_convergence=0.05,
-            dt=0.1,
+            dt=0.05,
             ml_steps=150,
             optimizer="MDMin",
             update_step=1,
