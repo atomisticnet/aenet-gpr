@@ -30,7 +30,7 @@ def is_duplicate_position(is_pos, train_image_positions):
 class AIDANEBA:
 
     def __init__(self, start, end, input_param: InputParameters, model_calculator=None, calculator=None,
-                 interpolation='idpp', n_images=5, n_train_images=3, n_flags=3, k=None, mic=False,
+                 interpolation='idpp', n_images=5, n_train_images=3, n_flags=3, step_cutoff=15, k=None, mic=False,
                  neb_method='improvedtangent',
                  remove_rotation_and_translation=False, force_consistent=None,
                  trajectory='AIDNEB.traj',
@@ -181,6 +181,7 @@ class AIDANEBA:
         self.n_images = n_images
         self.n_train_images = n_train_images
         self.n_flags = n_flags
+        self.step_cutoff = step_cutoff
         self.level = 1
         self.mic = mic
         self.rrt = remove_rotation_and_translation
@@ -608,7 +609,7 @@ class AIDANEBA:
             else:
                 ok_unc = max_unc <= unc_convergence * 10.0
 
-                if len(train_images) > 2 and ok_unc:
+                if (len(train_images) > 2 and ok_unc) or self.step > self.step_cutoff:
                     parprint('Level up.')
                     self.level += 1
                     self.step = 1
