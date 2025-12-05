@@ -19,6 +19,14 @@ from aenet_gpr.tool import acquisition, dump_observation, get_fmax
 from aenet_gpr.inout.input_parameter import InputParameters
 
 
+def is_duplicate_position(is_pos, train_image_positions):
+    # is_pos: 1D numpy array (Eg, shape = (3N,))
+    # train_image_positions: list of 1D numpy arrays
+    for pos in train_image_positions:
+        if np.array_equal(is_pos, pos):
+            return True
+    return False
+
 class AIDANEBA:
 
     def __init__(self, start, end, input_param: InputParameters, model_calculator=None, calculator=None,
@@ -606,13 +614,95 @@ class AIDANEBA:
                     self.step = 1
                     update_step = 1
 
+                    train_image_positions = [image.get_positions().reshape(-1) for image in train_images]
+
+                    # Check slope of images to set a narrow down range
+                    slopes = [0.0]
+                    for i in range(1, 4):
+                        direction = self.images[i + 1].get_positions() - self.images[i - 1].get_positions()
+                        direction /= np.linalg.norm(direction)
+                        slopes.append(-(self.images[i].get_forces() * direction).sum())
+                    slopes.append(0.0)
+                    print("slopes:", slopes)
+
+                    slope_signs = [np.sign(s) for s in slopes[1:-1]]
+                    first = slope_signs[0]
+                    third = slope_signs[2]
+
+                    slope_case = 3
+                    # case [1]: All signs match the first slope
+                    if all(s == first for s in slope_signs):
+                        slope_case = 1
+
+                    # case [2]: All signs match the third slope
+                    elif all(s == third for s in slope_signs):
+                        slope_case = 2
+
+                    # case [3]
+                    else:
+                        pass
+
                     # Reset initial and final
-                    if self.i_endpoint.get_potential_energy() < self.images[1].get_potential_energy():
+                    if slope_case == 1:
+                        # Reset only initial image
                         self.i_endpoint = self.images[1]
+                        is_pos = self.i_endpoint.get_positions().reshape(-1)
+
+                        if is_duplicate_position(is_pos, train_image_positions):
+                            self.atoms.positions = self.i_endpoint.get_positions()
+                            self.atoms.calc = self.ase_calc
+                            self.atoms.get_potential_energy(force_consistent=self.force_consistent)
+                            self.atoms.get_forces()
+                            dump_observation(atoms=self.atoms,
+                                             filename=trajectory_observations,
+                                             restart=self.use_previous_observations)
+
                         ase.io.write(f'initial_level{self.level:02d}.traj', self.i_endpoint)
 
-                    if self.e_endpoint.get_potential_energy() < self.images[3].get_potential_energy():
+                    elif slope_case == 2:
+                        # Reset only final image
                         self.e_endpoint = self.images[3]
+                        fs_pos = self.e_endpoint.get_positions().reshape(-1)
+
+                        if is_duplicate_position(fs_pos, train_image_positions):
+                            self.atoms.positions = self.e_endpoint.get_positions()
+                            self.atoms.calc = self.ase_calc
+                            self.atoms.get_potential_energy(force_consistent=self.force_consistent)
+                            self.atoms.get_forces()
+                            dump_observation(atoms=self.atoms,
+                                             filename=trajectory_observations,
+                                             restart=self.use_previous_observations)
+
+                        ase.io.write(f'final_level{self.level:02d}.traj', self.e_endpoint)
+
+                    else:
+                        # Reset both initial and final images
+                        self.i_endpoint = self.images[1]
+                        is_pos = self.i_endpoint.get_positions().reshape(-1)
+
+                        if is_duplicate_position(is_pos, train_image_positions):
+                            self.atoms.positions = self.i_endpoint.get_positions()
+                            self.atoms.calc = self.ase_calc
+                            self.atoms.get_potential_energy(force_consistent=self.force_consistent)
+                            self.atoms.get_forces()
+                            dump_observation(atoms=self.atoms,
+                                             filename=trajectory_observations,
+                                             restart=self.use_previous_observations)
+
+                        ase.io.write(f'initial_level{self.level:02d}.traj', self.i_endpoint)
+
+                        self.e_endpoint = self.images[3]
+                        fs_pos = self.e_endpoint.get_positions().reshape(-1)
+
+                        if is_duplicate_position(fs_pos, train_image_positions):
+                            self.atoms.positions = self.e_endpoint.get_positions()
+                            self.atoms.calc = self.ase_calc
+                            self.atoms.get_potential_energy(force_consistent=self.force_consistent)
+                            self.atoms.get_forces()
+                            dump_observation(atoms=self.atoms,
+                                             filename=trajectory_observations,
+                                             restart=self.use_previous_observations)
+
                         ase.io.write(f'final_level{self.level:02d}.traj', self.e_endpoint)
 
                     # A) Create images using interpolation if user does define a path.
