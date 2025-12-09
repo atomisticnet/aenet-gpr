@@ -276,6 +276,11 @@ class AIDANEBA:
         # Save initial interpolation.
         self.initial_interpolation = self.images[:]
 
+        filename_extxyz = f'initial_interpolation_level{self.level:02d}.extxyz'
+        filename_traj = f'initial_interpolation_level{self.level:02d}.traj'
+        ase.io.write(filename_extxyz, self.initial_interpolation, format='extxyz')
+        ase.io.write(filename_traj, self.initial_interpolation)
+
         print()
         print('Total path length (Å): ', self.total_path_length)
         print('Spring constant (eV/Å): ', self.spring)
@@ -735,6 +740,11 @@ class AIDANEBA:
 
                     # Save initial interpolation.
                     self.initial_interpolation = self.images[:]
+
+                    filename_extxyz = f'initial_interpolation_level{self.level:02d}.extxyz'
+                    filename_traj = f'initial_interpolation_level{self.level:02d}.traj'
+                    ase.io.write(filename_extxyz, self.initial_interpolation, format='extxyz')
+                    ase.io.write(filename_traj, self.initial_interpolation)
 
                     print()
                     print('Total path length (Å): ', self.total_path_length)
