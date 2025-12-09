@@ -632,11 +632,11 @@ class AIDANEBA:
 
                     slope_case = 3
                     # case [1]: All signs match the first slope
-                    if all(s == first for s in slope_signs):
+                    if first == 1.0 and all(s == first for s in slope_signs):
                         slope_case = 1
 
                     # case [2]: All signs match the third slope
-                    elif all(s == third for s in slope_signs):
+                    elif third == -1.0 and all(s == third for s in slope_signs):
                         slope_case = 2
 
                     # case [3]
@@ -645,6 +645,8 @@ class AIDANEBA:
 
                     # Reset initial and final
                     if slope_case == 1:
+                        print("slope_case:", slope_case)
+
                         # Reset only initial image
                         self.i_endpoint = self.images[1]
                         is_pos = self.i_endpoint.get_positions().reshape(-1)
@@ -661,6 +663,8 @@ class AIDANEBA:
                         ase.io.write(f'initial_level{self.level:02d}.traj', self.i_endpoint)
 
                     elif slope_case == 2:
+                        print("slope_case:", slope_case)
+
                         # Reset only final image
                         self.e_endpoint = self.images[3]
                         fs_pos = self.e_endpoint.get_positions().reshape(-1)
@@ -677,6 +681,8 @@ class AIDANEBA:
                         ase.io.write(f'final_level{self.level:02d}.traj', self.e_endpoint)
 
                     else:
+                        print("slope_case:", slope_case)
+
                         # Reset both initial and final images
                         self.i_endpoint = self.images[1]
                         is_pos = self.i_endpoint.get_positions().reshape(-1)
