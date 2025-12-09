@@ -631,25 +631,37 @@ class AIDANEBA:
                     slopes.append(0.0)
                     print("slopes:", slopes)
 
-                    slope_signs = [np.sign(s) for s in slopes[1:-1]]
+                    slope_signs = []
+                    for s in slopes[1:-1]:
+                        if s > fmax * 2.0:
+                            slope_signs.append(1.0)
+                        elif s < -fmax * 2.0:
+                            slope_signs.append(-1.0)
+                        else:
+                            slope_signs.append(0.0)
                     first = slope_signs[0]
                     third = slope_signs[2]
 
+                    # case [3]
                     slope_case = 3
+
+                    # case [0]
+                    if first == 0.0 and third == 0.0:
+                        slope_case = 0
+
                     # case [1]: All signs match the first slope
-                    if first == 1.0 and all(s == first for s in slope_signs):
+                    elif all(s == 1.0 for s in slope_signs) or (third == 0.0):
                         slope_case = 1
 
                     # case [2]: All signs match the third slope
-                    elif third == -1.0 and all(s == third for s in slope_signs):
+                    elif all(s == -1.0 for s in slope_signs) or (first == 0.0):
                         slope_case = 2
 
-                    # case [3]
-                    else:
-                        pass
-
                     # Reset initial and final
-                    if slope_case == 1:
+                    if slope_case == 0:
+                        print("slope_case:", slope_case)
+
+                    elif slope_case == 1:
                         print("slope_case:", slope_case)
 
                         # Reset only initial image
@@ -685,7 +697,7 @@ class AIDANEBA:
 
                         ase.io.write(f'final_level{self.level:02d}.traj', self.e_endpoint)
 
-                    else:
+                    elif slope_case == 3:
                         print("slope_case:", slope_case)
 
                         # Reset both initial and final images
