@@ -601,7 +601,7 @@ class AIDANEBA:
 
                 # 8. Evaluate the target function and save it in *observations*.
                 self.atoms.positions = chosen_candidate.get_positions()
-                prev_pos = train_images[-1].get_positions.reshape(-1)
+                prev_pos = train_images[-1].get_positions().reshape(-1)
                 current_pos = self.atoms.get_positions().reshape(-1)
                 if np.array_equal(prev_pos, current_pos) and max_f <= fmax * 4.0 and ok_unc and (climbing_neb or not climbing):
                     parprint('A saddle point was found.')
