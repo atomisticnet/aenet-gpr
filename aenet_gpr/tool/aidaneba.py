@@ -647,13 +647,14 @@ class AIDANEBA:
 
                     slope_signs = []
                     for s in slopes[1:-1]:
-                        if s > fmax * 2.0:
+                        if s > fmax / 2.0:
                             slope_signs.append(1.0)
-                        elif s < -fmax * 2.0:
+                        elif s < -fmax / 2.0:
                             slope_signs.append(-1.0)
                         else:
                             slope_signs.append(0.0)
                     first = slope_signs[0]
+                    second = slope_signs[1]
                     third = slope_signs[2]
 
                     # case [3]
@@ -661,7 +662,10 @@ class AIDANEBA:
 
                     # case [0]
                     if first == 0.0 and third == 0.0:
-                        slope_case = 0
+                        if second >= 0.0:
+                            slope_case = 1
+                        else:
+                            slope_case = 2
 
                     # case [1]: All signs match the first slope
                     elif all(s == 1.0 for s in slope_signs) or (third == 0.0):
@@ -672,10 +676,7 @@ class AIDANEBA:
                         slope_case = 2
 
                     # Reset initial and final
-                    if slope_case == 0:
-                        print("slope_case:", slope_case)
-
-                    elif slope_case == 1:
+                    if slope_case == 1:
                         print("slope_case:", slope_case)
 
                         # Reset only initial image
