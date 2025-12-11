@@ -27,6 +27,7 @@ def is_duplicate_position(is_pos, train_image_positions):
             return True
     return False
 
+
 class AIDANEBA:
 
     def __init__(self, start, end, input_param: InputParameters, model_calculator=None, calculator=None,
