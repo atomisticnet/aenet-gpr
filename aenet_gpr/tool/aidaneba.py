@@ -563,7 +563,6 @@ class AIDANEBA:
             # 6. Check convergence.
             if self.level == self.n_flags:
                 ok_unc = max_unc <= unc_convergence * 1.0
-
                 if len(train_images) > 2 and max_f <= fmax and ok_unc and (climbing_neb or not climbing):
                     parprint('A saddle point was found.')
 
@@ -626,8 +625,20 @@ class AIDANEBA:
                 self.step += 1
 
             else:
-                ok_unc = max_unc <= unc_convergence * 10.0
+                ok_unc = max_unc <= unc_convergence * 1.0
+                if len(train_images) > 2 and max_f <= fmax and ok_unc and (climbing_neb or not climbing):
+                    parprint('A saddle point was found.')
 
+                    ase.io.write(self.trajectory, self.images)
+                    parprint('Uncertainty of the images below threshold.')
+                    parprint('NEB converged.')
+                    parprint('The NEB path can be found in:', self.trajectory)
+                    msg = "Visualize the last path using 'ase gui "
+                    msg += self.trajectory
+                    parprint(msg)
+                    break
+
+                ok_unc = max_unc <= unc_convergence * 10.0
                 if (len(train_images) > 2 and ok_unc) or self.step > self.step_cutoff:
                     parprint('Level up.')
                     self.level += 1
