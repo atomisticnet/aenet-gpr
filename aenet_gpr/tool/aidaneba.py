@@ -601,9 +601,9 @@ class AIDANEBA:
 
                 # 8. Evaluate the target function and save it in *observations*.
                 self.atoms.positions = chosen_candidate.get_positions()
-                prev_pos = train_images[-1].get_positions().reshape(-1)
-                current_pos = self.atoms.get_positions().reshape(-1)
-                if np.array_equal(prev_pos, current_pos) and max_f <= fmax * 4.0 and ok_unc and (climbing_neb or not climbing):
+                is_pos = self.atoms.get_positions().reshape(-1)
+                train_image_positions = [image.get_positions().reshape(-1) for image in train_images]
+                if is_duplicate_position(is_pos, train_image_positions) and max_f <= fmax * 4.0 and ok_unc and (climbing_neb or not climbing):
                     parprint('A saddle point was found.')
 
                     ase.io.write(self.trajectory, self.images)
