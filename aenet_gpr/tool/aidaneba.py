@@ -562,7 +562,7 @@ class AIDANEBA:
             parprint(msg)
 
             # 6. Check convergence.
-            if self.level == self.n_flags:
+            if self.level == self.n_flags or self.total_path_length < 0.8:
                 ok_unc = max_unc <= unc_convergence * 1.0
                 if len(train_images) > 2 and max_f <= fmax and ok_unc and (climbing_neb or not climbing):
                     parprint('A saddle point was found.')
