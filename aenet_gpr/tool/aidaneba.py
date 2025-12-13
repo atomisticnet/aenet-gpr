@@ -695,7 +695,7 @@ class AIDANEBA:
                         self.i_endpoint = self.images[1]
                         is_pos = self.i_endpoint.get_positions().reshape(-1)
 
-                        if is_duplicate_position(is_pos, train_image_positions):
+                        if not is_duplicate_position(is_pos, train_image_positions):
                             self.atoms.positions = self.i_endpoint.get_positions()
                             self.atoms.calc = self.ase_calc
                             self.atoms.get_potential_energy(force_consistent=self.force_consistent)
@@ -713,7 +713,7 @@ class AIDANEBA:
                         self.e_endpoint = self.images[3]
                         fs_pos = self.e_endpoint.get_positions().reshape(-1)
 
-                        if is_duplicate_position(fs_pos, train_image_positions):
+                        if not is_duplicate_position(fs_pos, train_image_positions):
                             self.atoms.positions = self.e_endpoint.get_positions()
                             self.atoms.calc = self.ase_calc
                             self.atoms.get_potential_energy(force_consistent=self.force_consistent)
@@ -731,7 +731,7 @@ class AIDANEBA:
                         self.i_endpoint = self.images[1]
                         is_pos = self.i_endpoint.get_positions().reshape(-1)
 
-                        if is_duplicate_position(is_pos, train_image_positions):
+                        if not is_duplicate_position(is_pos, train_image_positions):
                             self.atoms.positions = self.i_endpoint.get_positions()
                             self.atoms.calc = self.ase_calc
                             self.atoms.get_potential_energy(force_consistent=self.force_consistent)
@@ -745,7 +745,7 @@ class AIDANEBA:
                         self.e_endpoint = self.images[3]
                         fs_pos = self.e_endpoint.get_positions().reshape(-1)
 
-                        if is_duplicate_position(fs_pos, train_image_positions):
+                        if not is_duplicate_position(fs_pos, train_image_positions):
                             self.atoms.positions = self.e_endpoint.get_positions()
                             self.atoms.calc = self.ase_calc
                             self.atoms.get_potential_energy(force_consistent=self.force_consistent)
