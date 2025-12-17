@@ -483,7 +483,7 @@ class AIDANEBA:
             # Switch on climbing image only when the uncertainty of the NEB the force of the climbing image are low.
             climbing_neb = False
             if climbing:
-                if self.step > 1 and (self.level == self.n_flags or self.total_path_length < 0.8) and self.max_unc_hist[-1] <= unc_convergence:
+                if self.step > 1 and (self.level == self.n_flags or self.total_path_length < 0.5) and self.max_unc_hist[-1] <= unc_convergence:
                     parprint(f"Climbing image is now activated.")
                     climbing_neb = True
             else:
@@ -501,7 +501,7 @@ class AIDANEBA:
                 neb_opt = FIRE(ml_neb, dt=dt, trajectory="gpr_neb.traj")
 
             # Optimize the images
-            if self.level == self.n_flags or self.total_path_length < 0.8:
+            if self.level == self.n_flags or self.total_path_length < 0.5:
                 neb_opt.run(fmax=fmax * 1.0, steps=ml_steps)
             else:
                 neb_opt.run(fmax=fmax * 2.0, steps=ml_steps)
@@ -540,7 +540,7 @@ class AIDANEBA:
             self.max_unc_hist.append(max_unc)
 
             # Calculator of train_images is reference, while Calculator of self.images is GP
-            if check_ref_force:
+            if check_ref_force and (self.level == self.n_flags or self.total_path_length < 0.5):
                 max_f = get_fmax(train_images[-1])
             else:
                 max_f = max_f_image
@@ -562,7 +562,7 @@ class AIDANEBA:
             parprint(msg)
 
             # 6. Check convergence.
-            if self.level == self.n_flags or self.total_path_length < 0.8:
+            if self.level == self.n_flags or self.total_path_length < 0.5:
                 ok_unc = max_unc <= unc_convergence * 1.0
                 if len(train_images) > 2 and max_f <= fmax and ok_unc and (climbing_neb or not climbing):
                     parprint('A saddle point was found.')
