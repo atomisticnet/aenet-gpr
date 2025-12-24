@@ -13,9 +13,6 @@ try:
 except ModuleNotFoundError:
     from ase.neb import NEB, DyNEB
 
-from aenet_gpr.tool import acquisition, dump_observation, get_fmax
-from aenet_gpr.inout.input_parameter import InputParameters
-
 
 def is_duplicate_position(is_pos, train_image_positions):
     # is_pos: 1D numpy array (Eg, shape = (3N,))
@@ -28,8 +25,8 @@ def is_duplicate_position(is_pos, train_image_positions):
 
 class ANEBA:
 
-    def __init__(self, start, end, input_param: InputParameters, calculator=None,
-                 interpolation='idpp', n_images=5, n_train_images=3, n_flags=3, step_cutoff=15, k=None, mic=False,
+    def __init__(self, start, end, calculator=None,
+                 interpolation='idpp', n_images=5, n_flags=3, step_cutoff=15, k=None, mic=False,
                  neb_method='improvedtangent',
                  remove_rotation_and_translation=False, force_consistent=None,
                  trajectory='AIDNEB.traj',
@@ -171,11 +168,9 @@ class ANEBA:
             interp_path = 'initial_path.traj'
 
         # NEB parameters.
-        self.input_param = input_param
         self.start = start
         self.end = end
         self.n_images = n_images
-        self.n_train_images = n_train_images
         self.n_flags = n_flags
         self.step_cutoff = step_cutoff
         self.level = 1
